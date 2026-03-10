@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { generateDocumentDescription as genDescription, type GenerateDocumentDescriptionInput } from '@/ai/flows/generate-document-description';
-import { addDocument as dbAddDocument, updateDocument as dbUpdateDocument, deleteDocument as dbDeleteDocument } from '@/lib/data';
-import type { Document } from '@/lib/definitions';
+import { addDocument as dbAddDocument, updateDocument as dbUpdateDocument, deleteDocument as dbDeleteDocument, addSuite as dbAddSuite } from '@/lib/data';
+import type { Document, DocumentSuite } from '@/lib/definitions';
 
 export async function addDocument(data: Omit<Document, 'id' | 'createdAt'>) {
     const newDoc = await dbAddDocument(data);
@@ -34,4 +34,11 @@ export async function generateDescriptionForDocument(input: GenerateDocumentDesc
     console.error('Error generating document description:', error);
     return { success: false, error: 'An error occurred while generating the description.' };
   }
+}
+
+export async function addSuite(data: Omit<DocumentSuite, 'id' | 'documents'>) {
+    const newSuite = await dbAddSuite(data);
+    revalidatePath('/admin');
+    revalidatePath('/');
+    return newSuite;
 }

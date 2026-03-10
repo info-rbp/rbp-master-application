@@ -6,19 +6,22 @@ import { Plus } from 'lucide-react';
 import { DataTable } from './data-table';
 import { columns } from './columns';
 import { DocumentForm } from './document-form';
-import type { Document } from '@/lib/definitions';
+import { SuiteForm } from './suite-form';
+import type { Document, DocumentSuite } from '@/lib/definitions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { addDocument, updateDocument as updateDocumentAction, deleteDocument as deleteDocumentAction } from '@/app/actions';
+import { addDocument, updateDocument as updateDocumentAction, deleteDocument as deleteDocumentAction, addSuite as addSuiteAction } from '@/app/actions';
 
 type DocumentManagerProps = {
   initialDocuments: Document[];
-  suites: { id: string; name: string }[];
+  suites: Array<Omit<DocumentSuite, 'documents'>>;
 };
 
-export default function DocumentManager({ initialDocuments, suites }: DocumentManagerProps) {
+export default function DocumentManager({ initialDocuments, suites: initialSuites }: DocumentManagerProps) {
   const [documents, setDocuments] = useState(initialDocuments);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [suites, setSuites] = useState(initialSuites);
+  const [isDocFormOpen, setIsDocFormOpen] = useState(false);
+  const [isSuiteFormOpen, setIsSuiteFormOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const { toast } = useToast();
 
@@ -30,6 +33,18 @@ export default function DocumentManager({ initialDocuments, suites }: DocumentMa
       return true;
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to add document." });
+      return false;
+    }
+  };
+
+  const handleAddSuite = async (values: any) => {
+    try {
+      const newSuite = await addSuiteAction(values);
+      setSuites(prev => [...prev, newSuite]);
+      toast({ title: "Success", description: "Suite added successfully." });
+      return true;
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to add suite." });
       return false;
     }
   };
@@ -60,18 +75,36 @@ export default function DocumentManager({ initialDocuments, suites }: DocumentMa
 
   const openEditForm = (doc: Document) => {
     setEditingDocument(doc);
-    setIsFormOpen(true);
+    setIsDocFormOpen(true);
   }
 
   const openAddForm = () => {
     setEditingDocument(null);
-    setIsFormOpen(true);
+    setIsDocFormOpen(true);
   }
 
   return (
     <>
-      <div className="flex justify-end">
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <div className="flex justify-end gap-2">
+         <Dialog open={isSuiteFormOpen} onOpenChange={setIsSuiteFormOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Suite
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[625px]">
+                <DialogHeader>
+                    <DialogTitle>Add New Suite</DialogTitle>
+                </DialogHeader>
+                <SuiteForm
+                    onSubmit={handleAddSuite}
+                    onFinished={() => setIsSuiteFormOpen(false)}
+                />
+            </DialogContent>
+        </Dialog>
+
+        <Dialog open={isDocFormOpen} onOpenChange={setIsDocFormOpen}>
             <DialogTrigger asChild>
                 <Button onClick={openAddForm}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -86,7 +119,7 @@ export default function DocumentManager({ initialDocuments, suites }: DocumentMa
                     suites={suites} 
                     document={editingDocument}
                     onSubmit={editingDocument ? (values) => handleUpdateDocument(editingDocument.id, values) : handleAddDocument} 
-                    onFinished={() => setIsFormOpen(false)}
+                    onFinished={() => setIsDocFormOpen(false)}
                 />
             </DialogContent>
         </Dialog>

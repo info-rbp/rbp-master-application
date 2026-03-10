@@ -80,7 +80,7 @@ export async function getAllDocuments(): Promise<Document[]> {
     return [...documents].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function getSuites() {
+export async function getSuites(): Promise<Omit<DocumentSuite, 'documents'>[]> {
   return [...suites];
 }
 
@@ -105,4 +105,13 @@ export async function deleteDocument(id: string): Promise<boolean> {
     const initialLength = documents.length;
     documents = documents.filter(d => d.id !== id);
     return documents.length < initialLength;
+}
+
+export async function addSuite(suite: Omit<DocumentSuite, 'id' | 'documents'>): Promise<Omit<DocumentSuite, 'documents'>> {
+    const newSuite = {
+        ...suite,
+        id: `suite-${Date.now()}`,
+    };
+    suites.push(newSuite);
+    return newSuite;
 }
