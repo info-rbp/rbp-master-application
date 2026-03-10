@@ -35,10 +35,10 @@ export default function LandingPage() {
           </nav>
           <div className="flex flex-1 items-center justify-end gap-2">
              <Button asChild>
-              <Link href="/portal">Go to Portal</Link>
+              <Link href="/signup">Sign Up</Link>
             </Button>
             <Button variant="ghost" asChild>
-              <Link href="/login">Admin Login</Link>
+              <Link href="/login">Login</Link>
             </Button>
           </div>
         </div>
@@ -207,7 +207,7 @@ export default function LandingPage() {
                 </div>
                 <div className="mx-auto w-full max-w-sm space-y-2">
                      <Button asChild size="lg" variant="secondary">
-                        <Link href="/portal">Get Started Now</Link>
+                        <Link href="/signup">Get Started Now</Link>
                     </Button>
                 </div>
             </div>
@@ -223,9 +223,12 @@ export default function LandingPage() {
               Built by Remote Business Partner.
             </p>
           </div>
-           <p className="text-center text-sm text-muted-foreground">
-             &copy; {new Date().getFullYear()} DocShare. All Rights Reserved.
-            </p>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <p className="text-center">
+                &copy; {new Date().getFullYear()} DocShare. All Rights Reserved.
+              </p>
+              <Link href="/admin/login" className="hover:underline">Admin Login</Link>
+            </div>
         </div>
       </footer>
     </div>

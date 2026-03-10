@@ -16,35 +16,38 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { useAuth } from '@/firebase';
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const auth = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: 'Login Successful',
-        description: 'Redirecting to portal...',
-      });
-      router.push('/portal');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: error.message || 'Invalid email or password.',
-      });
-      setIsLoading(false);
-    }
+
+    // Simulate network request
+    setTimeout(() => {
+      if (
+        email === 'info@remotebusinesspartner.com.au' &&
+        password === 'Foxtrot19!'
+      ) {
+        toast({
+          title: 'Login Successful',
+          description: 'Redirecting to dashboard...',
+        });
+        router.push('/admin');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: 'Invalid email or password.',
+        });
+        setIsLoading(false);
+      }
+    }, 1000);
   };
 
   return (
@@ -55,9 +58,9 @@ export default function LoginPage() {
         </Link>
         <Card className="w-full shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl">Login</CardTitle>
+            <CardTitle className="text-2xl">Admin Login</CardTitle>
             <CardDescription>
-              Enter your email below to login to your account.
+              Enter your credentials to access the dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -94,16 +97,12 @@ export default function LoginPage() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 Login
               </Button>
             </form>
-            <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="underline">
-                Sign up
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>
