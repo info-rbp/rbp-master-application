@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { generateDescriptionForDocument } from '../actions';
+import { generateDescriptionForDocument } from '@/app/actions';
 import { Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';

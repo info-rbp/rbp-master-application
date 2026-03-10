@@ -9,7 +9,7 @@ import { DocumentForm } from './document-form';
 import type { Document } from '@/lib/definitions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { addDocument, updateDocument as updateDocumentAction, deleteDocument as deleteDocumentAction } from '../actions';
+import { addDocument, updateDocument as updateDocumentAction, deleteDocument as deleteDocumentAction } from '@/app/actions';
 
 type DocumentManagerProps = {
   initialDocuments: Document[];
