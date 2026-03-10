@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster"
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'DocShare Portal',
-  description: 'A portal for downloading documents and templates.',
+  title: 'DocShare',
+  description: 'A comprehensive platform of documents, templates, and resources for startups, entrepreneurs, and small business owners.',
 };
 
 export default function RootLayout({

@@ -1,0 +1,26 @@
+{
+  "hero": {
+    "src": "https://picsum.photos/seed/hero/1200/800",
+    "width": 1200,
+    "height": 800,
+    "hint": "business documents"
+  },
+  "testimonial1": {
+    "src": "https://picsum.photos/seed/t1/100/100",
+    "width": 100,
+    "height": 100,
+    "hint": "person smiling"
+  },
+  "testimonial2": {
+    "src": "https://picsum.photos/seed/t2/100/100",
+    "width": 100,
+    "height": 100,
+    "hint": "business person"
+  },
+  "testimonial3": {
+    "src": "https://picsum.photos/seed/t3/100/100",
+    "width": 100,
+    "height": 100,
+    "hint": "entrepreneur portrait"
+  }
+}
