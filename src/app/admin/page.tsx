@@ -1,16 +1,15 @@
-import { getAllDocuments, getSuites } from "@/lib/data";
-import DocumentManager from "./components/document-manager";
-
 export default async function AdminDashboard() {
-  const initialDocuments = await getAllDocuments();
-  const suites = await getSuites();
-
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Document Management</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
       </div>
-      <DocumentManager initialDocuments={initialDocuments} suites={suites} />
+      <div className="flex items-center justify-center h-[calc(100vh-200px)] border-2 border-dashed rounded-lg">
+          <div className="text-center">
+              <h3 className="text-xl font-semibold">Welcome to your Dashboard</h3>
+              <p className="text-muted-foreground">Select a page from the sidebar to get started.</p>
+          </div>
+      </div>
     </div>
   );
 }

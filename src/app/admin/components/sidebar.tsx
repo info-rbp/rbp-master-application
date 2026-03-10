@@ -58,7 +58,7 @@ export default function AdminSidebar() {
               isActive={pathname.startsWith('/admin/documents')}
               tooltip="Documents"
             >
-              <Link href="/admin">
+              <Link href="/admin/documents">
                 <Files />
                 <span>Documents</span>
               </Link>
