@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import {
   DropdownMenu,
@@ -96,7 +97,15 @@ export const columns = ({ onEdit, onDelete }: { onEdit: (doc: Document) => void,
         </Button>
       );
     },
-    cell: ({ row }) => format(new Date(row.getValue('createdAt')), 'dd/MM/yyyy'),
+    cell: ({ row }) => {
+      const [date, setDate] = React.useState<string | null>(null);
+
+      React.useEffect(() => {
+        setDate(format(new Date(row.getValue('createdAt')), 'dd/MM/yyyy'));
+      }, [row]);
+
+      return date ? <div>{date}</div> : null;
+    },
   },
   {
     id: 'actions',
