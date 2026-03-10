@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowUpDown, MoreHorizontal, FileText, Link as LinkIcon } from 'lucide-react';
 import type { Document } from '@/lib/definitions';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 type ColumnActionsProps = {
   document: Document;
@@ -95,7 +96,7 @@ export const columns = ({ onEdit, onDelete }: { onEdit: (doc: Document) => void,
         </Button>
       );
     },
-    cell: ({ row }) => new Date(row.getValue('createdAt')).toLocaleDateString(),
+    cell: ({ row }) => format(new Date(row.getValue('createdAt')), 'dd/MM/yyyy'),
   },
   {
     id: 'actions',
