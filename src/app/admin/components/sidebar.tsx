@@ -10,9 +10,10 @@ import {
 import Logo from '@/components/logo';
 import {
   LayoutDashboard,
-  Files,
   LogOut,
   ChevronDown,
+  Folder,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -55,11 +56,23 @@ export default function AdminSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
+              isActive={pathname.startsWith('/admin/suites')}
+              tooltip="Suites"
+            >
+              <Link href="/admin/suites">
+                <Folder />
+                <span>Suites</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
               isActive={pathname.startsWith('/admin/documents')}
               tooltip="Documents"
             >
               <Link href="/admin/documents">
-                <Files />
+                <FileText />
                 <span>Documents</span>
               </Link>
             </SidebarMenuButton>

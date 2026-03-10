@@ -115,3 +115,17 @@ export async function addSuite(suite: Omit<DocumentSuite, 'id' | 'documents'>): 
     suites.push(newSuite);
     return newSuite;
 }
+
+export async function updateSuite(id: string, data: Partial<Omit<DocumentSuite, 'id' | 'documents'>>): Promise<Omit<DocumentSuite, 'documents'> | null> {
+    const index = suites.findIndex(s => s.id === id);
+    if(index === -1) return null;
+    suites[index] = { ...suites[index], ...data };
+    return suites[index];
+}
+
+export async function deleteSuite(id: string): Promise<boolean> {
+    const initialLength = suites.length;
+    suites = suites.filter(s => s.id !== id);
+    documents = documents.filter(d => d.suiteId !== id);
+    return suites.length < initialLength;
+}

@@ -2,26 +2,33 @@
 
 import { revalidatePath } from 'next/cache';
 import { generateDocumentDescription as genDescription, type GenerateDocumentDescriptionInput } from '@/ai/flows/generate-document-description';
-import { addDocument as dbAddDocument, updateDocument as dbUpdateDocument, deleteDocument as dbDeleteDocument, addSuite as dbAddSuite } from '@/lib/data';
+import { 
+    addDocument as dbAddDocument, 
+    updateDocument as dbUpdateDocument, 
+    deleteDocument as dbDeleteDocument, 
+    addSuite as dbAddSuite,
+    updateSuite as dbUpdateSuite,
+    deleteSuite as dbDeleteSuite
+} from '@/lib/data';
 import type { Document, DocumentSuite } from '@/lib/definitions';
 
 export async function addDocument(data: Omit<Document, 'id' | 'createdAt'>) {
     const newDoc = await dbAddDocument(data);
-    revalidatePath('/admin');
+    revalidatePath('/admin/documents');
     revalidatePath('/');
     return newDoc;
 }
 
 export async function updateDocument(id: string, data: Partial<Document>) {
     const updatedDoc = await dbUpdateDocument(id, data);
-    revalidatePath('/admin');
+    revalidatePath('/admin/documents');
     revalidatePath('/');
     return updatedDoc;
 }
 
 export async function deleteDocument(id: string) {
     const success = await dbDeleteDocument(id);
-    revalidatePath('/admin');
+    revalidatePath('/admin/documents');
     revalidatePath('/');
     return success;
 }
@@ -38,7 +45,22 @@ export async function generateDescriptionForDocument(input: GenerateDocumentDesc
 
 export async function addSuite(data: Omit<DocumentSuite, 'id' | 'documents'>) {
     const newSuite = await dbAddSuite(data);
-    revalidatePath('/admin');
+    revalidatePath('/admin/suites');
     revalidatePath('/');
     return newSuite;
+}
+
+export async function updateSuite(id: string, data: Partial<Omit<DocumentSuite, 'id' | 'documents'>>) {
+    const updatedSuite = await dbUpdateSuite(id, data);
+    revalidatePath('/admin/suites');
+    revalidatePath('/');
+    return updatedSuite;
+}
+
+export async function deleteSuite(id: string) {
+    const success = await dbDeleteSuite(id);
+    revalidatePath('/admin/suites');
+    revalidatePath('/admin/documents');
+    revalidatePath('/');
+    return success;
 }

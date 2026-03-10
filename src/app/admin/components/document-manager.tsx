@@ -6,22 +6,19 @@ import { Plus } from 'lucide-react';
 import { DataTable } from './data-table';
 import { columns } from './columns';
 import { DocumentForm } from './document-form';
-import { SuiteForm } from './suite-form';
 import type { Document, DocumentSuite } from '@/lib/definitions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { addDocument, updateDocument as updateDocumentAction, deleteDocument as deleteDocumentAction, addSuite as addSuiteAction } from '@/app/actions';
+import { addDocument, updateDocument as updateDocumentAction, deleteDocument as deleteDocumentAction } from '@/app/actions';
 
 type DocumentManagerProps = {
   initialDocuments: Document[];
   suites: Array<Omit<DocumentSuite, 'documents'>>;
 };
 
-export default function DocumentManager({ initialDocuments, suites: initialSuites }: DocumentManagerProps) {
+export default function DocumentManager({ initialDocuments, suites }: DocumentManagerProps) {
   const [documents, setDocuments] = useState(initialDocuments);
-  const [suites, setSuites] = useState(initialSuites);
   const [isDocFormOpen, setIsDocFormOpen] = useState(false);
-  const [isSuiteFormOpen, setIsSuiteFormOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const { toast } = useToast();
 
@@ -33,18 +30,6 @@ export default function DocumentManager({ initialDocuments, suites: initialSuite
       return true;
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to add document." });
-      return false;
-    }
-  };
-
-  const handleAddSuite = async (values: any) => {
-    try {
-      const newSuite = await addSuiteAction(values);
-      setSuites(prev => [...prev, newSuite]);
-      toast({ title: "Success", description: "Suite added successfully." });
-      return true;
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to add suite." });
       return false;
     }
   };
@@ -86,24 +71,6 @@ export default function DocumentManager({ initialDocuments, suites: initialSuite
   return (
     <>
       <div className="flex justify-end gap-2">
-         <Dialog open={isSuiteFormOpen} onOpenChange={setIsSuiteFormOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Suite
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[625px]">
-                <DialogHeader>
-                    <DialogTitle>Add New Suite</DialogTitle>
-                </DialogHeader>
-                <SuiteForm
-                    onSubmit={handleAddSuite}
-                    onFinished={() => setIsSuiteFormOpen(false)}
-                />
-            </DialogContent>
-        </Dialog>
-
         <Dialog open={isDocFormOpen} onOpenChange={setIsDocFormOpen}>
             <DialogTrigger asChild>
                 <Button onClick={openAddForm}>
