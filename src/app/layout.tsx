@@ -5,12 +5,16 @@ import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import MarketingHeader from '@/components/marketing-header';
 import MarketingFooter from '@/components/marketing-footer';
+import { usePathname } from 'next/navigation';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const showMarketingLayout = !pathname.startsWith('/admin') && !pathname.startsWith('/portal') && !pathname.startsWith('/login') && !pathname.startsWith('/signup');
+
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -23,13 +27,17 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased", "bg-background")}>
         <FirebaseClientProvider>
-            <div className="flex flex-col min-h-screen">
-              <MarketingHeader />
-              <main className="flex-1">
-                {children}
-              </main>
-              <MarketingFooter />
-            </div>
+            {showMarketingLayout ? (
+              <div className="flex flex-col min-h-screen">
+                <MarketingHeader />
+                <main className="flex-1">
+                  {children}
+                </main>
+                <MarketingFooter />
+              </div>
+            ) : (
+              <>{children}</>
+            )}
         </FirebaseClientProvider>
         <Toaster />
       </body>

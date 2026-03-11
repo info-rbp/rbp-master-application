@@ -5,16 +5,12 @@ import AdminSidebar from "./components/sidebar";
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
-        <div className="md:flex">
-          <Sidebar>
-            <AdminSidebar />
-          </Sidebar>
-          <SidebarInset>
-            <div className="flex flex-col min-h-screen">
-              <main className="flex-1">{children}</main>
-            </div>
-          </SidebarInset>
-        </div>
+      <Sidebar>
+        <AdminSidebar />
+      </Sidebar>
+      <SidebarInset>
+        {children}
+      </SidebarInset>
     </SidebarProvider>
   );
 }
