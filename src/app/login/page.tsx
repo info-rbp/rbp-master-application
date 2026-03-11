@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 
 export default function LoginPage() {
@@ -31,7 +31,20 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const credentials = await signInWithEmailAndPassword(auth, email, password);
+      // Ensure the user has verified their email. If not, sign them out and
+      // redirect to the verification info page.
+      if (credentials.user && !credentials.user.emailVerified) {
+        await signOut(auth);
+        toast({
+          variant: 'destructive',
+          title: 'Email Not Verified',
+          description: 'Please verify your email before logging in.',
+        });
+        router.push('/verify-email');
+        setIsLoading(false);
+        return;
+      }
       toast({
         title: 'Login Successful',
         description: 'Redirecting to portal...',
@@ -78,7 +91,7 @@ export default function LoginPage() {
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
                   <Link
-                    href="#"
+                    href="/forgot-password"
                     className="ml-auto inline-block text-sm underline"
                   >
                     Forgot your password?
