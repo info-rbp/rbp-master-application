@@ -1,5 +1,5 @@
 import { getSuites } from "@/lib/data";
-import SuiteManager from "../../../components/suite-manager";
+import SuiteManager from "../../components/suite-manager";
 
 export default async function AdminDocumentationSuitesPage() {
   const suites = await getSuites();

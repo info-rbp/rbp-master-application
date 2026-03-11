@@ -1,5 +1,5 @@
+import { firestore } from '@/firebase/server';
 import type { Document, DocumentSuite } from './definitions';
-import { initializeFirebase } from '@/firebase';
 import { 
     collection, 
     getDocs, 
@@ -14,8 +14,6 @@ import {
     writeBatch,
     getDoc
 } from 'firebase/firestore';
-
-const { firestore } = initializeFirebase();
 
 export async function getDocumentSuites(): Promise<DocumentSuite[]> {
   const suitesCollection = collection(firestore, 'documentation_suites');
