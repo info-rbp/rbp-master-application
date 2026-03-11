@@ -12,6 +12,7 @@ export type DocumentSuite = {
   id: string;
   name: string;
   description: string;
+  contentType?: 'templates' | 'companion-guides' | 'documentation-suites' | 'end-to-end-processes' | 'customisation-service';
   documents: Document[];
 };
 
@@ -68,6 +69,7 @@ export type KnowledgeArticle = {
   excerpt?: string;
   content: string;
   category?: string;
+  contentType?: 'article' | 'guide' | 'tool' | 'knowledge-base';
   tags?: string[];
   authorId?: string;
   published: boolean;
@@ -81,6 +83,8 @@ export type PartnerOffer = {
   description: string;
   link: string;
   active: boolean;
+  displayOrder?: number;
+  expiresAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -91,6 +95,8 @@ export type Testimonial = {
   content: string;
   role?: string;
   company?: string;
+  active: boolean;
+  displayOrder?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -100,6 +106,8 @@ export type PastProject = {
   name: string;
   description: string;
   link?: string;
+  active: boolean;
+  displayOrder?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -113,6 +121,9 @@ export type UserProfile = {
   role: string;
   membershipTier?: string | null;
   membershipStatus?: string;
+  emailVerified?: boolean;
+  lastLoginAt?: string | null;
+  accountStatus?: 'active' | 'suspended';
   createdAt: string;
   updatedAt: string;
 };

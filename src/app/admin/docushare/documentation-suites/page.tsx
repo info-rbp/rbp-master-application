@@ -1,15 +1,7 @@
-import { getSuites } from "@/lib/data";
-import SuiteManager from "../../components/suite-manager";
+import DocushareTypeManager from '@/app/admin/components/docushare-type-manager';
+import { getSuites } from '@/lib/data';
 
-export default async function AdminDocumentationSuitesPage() {
+export default async function AdminDocusharePage() {
   const suites = await getSuites();
-
-  return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Documentation Suite Management</h2>
-      </div>
-      <SuiteManager initialSuites={suites} />
-    </div>
-  );
+  return <div className="flex-1 space-y-4 p-4 md:p-8 pt-6"><h2 className="text-3xl font-bold tracking-tight">documentation-suites</h2><DocushareTypeManager initial={suites} type="documentation-suites" /></div>;
 }

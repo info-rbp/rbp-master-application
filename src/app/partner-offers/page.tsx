@@ -2,10 +2,12 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Search, Gift } from 'lucide-react';
 import Link from 'next/link';
 import OfferCard from './components/offer-card';
-import { offers } from './data';
+import { toOfferView } from './data';
+import { getPartnerOffers } from '@/lib/data';
 
-export default function PartnerOffersPage() {
-  const topOffers = offers.filter(o => o.categories.includes('top')).slice(0, 3);
+export default async function PartnerOffersPage() {
+  const offers = (await getPartnerOffers()).filter((o) => o.active).map(toOfferView);
+  const topOffers = offers.slice(0, 3);
 
   return (
     <>
