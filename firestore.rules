@@ -26,10 +26,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isOwnUser(userId);
-      allow list: if false;
+      allow get: if isOwnUser(userId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwnUser(userId);
-      allow update: if isOwnUser(userId) && hasOnlyAllowedSelfProfileFields();
+      allow update: if (isOwnUser(userId) && hasOnlyAllowedSelfProfileFields()) || isAdmin();
       allow delete: if false;
     }
 
@@ -95,7 +95,7 @@ service cloud.firestore {
         && request.resource.data.slug is string
         && request.resource.data.content is string
         && request.resource.data.published is bool
-        && isValidKnowledgeType(request.resource.data.type);
+        && isValidKnowledgeType(request.resource.data.contentType);
       allow delete: if isAdmin();
     }
 

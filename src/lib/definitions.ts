@@ -69,7 +69,7 @@ export type KnowledgeArticle = {
   excerpt?: string;
   content: string;
   category?: string;
-  contentType?: 'article' | 'guide' | 'tool' | 'knowledge-base';
+  contentType?: 'article' | 'guide' | 'tool' | 'knowledge_base';
   tags?: string[];
   authorId?: string;
   authorName?: string;

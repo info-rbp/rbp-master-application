@@ -13,6 +13,7 @@ import { logAuditEvent, saveContentRevision } from './audit';
 import { safeLogAnalyticsEvent } from './analytics';
 import { canPublishKnowledgeArticle, type KnowledgeContentType } from './knowledge-center';
 import { filterAndSortUsers, validateAdminRole } from './user-admin';
+import { getPublicPartnerOffers, getPublicPastProjects, getPublicTestimonials } from './content-admin';
 
 const toIsoString = (value: unknown): string => {
   if (!value) return new Date().toISOString();
@@ -30,14 +31,6 @@ const toIsoString = (value: unknown): string => {
 };
 
 
-const sortByDisplayOrderThenCreatedAt = <T extends { displayOrder?: number; createdAt: string }>(items: T[]): T[] => {
-  return [...items].sort((a, b) => {
-    const orderA = typeof a.displayOrder === 'number' ? a.displayOrder : 0;
-    const orderB = typeof b.displayOrder === 'number' ? b.displayOrder : 0;
-    if (orderA !== orderB) return orderA - orderB;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-};
 
 export async function getDocumentSuites(): Promise<DocumentSuite[]> {
   const suitesSnapshot = await firestore.collection('documentation_suites').get();
@@ -290,25 +283,65 @@ export async function deleteMembershipPlan(id: string): Promise<boolean> {
   return true;
 }
 
-export async function getKnowledgeArticles(): Promise<KnowledgeArticle[]> {
+export async function getKnowledgeArticles(query: KnowledgeArticleQuery = {}): Promise<KnowledgeArticle[]> {
+  return getKnowledgeArticlesWithFilters(query);
+}
+
+type KnowledgeArticleQuery = {
+  type?: KnowledgeContentType;
+  published?: boolean;
+  featured?: boolean;
+  search?: string;
+  sortBy?: 'updatedAt' | 'createdAt' | 'publishedAt';
+  sortDirection?: 'asc' | 'desc';
+};
+
+function normalizeKnowledgeArticle(id: string, data: Record<string, unknown>): KnowledgeArticle {
+  return {
+    id,
+    title: String(data.title ?? ''),
+    slug: String(data.slug ?? ''),
+    excerpt: data.excerpt ? String(data.excerpt) : undefined,
+    content: String(data.content ?? ''),
+    category: data.category ? String(data.category) : undefined,
+    contentType: (data.contentType ?? data.type ?? 'article') as KnowledgeArticle['contentType'],
+    tags: Array.isArray(data.tags) ? data.tags.map((tag) => String(tag)) : [],
+    authorId: data.authorId ? String(data.authorId) : undefined,
+    authorName: data.authorName ? String(data.authorName) : undefined,
+    published: Boolean(data.published),
+    featured: Boolean(data.featured),
+    imageUrl: data.imageUrl ? String(data.imageUrl) : undefined,
+    seoTitle: data.seoTitle ? String(data.seoTitle) : undefined,
+    seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
+    externalLink: data.externalLink ? String(data.externalLink) : undefined,
+    ctaLabel: data.ctaLabel ? String(data.ctaLabel) : undefined,
+    createdAt: toIsoString(data.createdAt),
+    updatedAt: toIsoString(data.updatedAt),
+    publishedAt: data.publishedAt ? toIsoString(data.publishedAt) : undefined,
+  };
+}
+
+export async function getKnowledgeArticlesWithFilters(query: KnowledgeArticleQuery = {}): Promise<KnowledgeArticle[]> {
   const snapshot = await firestore.collection('knowledge_articles').orderBy('createdAt', 'desc').get();
-  return snapshot.docs.map((d) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      title: data.title,
-      slug: data.slug,
-      excerpt: data.excerpt,
-      content: data.content,
-      category: data.category,
-      contentType: data.contentType,
-      tags: data.tags,
-      authorId: data.authorId,
-      published: Boolean(data.published),
-      createdAt: toIsoString(data.createdAt),
-      updatedAt: toIsoString(data.updatedAt),
-    };
+  let rows = snapshot.docs.map((d) => normalizeKnowledgeArticle(d.id, d.data()));
+
+  if (query.type) rows = rows.filter((article) => article.contentType === query.type);
+  if (typeof query.published === 'boolean') rows = rows.filter((article) => article.published === query.published);
+  if (typeof query.featured === 'boolean') rows = rows.filter((article) => Boolean(article.featured) === query.featured);
+  if (query.search?.trim()) {
+    const needle = query.search.trim().toLowerCase();
+    rows = rows.filter((article) => article.title.toLowerCase().includes(needle) || article.slug.toLowerCase().includes(needle));
+  }
+
+  const sortBy = query.sortBy ?? 'createdAt';
+  const dir = query.sortDirection === 'asc' ? 1 : -1;
+  rows.sort((a, b) => {
+    const aValue = sortBy === 'publishedAt' ? a.publishedAt ?? '' : a[sortBy] ?? '';
+    const bValue = sortBy === 'publishedAt' ? b.publishedAt ?? '' : b[sortBy] ?? '';
+    return (new Date(aValue).getTime() - new Date(bValue).getTime()) * dir;
   });
+
+  return rows;
 }
 
 export async function getKnowledgeArticleBySlug(slug: string, includeDrafts = false): Promise<KnowledgeArticle | null> {
@@ -345,6 +378,7 @@ export async function createKnowledgeArticle(
 
   const docRef = await firestore.collection('knowledge_articles').add({
     ...article,
+    contentType: article.contentType,
     featured: Boolean(article.featured),
     tags: article.tags ?? [],
     createdAt: now,
@@ -424,6 +458,14 @@ export async function updateKnowledgeArticle(
     createdAt: toIsoString(article.createdAt),
     updatedAt: toIsoString(article.updatedAt),
   };
+}
+
+export async function publishKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
+  return updateKnowledgeArticle(id, { published: true });
+}
+
+export async function unpublishKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
+  return updateKnowledgeArticle(id, { published: false });
 }
 
 export async function deleteKnowledgeArticle(id: string): Promise<boolean> {
@@ -662,19 +704,17 @@ export async function deletePastProject(id: string): Promise<boolean> {
 
 export async function getActivePartnerOffers(): Promise<PartnerOffer[]> {
   const offers = await getPartnerOffers();
-  return sortByDisplayOrderThenCreatedAt(
-    offers.filter((offer) => offer.active && (!offer.expiresAt || new Date(offer.expiresAt).getTime() > Date.now())),
-  );
+  return getPublicPartnerOffers(offers);
 }
 
 export async function getPublishedTestimonials(): Promise<Testimonial[]> {
   const testimonials = await getTestimonials();
-  return sortByDisplayOrderThenCreatedAt(testimonials.filter((testimonial) => testimonial.active));
+  return getPublicTestimonials(testimonials);
 }
 
 export async function getPublishedPastProjects(): Promise<PastProject[]> {
   const projects = await getPastProjects();
-  return sortByDisplayOrderThenCreatedAt(projects.filter((project) => project.active));
+  return getPublicPastProjects(projects);
 }
 
 const ADMIN_EDITABLE_USER_FIELDS = new Set(['name', 'phone', 'company']);
