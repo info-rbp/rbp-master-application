@@ -15,13 +15,19 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ mem
   }
 
   const { memberId } = await context.params;
-  const override = await applyMemberOverride(memberId, reason, payload.endDate ? String(payload.endDate) : null, {
-    userId: auth.userId,
-    email: auth.email,
-  });
+  try {
+    const override = await applyMemberOverride(memberId, reason, payload.endDate ? String(payload.endDate) : null, {
+      userId: auth.userId,
+      email: auth.email,
+    });
 
-  const member = await getMemberDetailForAdmin(memberId);
-  return NextResponse.json({ data: { override, member } });
+    const member = await getMemberDetailForAdmin(memberId);
+    return NextResponse.json({ data: { override, member } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to apply override';
+    const status = message === 'Member not found' ? 404 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ memberId: string }> }) {

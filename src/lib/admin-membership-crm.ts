@@ -1,12 +1,19 @@
 import { firestore } from '@/firebase/server';
 import { logAuditEvent, logMembershipHistory } from '@/lib/audit';
 import { safeLogAnalyticsEvent } from '@/lib/analytics';
-import type { MemberCRMRow, MemberDetail, MemberNote, MemberOverride, MembershipHistoryItem } from '@/lib/definitions';
+import type {
+  MemberCRMOverview,
+  MemberCRMRow,
+  MemberDetail,
+  MemberListResult,
+  MemberNote,
+  MemberOverride,
+  MembershipHistoryItem,
+} from '@/lib/definitions';
 import { filterMembersForAdminView, type MemberListFilters } from '@/lib/admin-membership-crm-client';
-import { normalizeMemberRow } from '@/lib/membership-crm';
+import { buildMembershipMetrics, normalizeMemberRow } from '@/lib/membership-crm';
 
 type FirestoreDoc = FirebaseFirestore.DocumentData;
-
 
 export type AdminActor = {
   userId: string;
@@ -42,7 +49,11 @@ function hydrateMemberDetail(userId: string, data: FirestoreDoc, overrideEnabled
     createdAt: toIso(data.createdAt) ?? new Date(0).toISOString(),
     membershipExpiresAt: toIso(data.membershipExpiresAt),
     lastLoginAt: toIso(data.lastLoginAt),
+    emailVerified: Boolean(data.emailVerified),
     overrideEnabled,
+    squareSubscriptionStatus: data.squareSubscriptionStatus ?? null,
+    squareSubscriptionId: data.squareSubscriptionId ?? null,
+    squareCustomerId: data.squareCustomerId ?? null,
   });
 
   return {
@@ -50,19 +61,21 @@ function hydrateMemberDetail(userId: string, data: FirestoreDoc, overrideEnabled
     company: data.company ?? null,
     phone: data.phone ?? null,
     subscriptionPlanId: data.subscriptionPlanId ?? null,
-    squareSubscriptionId: data.squareSubscriptionId ?? null,
-    squareCustomerId: data.squareCustomerId ?? null,
     lastPaymentStatus: data.lastPaymentStatus ?? null,
     lastPaymentAt: toIso(data.lastPaymentAt),
+    squareLocationId: data.squareLocationId ?? null,
   };
 }
 
+async function assertMemberExists(memberId: string) {
+  const userSnap = await firestore.collection('users').doc(memberId).get();
+  return userSnap.exists;
+}
 
-
-export async function listMembersForAdmin(filters: MemberListFilters = {}): Promise<MemberCRMRow[]> {
+export async function listMembersForAdmin(filters: MemberListFilters = {}): Promise<MemberListResult> {
   const [usersSnapshot, overridesSnapshot] = await Promise.all([
     firestore.collection('users').get(),
-    firestore.collection('member_overrides').get(),
+    firestore.collection('member_overrides').where('enabled', '==', true).get(),
   ]);
 
   const overrideMap = new Map<string, boolean>();
@@ -88,6 +101,37 @@ export async function getMemberDetailForAdmin(memberId: string): Promise<MemberD
   if (!userSnap.exists) return null;
   const overrideEnabled = !overrideSnap.empty ? Boolean(overrideSnap.docs[0].data().enabled) : false;
   return hydrateMemberDetail(userSnap.id, userSnap.data() ?? {}, overrideEnabled);
+}
+
+export async function getMembershipCRMOverview(filters: MemberListFilters = {}): Promise<MemberCRMOverview> {
+  const members = await listMembersForAdmin(filters);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const historySnapshot = await firestore
+    .collection('membership_history')
+    .where('changedAt', '>=', sevenDaysAgo)
+    .orderBy('changedAt', 'desc')
+    .get();
+
+  const history: MembershipHistoryItem[] = historySnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      memberId: String(data.userId ?? data.memberId ?? ''),
+      oldTier: data.previousTier ?? null,
+      newTier: data.newTier ?? null,
+      oldStatus: data.previousStatus ?? null,
+      newStatus: data.newStatus ?? null,
+      reason: data.reason ?? null,
+      changedBy: String(data.changedBy ?? 'unknown'),
+      changedAt: toIso(data.changedAt) ?? new Date(0).toISOString(),
+      source: data.source ?? 'admin',
+    };
+  });
+
+  return {
+    members,
+    metrics: buildMembershipMetrics(members.items, history),
+  };
 }
 
 export async function updateMemberMembershipState(memberId: string, input: MembershipUpdateInput, actor: AdminActor) {
@@ -118,6 +162,7 @@ export async function updateMemberMembershipState(memberId: string, input: Membe
     newStatus: nextStatus,
     reason: input.reason?.trim(),
     changedBy: actor.email ?? actor.userId,
+    source: 'admin',
   });
 
   await logAuditEvent({
@@ -157,11 +202,15 @@ export async function listMembershipHistory(memberId: string): Promise<Membershi
       reason: data.reason ?? null,
       changedBy: String(data.changedBy ?? 'unknown'),
       changedAt: toIso(data.changedAt) ?? new Date(0).toISOString(),
+      source: data.source ?? 'admin',
     };
   });
 }
 
 export async function addMemberNote(memberId: string, note: string, actor: AdminActor): Promise<MemberNote> {
+  const exists = await assertMemberExists(memberId);
+  if (!exists) throw new Error('Member not found');
+
   const now = new Date();
   const ref = await firestore.collection('member_notes').add({
     memberId,
@@ -217,6 +266,9 @@ export async function listMemberNotes(memberId: string): Promise<MemberNote[]> {
 }
 
 export async function applyMemberOverride(memberId: string, reason: string, endDate: string | null, actor: AdminActor): Promise<MemberOverride> {
+  const exists = await assertMemberExists(memberId);
+  if (!exists) throw new Error('Member not found');
+
   const snapshot = await firestore.collection('member_overrides').where('memberId', '==', memberId).limit(1).get();
   const now = new Date();
   const payload = {
@@ -237,6 +289,17 @@ export async function applyMemberOverride(memberId: string, reason: string, endD
     id = snapshot.docs[0].id;
     await firestore.collection('member_overrides').doc(id).set(payload, { merge: true });
   }
+
+  await logMembershipHistory({
+    userId: memberId,
+    previousTier: null,
+    newTier: null,
+    previousStatus: null,
+    newStatus: null,
+    reason: `Override applied: ${reason.trim()}`,
+    changedBy: actor.email ?? actor.userId,
+    source: 'manual',
+  });
 
   await logAuditEvent({
     actorUserId: actor.userId,
@@ -269,6 +332,17 @@ export async function removeMemberOverride(memberId: string, actor: AdminActor):
     changedBy: actor.email ?? actor.userId,
     changedAt: new Date(),
   }, { merge: true });
+
+  await logMembershipHistory({
+    userId: memberId,
+    previousTier: null,
+    newTier: null,
+    previousStatus: null,
+    newStatus: null,
+    reason: 'Override removed',
+    changedBy: actor.email ?? actor.userId,
+    source: 'manual',
+  });
 
   await logAuditEvent({
     actorUserId: actor.userId,

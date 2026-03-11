@@ -15,6 +15,7 @@ test('buildMembershipHistoryItem builds full payload', () => {
   assert.equal(item.oldTier, 'basic');
   assert.equal(item.newStatus, 'active');
   assert.equal(item.reason, 'manual');
+  assert.equal(item.source, 'admin');
   assert.ok(item.changedAt);
 });
 

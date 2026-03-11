@@ -58,6 +58,7 @@ export async function logMembershipHistory(input: {
   newStatus?: string;
   reason?: string;
   changedBy: string;
+  source?: 'admin' | 'manual' | 'provider_sync' | 'system';
 }) {
   await firestore.collection('membership_history').add({
     ...input,

@@ -26,11 +26,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ me
   }
 
   const { memberId } = await context.params;
-  const created = await addMemberNote(memberId, note, {
-    userId: auth.userId,
-    email: auth.email,
-    name: auth.email,
-  });
+  try {
+    const created = await addMemberNote(memberId, note, {
+      userId: auth.userId,
+      email: auth.email,
+      name: auth.email,
+    });
 
-  return NextResponse.json({ data: created }, { status: 201 });
+    return NextResponse.json({ data: created }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create note';
+    const status = message === 'Member not found' ? 404 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
 }

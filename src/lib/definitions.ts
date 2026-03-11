@@ -243,17 +243,20 @@ export type MemberCRMRow = {
   joinDate: string;
   accessExpiry?: string | null;
   lastLogin?: string | null;
+  emailVerified?: boolean;
   overrideEnabled: boolean;
+  squareSubscriptionStatus?: string | null;
+  squareSubscriptionId?: string | null;
+  squareCustomerId?: string | null;
 };
 
 export type MemberDetail = MemberCRMRow & {
   phone?: string | null;
   company?: string | null;
   subscriptionPlanId?: string | null;
-  squareSubscriptionId?: string | null;
-  squareCustomerId?: string | null;
   lastPaymentStatus?: string | null;
   lastPaymentAt?: string | null;
+  squareLocationId?: string | null;
 };
 
 export type MemberOverride = {
@@ -287,6 +290,20 @@ export type MembershipHistoryItem = {
   reason?: string | null;
   changedBy: string;
   changedAt: string;
+  source?: 'admin' | 'manual' | 'provider_sync' | 'system';
+};
+
+export type MemberListResult = {
+  items: MemberCRMRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type MemberCRMOverview = {
+  metrics: MemberCRMMetricSummary;
+  members: MemberListResult;
 };
 
 export type MemberCRMMetricSummary = {
