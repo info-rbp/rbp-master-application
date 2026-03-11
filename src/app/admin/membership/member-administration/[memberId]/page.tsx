@@ -1,9 +1,8 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useAuth, useFirestore } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,19 +10,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import type { MemberDetail, MemberNote, MemberOverride, MembershipHistoryItem } from '@/lib/definitions';
-import { buildMembershipHistoryItem, normalizeMemberRow } from '@/lib/membership-crm';
+import type { MemberDetail, MemberNote, MembershipHistoryItem } from '@/lib/definitions';
 
 export default function MemberProfilePage() {
   const { memberId } = useParams<{ memberId: string }>();
-  const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
 
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [history, setHistory] = useState<MembershipHistoryItem[]>([]);
   const [notes, setNotes] = useState<MemberNote[]>([]);
-  const [override, setOverride] = useState<MemberOverride | null>(null);
   const [reason, setReason] = useState('');
   const [noteInput, setNoteInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -35,91 +31,68 @@ export default function MemberProfilePage() {
   const [overrideReason, setOverrideReason] = useState('');
   const [overrideEndDate, setOverrideEndDate] = useState('');
 
-  const load = async () => {
+  const authedFetch = useCallback(async (url: string, init?: RequestInit) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error('You must be signed in as admin.');
+    const token = await user.getIdToken();
+    const response = await fetch(url, {
+      ...init,
+      headers: {
+        ...(init?.headers ?? {}),
+        Authorization: `Bearer ${token}`,
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error ?? 'Request failed');
+    }
+    return payload;
+  }, [auth]);
+
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const userSnap = await getDoc(doc(firestore, 'users', memberId));
-      if (!userSnap.exists()) {
-        setMember(null);
-        return;
-      }
-
-      const normalized = normalizeMemberRow({ id: userSnap.id, ...userSnap.data() });
-      setMember({ ...normalized, company: userSnap.data().company ?? null, phone: userSnap.data().phone ?? null, subscriptionPlanId: userSnap.data().subscriptionPlanId ?? null, squareSubscriptionId: userSnap.data().squareSubscriptionId ?? null, squareCustomerId: userSnap.data().squareCustomerId ?? null, lastPaymentStatus: userSnap.data().lastPaymentStatus ?? null, lastPaymentAt: userSnap.data().lastPaymentAt ?? null });
-      setTierDraft(normalized.membershipTier);
-      setStatusDraft(normalized.membershipStatus);
-      setExpiryDraft(normalized.accessExpiry ? normalized.accessExpiry.slice(0, 10) : '');
-
-      const [historySnap, notesSnap, overrideSnap] = await Promise.all([
-        getDocs(query(collection(firestore, 'membership_history'), where('memberId', '==', memberId), orderBy('changedAt', 'desc'))),
-        getDocs(query(collection(firestore, 'member_notes'), where('memberId', '==', memberId), orderBy('createdAt', 'desc'))),
-        getDocs(query(collection(firestore, 'member_overrides'), where('memberId', '==', memberId))),
+      const [memberPayload, historyPayload, notesPayload] = await Promise.all([
+        authedFetch(`/api/admin/membership/members/${memberId}`),
+        authedFetch(`/api/admin/membership/members/${memberId}/history`),
+        authedFetch(`/api/admin/membership/members/${memberId}/notes`),
       ]);
 
-      setHistory(historySnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MembershipHistoryItem, 'id'>) })));
-      setNotes(notesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MemberNote, 'id'>) })));
-
-      const firstOverride = overrideSnap.docs[0];
-      setOverride(firstOverride ? ({ id: firstOverride.id, ...(firstOverride.data() as Omit<MemberOverride, 'id'>) }) : null);
-      setOverrideReason(firstOverride?.data().reason ?? '');
-      setOverrideEndDate(firstOverride?.data().endDate ? String(firstOverride.data().endDate).slice(0, 10) : '');
+      const nextMember = memberPayload.data as MemberDetail;
+      setMember(nextMember);
+      setHistory(historyPayload.data as MembershipHistoryItem[]);
+      setNotes(notesPayload.data as MemberNote[]);
+      setTierDraft(nextMember.membershipTier);
+      setStatusDraft(nextMember.membershipStatus);
+      setExpiryDraft(nextMember.accessExpiry ? nextMember.accessExpiry.slice(0, 10) : '');
     } catch (error) {
       toast({ variant: 'destructive', title: 'Failed loading member profile', description: error instanceof Error ? error.message : 'Please retry.' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [authedFetch, memberId, toast]);
 
-  useEffect(() => { void load(); }, [memberId]);
-
-  const actor = useMemo(() => auth.currentUser?.email || auth.currentUser?.uid || 'admin', [auth.currentUser]);
+  useEffect(() => { void load(); }, [load]);
 
   const saveMembership = async () => {
     if (!member) return;
     setSaving(true);
     try {
-      const before = { tier: member.membershipTier, status: member.membershipStatus };
-      await updateDoc(doc(firestore, 'users', member.id), {
-        membershipTier: tierDraft,
-        membershipStatus: statusDraft,
-        membershipExpiresAt: expiryDraft ? new Date(expiryDraft).toISOString() : null,
-        updatedAt: new Date().toISOString(),
+      await authedFetch(`/api/admin/membership/members/${member.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          membershipTier: tierDraft,
+          membershipStatus: statusDraft,
+          membershipExpiresAt: expiryDraft ? new Date(expiryDraft).toISOString() : null,
+          reason,
+        }),
       });
-
-      const historyItem = buildMembershipHistoryItem({
-        memberId: member.id,
-        oldTier: before.tier,
-        newTier: tierDraft,
-        oldStatus: before.status,
-        newStatus: statusDraft,
-        reason,
-        changedBy: actor,
-      });
-      await addDoc(collection(firestore, 'membership_history'), historyItem);
-      await addDoc(collection(firestore, 'audit_logs'), {
-        actorUserId: auth.currentUser?.uid || 'unknown', actorRole: 'admin', actionType: 'membership_status_change', targetId: member.id, targetType: 'user', before, after: { tier: tierDraft, status: statusDraft }, metadata: { reason }, createdAt: new Date(),
-      });
-
-      const token = await auth.currentUser?.getIdToken();
-      if (token) {
-        await fetch('/api/lifecycle/membership-status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            userId: member.id,
-            previousStatus: before.status,
-            newStatus: statusDraft,
-            membershipEndDate: expiryDraft || null,
-            reason,
-          }),
-        });
-      }
-
-      await load();
       setReason('');
+      await load();
       toast({ title: 'Membership updated' });
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Failed saving membership', description: error instanceof Error ? error.message : 'Please retry.' });
+      toast({ variant: 'destructive', title: 'Failed to save membership', description: error instanceof Error ? error.message : 'Please retry.' });
     } finally {
       setSaving(false);
     }
@@ -127,21 +100,25 @@ export default function MemberProfilePage() {
 
   const saveOverride = async (enabled: boolean) => {
     if (!member) return;
+    if (enabled && !overrideReason.trim()) {
+      toast({ variant: 'destructive', title: 'Override reason is required' });
+      return;
+    }
+    if (!enabled && !window.confirm('Remove this member override?')) return;
+
     setSaving(true);
     try {
-      const payload = {
-        memberId: member.id,
-        enabled,
-        reason: overrideReason,
-        startDate: override?.startDate || new Date().toISOString(),
-        endDate: overrideEndDate ? new Date(overrideEndDate).toISOString() : null,
-        changedBy: actor,
-        changedAt: new Date().toISOString(),
-      };
-      const targetRef = override ? doc(firestore, 'member_overrides', override.id) : doc(collection(firestore, 'member_overrides'));
-      await setDoc(targetRef, payload, { merge: true });
-      await updateDoc(doc(firestore, 'users', member.id), { overrideEnabled: enabled, updatedAt: new Date().toISOString() });
-      await addDoc(collection(firestore, 'audit_logs'), { actorUserId: auth.currentUser?.uid || 'unknown', actorRole: 'admin', actionType: 'manual_access_override', targetId: member.id, targetType: 'user', after: payload, createdAt: new Date() });
+      if (enabled) {
+        await authedFetch(`/api/admin/membership/members/${member.id}/override`, {
+          method: 'PUT',
+          body: JSON.stringify({ reason: overrideReason, endDate: overrideEndDate || null }),
+        });
+      } else {
+        await authedFetch(`/api/admin/membership/members/${member.id}/override`, {
+          method: 'DELETE',
+          body: JSON.stringify({}),
+        });
+      }
       await load();
       toast({ title: enabled ? 'Override applied' : 'Override removed' });
     } catch (error) {
@@ -156,16 +133,10 @@ export default function MemberProfilePage() {
     if (!member || !noteInput.trim()) return;
     setSaving(true);
     try {
-      const now = new Date().toISOString();
-      await addDoc(collection(firestore, 'member_notes'), {
-        memberId: member.id,
-        authorUserId: auth.currentUser?.uid || 'unknown',
-        authorName: auth.currentUser?.displayName || actor,
-        note: noteInput.trim(),
-        createdAt: now,
-        updatedAt: now,
+      await authedFetch(`/api/admin/membership/members/${member.id}/notes`, {
+        method: 'POST',
+        body: JSON.stringify({ note: noteInput.trim() }),
       });
-      await addDoc(collection(firestore, 'audit_logs'), { actorUserId: auth.currentUser?.uid || 'unknown', actorRole: 'admin', actionType: 'user_profile_admin_edit', targetId: member.id, targetType: 'member_note', metadata: { notePreview: noteInput.slice(0, 40) }, createdAt: new Date() });
       setNoteInput('');
       await load();
       toast({ title: 'Note added' });

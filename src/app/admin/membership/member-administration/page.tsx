@@ -2,25 +2,23 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import type { MemberCRMRow, MembershipHistoryItem } from '@/lib/definitions';
-import { buildMembershipMetrics, normalizeMemberRow } from '@/lib/membership-crm';
+import type { MemberCRMRow } from '@/lib/definitions';
+import { buildMembershipMetrics } from '@/lib/membership-crm';
 
 const PAGE_SIZE = 20;
 
 export default function MemberAdministrationPage() {
-  const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<MemberCRMRow[]>([]);
-  const [history, setHistory] = useState<MembershipHistoryItem[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [tierFilter, setTierFilter] = useState('all');
@@ -30,54 +28,38 @@ export default function MemberAdministrationPage() {
 
   useEffect(() => {
     const load = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
       setLoading(true);
       try {
-        const [usersSnapshot, overridesSnapshot, historySnapshot] = await Promise.all([
-          getDocs(query(collection(firestore, 'users'), orderBy('createdAt', 'desc'))),
-          getDocs(collection(firestore, 'member_overrides')),
-          getDocs(query(collection(firestore, 'membership_history'), orderBy('changedAt', 'desc'))),
-        ]);
-
-        const overrideMap = new Map(overridesSnapshot.docs.map((doc) => [doc.data().memberId as string, Boolean(doc.data().enabled)]));
-
-        setMembers(usersSnapshot.docs.map((doc) => normalizeMemberRow({ id: doc.id, ...doc.data(), overrideEnabled: overrideMap.get(doc.id) })));
-        setHistory(historySnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<MembershipHistoryItem, 'id'>) })));
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Failed to load membership CRM',
-          description: error instanceof Error ? error.message : 'Please retry.',
+        const token = await user.getIdToken();
+        const params = new URLSearchParams({
+          search,
+          status: statusFilter,
+          tier: tierFilter,
+          role: roleFilter,
+          sortBy,
         });
+
+        const response = await fetch(`/api/admin/membership/members?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ?? 'Failed loading members');
+        setMembers(payload.data as MemberCRMRow[]);
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Failed to load members', description: error instanceof Error ? error.message : 'Please retry.' });
       } finally {
         setLoading(false);
       }
     };
 
     void load();
-  }, [firestore, toast]);
+  }, [auth, roleFilter, search, sortBy, statusFilter, tierFilter, toast]);
 
-  const metrics = useMemo(() => buildMembershipMetrics(members, history), [members, history]);
-
-  const filteredMembers = useMemo(() => {
-    const lowerSearch = search.trim().toLowerCase();
-    return members
-      .filter((member) => {
-        if (lowerSearch && !`${member.name} ${member.email}`.toLowerCase().includes(lowerSearch)) return false;
-        if (statusFilter !== 'all' && member.membershipStatus !== statusFilter) return false;
-        if (tierFilter !== 'all' && member.membershipTier !== tierFilter) return false;
-        if (roleFilter !== 'all' && member.role !== roleFilter) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'lastLogin') {
-          return (new Date(b.lastLogin || 0).getTime() || 0) - (new Date(a.lastLogin || 0).getTime() || 0);
-        }
-        return new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime();
-      });
-  }, [members, roleFilter, search, sortBy, statusFilter, tierFilter]);
-
-  const paginated = filteredMembers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
+  const metrics = useMemo(() => buildMembershipMetrics(members, []), [members]);
+  const paginated = members.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -100,10 +82,10 @@ export default function MemberAdministrationPage() {
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}><SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="suspended">Suspended</SelectItem><SelectItem value="lapsed">Lapsed</SelectItem></SelectContent></Select>
             <Select value={tierFilter} onValueChange={(v) => { setTierFilter(v); setPage(1); }}><SelectTrigger><SelectValue placeholder="Tier" /></SelectTrigger><SelectContent><SelectItem value="all">All tiers</SelectItem><SelectItem value="basic">Basic</SelectItem><SelectItem value="standard">Standard</SelectItem><SelectItem value="premium">Premium</SelectItem></SelectContent></Select>
             <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}><SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger><SelectContent><SelectItem value="all">All roles</SelectItem><SelectItem value="member">Member</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select>
-            <Select value={sortBy} onValueChange={(v: 'joinDate' | 'lastLogin') => setSortBy(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="joinDate">Sort by join date</SelectItem><SelectItem value="lastLogin">Sort by last login</SelectItem></SelectContent></Select>
+            <Select value={sortBy} onValueChange={(v: 'joinDate' | 'lastLogin') => { setSortBy(v); setPage(1); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="joinDate">Sort by join date</SelectItem><SelectItem value="lastLogin">Sort by last login</SelectItem></SelectContent></Select>
           </div>
 
-          {loading ? <p className="text-muted-foreground">Loading members…</p> : filteredMembers.length === 0 ? <p className="text-muted-foreground">No members match your filters.</p> : (
+          {loading ? <p className="text-muted-foreground">Loading members…</p> : members.length === 0 ? <p className="text-muted-foreground">No members match your filters.</p> : (
             <div className="space-y-2">
               {paginated.map((member) => (
                 <Link key={member.id} href={`/admin/membership/member-administration/${member.id}`} className="grid gap-2 rounded border p-3 md:grid-cols-9 hover:bg-muted/50">
