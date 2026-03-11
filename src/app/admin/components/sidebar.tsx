@@ -221,6 +221,16 @@ export default function AdminSidebar() {
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/plans')} tooltip="Membership Plans" variant="ghost">
+                        <Link href="/admin/membership/plans"><Gift /><span>Membership Plans</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/members')} tooltip="Membership CRM" variant="ghost">
+                        <Link href="/admin/membership/members"><Users /><span>Membership CRM</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/access-control')} tooltip="Access Control" variant="ghost">
                         <Link href="/admin/membership/access-control"><ClipboardList /><span>Access Control</span></Link>
                     </SidebarMenuButton>
