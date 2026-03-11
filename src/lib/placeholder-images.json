@@ -101,6 +101,18 @@
     "height": 100,
     "hint": "company logo"
   },
+  "partnerLogo5": {
+    "src": "https://picsum.photos/seed/pl5/200/100",
+    "width": 200,
+    "height": 100,
+    "hint": "company logo"
+  },
+  "partnerLogo6": {
+    "src": "https://picsum.photos/seed/pl6/200/100",
+    "width": 200,
+    "height": 100,
+    "hint": "company logo"
+  },
   "projectImage1": {
     "src": "https://picsum.photos/seed/pi1/600/400",
     "width": 600,
