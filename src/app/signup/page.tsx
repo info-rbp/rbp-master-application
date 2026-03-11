@@ -16,7 +16,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/firebase';
 
 export default function SignupPage() {
@@ -31,12 +32,37 @@ export default function SignupPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      // Create the user in Firebase Auth
+      const credentials = await createUserWithEmailAndPassword(auth, email, password);
+      const user = credentials.user;
+      // Send a verification email to the new user
+      if (user) {
+        await sendEmailVerification(user);
+        // Create a Firestore profile document for the new user. Use the auth
+        // instance's app to obtain the Firestore client. We store minimal
+        // profile information here; additional fields may be updated later.
+        const db = getFirestore(auth.app);
+        const now = new Date().toISOString();
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          name: '',
+          company: '',
+          email: user.email,
+          phone: '',
+          role: 'member',
+          membershipTier: null,
+          membershipStatus: 'pending',
+          joinDate: now,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
       toast({
         title: 'Account Created',
-        description: "You've been successfully signed up. Redirecting...",
+        description: 'Please check your email to verify your account before logging in.',
       });
-      router.push('/portal');
+      // Redirect to verification info page
+      router.push('/verify-email');
     } catch (error: any) {
       toast({
         variant: 'destructive',
