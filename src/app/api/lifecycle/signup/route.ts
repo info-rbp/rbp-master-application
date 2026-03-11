@@ -11,7 +11,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  await Promise.all([
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
+  const tasks: Promise<unknown>[] = [
     createNotification({
       userId: auth.userId,
       audienceRole: 'member',
@@ -29,10 +31,28 @@ export async function POST(request: NextRequest) {
       message: `A new member account was created (${auth.email ?? auth.userId}).`,
       actionUrl: '/admin/membership/members',
     }),
-    auth.email
-      ? sendTemplatedEmail({ recipient: auth.email, templateKey: 'welcome' })
-      : Promise.resolve({ ok: false as const, reason: 'missing_email' as const }),
-  ]);
+  ];
 
+  if (auth.email) {
+    tasks.push(
+      sendTemplatedEmail({
+        recipient: auth.email,
+        templateKey: 'welcome',
+        triggerSource: 'signup',
+        relatedUserId: auth.userId,
+      }),
+    );
+    tasks.push(
+      sendTemplatedEmail({
+        recipient: auth.email,
+        templateKey: 'verification',
+        triggerSource: 'signup',
+        relatedUserId: auth.userId,
+        context: { verificationUrl: `${appUrl}/verify-email` },
+      }),
+    );
+  }
+
+  await Promise.all(tasks);
   return NextResponse.json({ ok: true });
 }
