@@ -14,6 +14,8 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { Document, DocumentSuite } from '@/lib/definitions';
+import { NotificationCenter } from '@/components/notifications/notification-center';
+import { AnnouncementBanner } from '@/components/announcements/announcement-banner';
 import Logo from '@/components/logo';
 import {
   Card,
@@ -50,8 +52,10 @@ function DocumentItem({ document }: { document: Document }) {
 
 export default function PortalClientView({
   documentSuites,
+  announcements,
 }: {
   documentSuites: DocumentSuite[];
+  announcements: Array<{ id: string; title: string; message: string; dismissible: boolean }> ;
 }) {
   const { user, loading, logout } = useUser();
   const router = useRouter();
@@ -97,7 +101,9 @@ export default function PortalClientView({
       </header>
       <main className="flex-grow px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
+          <AnnouncementBanner announcements={announcements} />
           <div className="space-y-8">
+            <NotificationCenter userId={user.uid} role="member" />
             {documentSuites.map((suite) => (
               <Card
                 key={suite.id}

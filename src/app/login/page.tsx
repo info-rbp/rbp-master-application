@@ -45,12 +45,14 @@ export default function LoginPage() {
         setIsLoading(false);
         return;
       }
+      await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventType: 'login', userId: credentials.user.uid, role: 'member' }) });
       toast({
         title: 'Login Successful',
         description: 'Redirecting to portal...',
       });
       router.push('/portal');
     } catch (error: any) {
+      await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventType: 'failed_login', metadata: { email } }) });
       toast({
         variant: 'destructive',
         title: 'Login Failed',

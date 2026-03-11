@@ -102,3 +102,38 @@ export type Entitlement = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type EmailLog = {
+  id: string;
+  status: 'sent' | 'failed' | 'skipped';
+  recipient: string;
+  subject: string;
+  templateKey: string;
+  sentAt: string;
+  error?: string;
+};
+
+export type AnalyticsEventRecord = {
+  id: string;
+  eventType: string;
+  userId?: string;
+  role?: string;
+  resourceId?: string;
+  resourceType?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  sessionId?: string;
+};
+
+export type AuditLogRecord = {
+  id: string;
+  actorUserId: string;
+  actorRole: string;
+  actionType: string;
+  targetId?: string;
+  targetType?: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+};

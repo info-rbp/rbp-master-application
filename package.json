@@ -9,7 +9,10 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit": "tsx --test tests/unit/wave3-helpers.test.ts",
+    "test:smoke": "tsx --test tests/smoke/basic-routes.test.ts",
+    "test": "npm run test:unit"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",

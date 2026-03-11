@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { firestore } from '@/firebase/server';
+import { trackEvent } from '@/lib/analytics';
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { planId?: string };
+    const body = (await request.json()) as { planId?: string; userId?: string };
     const planId = body.planId?.trim();
+    const userId = body.userId?.trim();
 
     if (!planId) {
       return NextResponse.json({ error: 'planId is required.' }, { status: 400 });
@@ -30,6 +32,8 @@ export async function POST(request: Request) {
 
     const { default: Stripe } = await import('stripe');
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    await trackEvent({ eventType: 'membership_checkout_started', userId, role: 'member', metadata: { planId } });
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',

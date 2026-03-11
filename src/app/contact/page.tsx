@@ -73,6 +73,7 @@ export default function ContactPage() {
                     <Label htmlFor="message">Message</Label>
                     <Textarea id="message" name="message" placeholder="How can we help you?" required />
                   </div>
+                  <input type="hidden" name="source" value="website_contact_form" />
                   <SubmitButton />
                 </form>
               </CardContent>

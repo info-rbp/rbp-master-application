@@ -11,6 +11,10 @@ import {
     deleteSuite as dbDeleteSuite
 } from '@/lib/data';
 import type { Document, DocumentSuite } from '@/lib/definitions';
+import { firestore } from '@/firebase/server';
+import { triggerAdminAlert } from '@/lib/alerts';
+import { sendTemplatedEmail } from '@/lib/email';
+import { trackEvent } from '@/lib/analytics';
 
 export async function addDocument(data: Omit<Document, 'id' | 'createdAt'>) {
     const newDoc = await dbAddDocument(data);
@@ -65,21 +69,46 @@ export async function deleteSuite(id: string) {
     return success;
 }
 
-export async function sendContactMessage(formData: FormData) {
-    const name = formData.get('name');
-    const email = formData.get('email');
-    const message = formData.get('message');
+export async function sendContactMessage(_prevState: { success: boolean; message: string }, formData: FormData) {
+    const name = String(formData.get('name') ?? '').trim();
+    const email = String(formData.get('email') ?? '').trim();
+    const message = String(formData.get('message') ?? '').trim();
+    const source = String(formData.get('source') ?? 'website');
 
-    // In a real application, you would send this to your backend,
-    // send an email, or save it to a database.
-    console.log('Received contact form submission:');
-    console.log({ name, email, message });
+    if (!name || !email || !message) {
+      return { success: false, message: 'Please complete all fields before submitting.' };
+    }
 
-    // Simulate a delay
-    await new Promise(res => setTimeout(res, 1000));
+    const ref = await firestore.collection('contact_enquiries').add({
+      name,
+      email,
+      message,
+      source,
+      status: 'new',
+      createdAt: new Date(),
+    });
 
-    // You can revalidate a path if you were storing messages and displaying them.
-    // revalidatePath('/admin/messages');
-    
+    await Promise.all([
+      trackEvent({
+        eventType: 'contact_enquiry_submitted',
+        metadata: { enquiryId: ref.id, source },
+      }),
+      triggerAdminAlert({
+        type: 'enquiry',
+        title: 'New contact enquiry submitted',
+        message: `${name} submitted a contact enquiry.`,
+        actionUrl: '/admin/notifications',
+      }),
+      sendTemplatedEmail({
+        recipient: process.env.ADMIN_ALERT_EMAIL ?? email,
+        templateKey: 'admin_contact_alert',
+        context: {
+          contactName: name,
+          contactEmail: email,
+          contactMessage: message,
+        },
+      }),
+    ]);
+
     return { success: true, message: 'Your message has been sent successfully!' };
 }
