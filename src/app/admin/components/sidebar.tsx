@@ -213,6 +213,36 @@ export default function AdminSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
+          <SidebarMenuItem>
+            <CollapsibleSidebarItem icon={Star} title="Membership" pathPrefix="/admin/membership">
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/member-administration')} tooltip="Member Administration" variant="ghost">
+                        <Link href="/admin/membership/member-administration"><Users /><span>Member Administration</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/access-control')} tooltip="Access Control" variant="ghost">
+                        <Link href="/admin/membership/access-control"><ClipboardList /><span>Access Control</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/subscription-and-billing-oversight')} tooltip="Subscription & Billing" variant="ghost">
+                        <Link href="/admin/membership/subscription-and-billing-oversight"><Gift /><span>Subscription & Billing</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/content-gating-and-release-logic')} tooltip="Content Gating" variant="ghost">
+                        <Link href="/admin/membership/content-gating-and-release-logic"><Workflow /><span>Content Gating</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/reporting-and-operational-visibility')} tooltip="Reporting" variant="ghost">
+                        <Link href="/admin/membership/reporting-and-operational-visibility"><LayoutList /><span>Reporting</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </CollapsibleSidebarItem>
+          </SidebarMenuItem>
+
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
