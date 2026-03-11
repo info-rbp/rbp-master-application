@@ -28,7 +28,7 @@ export default function DocuSharePage() {
               </div>
             </div>
           </div>
-           <div className="absolute inset-0 -z-10 h-full w-full bg-white [background:radial-gradient(125%_125%_at_50%_10%,#fff_40%,#3b82f6_100%)] dark:[background:radial-gradient(125%_125%_at_50%_10%,#0a143a_40%,#3b82f6_100%)]"
+           <div className="absolute inset-0 -z-10 h-full w-full bg-white [background:radial-gradient(125%_125%_at_50%_10%,#fff_40%,#3b82f6_100%)] dark:[background:radial-gradient(125%_125%_at_50%_10%,#111827_40%,#3b82f6_100%)]"
             style={{opacity: 0.15}}
            ></div>
         </section>
