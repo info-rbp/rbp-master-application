@@ -218,7 +218,10 @@ export async function getMembershipPlans(): Promise<MembershipPlan[]> {
       amount: data.amount,
       interval: data.interval,
       active: Boolean(data.active),
-      stripePriceId: data.stripePriceId,
+      squareSubscriptionPlanVariationId: data.squareSubscriptionPlanVariationId ?? null,
+      squareSubscriptionPlanId: data.squareSubscriptionPlanId ?? null,
+      squareLocationId: data.squareLocationId ?? null,
+      squareCatalogObjectVersion: data.squareCatalogObjectVersion ?? null,
     };
   });
 }
@@ -256,7 +259,10 @@ export async function updateMembershipPlan(
     amount: plan.amount,
     interval: plan.interval,
     active: Boolean(plan.active),
-    stripePriceId: plan.stripePriceId,
+    squareSubscriptionPlanVariationId: plan.squareSubscriptionPlanVariationId ?? null,
+    squareSubscriptionPlanId: plan.squareSubscriptionPlanId ?? null,
+    squareLocationId: plan.squareLocationId ?? null,
+    squareCatalogObjectVersion: plan.squareCatalogObjectVersion ?? null,
   };
 }
 

@@ -20,7 +20,7 @@
 ## Membership & billing flow
 - Start checkout from membership subscribe flow.
 - Confirm `membership_checkout_started` event exists.
-- Validate expected Stripe checkout redirect.
+- Validate expected Square hosted checkout redirect.
 
 ## Notifications flow
 - Trigger contact form submission.

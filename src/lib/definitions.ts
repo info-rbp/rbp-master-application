@@ -23,18 +23,42 @@ export type MembershipPlan = {
   amount: number;
   interval: string;
   active: boolean;
-  stripePriceId?: string;
+  squareSubscriptionPlanVariationId?: string | null;
+  squareSubscriptionPlanId?: string | null;
+  squareLocationId?: string | null;
+  squareCatalogObjectVersion?: number | null;
 };
 
 export type Subscription = {
   id: string;
   userId: string;
-  planId: string;
-  status: 'active' | 'canceled' | 'incomplete' | 'past_due' | 'unpaid' | 'trialing';
+  membershipPlanId: string;
+  squareSubscriptionId: string;
+  squareCustomerId?: string | null;
+  squareLocationId?: string | null;
+  status: 'active' | 'canceled' | 'past_due' | 'unpaid' | 'pending' | 'paused';
   startDate: string;
-  endDate?: string;
+  currentBillingAnchorDate?: string | null;
+  chargedThroughDate?: string | null;
+  canceledDate?: string | null;
+  cardId?: string | null;
+  sourceType: 'square_webhook' | 'admin' | 'system';
   createdAt: string;
   updatedAt: string;
+  lastPaymentAt?: string | null;
+  lastPaymentStatus?: 'paid' | 'failed' | 'pending' | null;
+};
+
+export type BillingEvent = {
+  id: string;
+  eventType: string;
+  squareSubscriptionId?: string | null;
+  userId?: string | null;
+  planId?: string | null;
+  previousStatus?: string | null;
+  newStatus?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 };
 
 export type KnowledgeArticle = {
@@ -163,6 +187,10 @@ export type MemberDetail = MemberCRMRow & {
   phone?: string | null;
   company?: string | null;
   subscriptionPlanId?: string | null;
+  squareSubscriptionId?: string | null;
+  squareCustomerId?: string | null;
+  lastPaymentStatus?: string | null;
+  lastPaymentAt?: string | null;
 };
 
 export type MemberOverride = {
