@@ -10,6 +10,7 @@ import type {
 } from './definitions';
 import { logAuditEvent, saveContentRevision } from './audit';
 import { safeLogAnalyticsEvent } from './analytics';
+import { canPublishKnowledgeArticle, type KnowledgeContentType } from './knowledge-center';
 
 const toIsoString = (value: unknown): string => {
   if (!value) return new Date().toISOString();
@@ -274,47 +275,166 @@ export async function deleteMembershipPlan(id: string): Promise<boolean> {
   return true;
 }
 
-export async function getKnowledgeArticles(): Promise<KnowledgeArticle[]> {
-  const snapshot = await firestore.collection('knowledge_articles').orderBy('createdAt', 'desc').get();
-  return snapshot.docs.map((d) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      title: data.title,
-      slug: data.slug,
-      excerpt: data.excerpt,
-      content: data.content,
-      category: data.category,
-      tags: data.tags,
-      authorId: data.authorId,
-      published: Boolean(data.published),
-      createdAt: toIsoString(data.createdAt),
-      updatedAt: toIsoString(data.updatedAt),
-    };
+export type KnowledgeArticleFilters = {
+  type?: KnowledgeContentType;
+  published?: boolean;
+  featured?: boolean;
+  search?: string;
+  tags?: string[];
+  sortBy?: 'updatedAt' | 'createdAt' | 'publishedAt';
+  sortDirection?: 'asc' | 'desc';
+};
+
+const normalizeKnowledgeArticle = (
+  id: string,
+  data: FirebaseFirestore.DocumentData,
+): KnowledgeArticle => ({
+  id,
+  title: data.title,
+  slug: data.slug,
+  excerpt: data.excerpt ?? '',
+  content: data.content ?? '',
+  type: (data.type ?? 'article') as KnowledgeContentType,
+  tags: Array.isArray(data.tags) ? data.tags : [],
+  authorId: data.authorId,
+  authorName: data.authorName,
+  published: Boolean(data.published),
+  featured: Boolean(data.featured),
+  imageUrl: data.imageUrl,
+  seoTitle: data.seoTitle,
+  seoDescription: data.seoDescription,
+  externalLink: data.externalLink,
+  ctaLabel: data.ctaLabel,
+  createdAt: toIsoString(data.createdAt),
+  updatedAt: toIsoString(data.updatedAt),
+  publishedAt: data.publishedAt ? toIsoString(data.publishedAt) : undefined,
+});
+
+const buildKnowledgeQuery = (filters?: KnowledgeArticleFilters) => {
+  let query: FirebaseFirestore.Query = firestore.collection('knowledge_articles');
+
+  if (filters?.type) query = query.where('type', '==', filters.type);
+  if (typeof filters?.published === 'boolean') query = query.where('published', '==', filters.published);
+  if (typeof filters?.featured === 'boolean') query = query.where('featured', '==', filters.featured);
+
+  const sortBy = filters?.sortBy ?? 'updatedAt';
+  const sortDirection = filters?.sortDirection ?? 'desc';
+  return query.orderBy(sortBy, sortDirection);
+};
+
+export async function getKnowledgeArticles(filters?: KnowledgeArticleFilters): Promise<KnowledgeArticle[]> {
+  const snapshot = await buildKnowledgeQuery(filters).get();
+  const normalized = snapshot.docs.map((d) => normalizeKnowledgeArticle(d.id, d.data()));
+
+  return normalized.filter((item) => {
+    if (filters?.search) {
+      const term = filters.search.toLowerCase();
+      if (!item.title.toLowerCase().includes(term) && !item.slug.toLowerCase().includes(term)) {
+        return false;
+      }
+    }
+
+    if (filters?.tags?.length) {
+      const current = new Set(item.tags ?? []);
+      if (!filters.tags.some((tag) => current.has(tag))) return false;
+    }
+
+    return true;
   });
 }
 
+export async function getKnowledgeArticleBySlug(slug: string, includeDrafts = false): Promise<KnowledgeArticle | null> {
+  const snapshot = await firestore
+    .collection('knowledge_articles')
+    .where('slug', '==', slug)
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) return null;
+  const article = normalizeKnowledgeArticle(snapshot.docs[0].id, snapshot.docs[0].data());
+  if (!includeDrafts && !article.published) return null;
+  return article;
+}
+
+export async function isKnowledgeSlugUnique(slug: string, excludeId?: string): Promise<boolean> {
+  const snapshot = await firestore.collection('knowledge_articles').where('slug', '==', slug).get();
+  if (snapshot.empty) return true;
+  return snapshot.docs.every((doc) => doc.id === excludeId);
+}
+
 export async function createKnowledgeArticle(
-  article: Omit<KnowledgeArticle, 'id' | 'createdAt' | 'updatedAt'>,
+  article: Omit<KnowledgeArticle, 'id' | 'createdAt' | 'updatedAt' | 'publishedAt'>,
 ): Promise<KnowledgeArticle> {
   const now = new Date();
+  const isUnique = await isKnowledgeSlugUnique(article.slug);
+  if (!isUnique) {
+    throw new Error('A knowledge article with this slug already exists.');
+  }
+
+  if (article.published && !canPublishKnowledgeArticle(article)) {
+    throw new Error('Published content requires title, slug, and content.');
+  }
+
   const docRef = await firestore.collection('knowledge_articles').add({
     ...article,
+    featured: Boolean(article.featured),
+    tags: article.tags ?? [],
     createdAt: now,
     updatedAt: now,
+    publishedAt: article.published ? now : null,
   });
   await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'knowledge_article' });
   await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'knowledge_article' });
-  return { id: docRef.id, ...article, createdAt: now.toISOString(), updatedAt: now.toISOString() };
+  return normalizeKnowledgeArticle(docRef.id, {
+    ...article,
+    createdAt: now,
+    updatedAt: now,
+    publishedAt: article.published ? now : null,
+  });
 }
 
 export async function updateKnowledgeArticle(
   id: string,
-  data: Partial<Omit<KnowledgeArticle, 'id' | 'createdAt' | 'updatedAt'>>,
+  data: Partial<Omit<KnowledgeArticle, 'id' | 'createdAt' | 'updatedAt' | 'publishedAt'>>,
 ): Promise<KnowledgeArticle | null> {
   const ref = firestore.doc(`knowledge_articles/${id}`);
   const beforeSnapshot = await ref.get();
-  await ref.update({ ...data, updatedAt: new Date() });
+  if (!beforeSnapshot.exists) return null;
+
+  const beforeData = beforeSnapshot.data() ?? {};
+  const nextSlug = data.slug ?? beforeData.slug;
+  if (!nextSlug) {
+    throw new Error('Slug is required.');
+  }
+
+  const isUnique = await isKnowledgeSlugUnique(nextSlug, id);
+  if (!isUnique) {
+    throw new Error('A knowledge article with this slug already exists.');
+  }
+
+  const nextPublished = data.published ?? Boolean(beforeData.published);
+  const nextTitle = data.title ?? beforeData.title;
+  const nextContent = data.content ?? beforeData.content;
+
+  if (nextPublished && !canPublishKnowledgeArticle({ title: nextTitle, slug: nextSlug, content: nextContent })) {
+    throw new Error('Published content requires title, slug, and content.');
+  }
+
+  const updatePayload: Record<string, unknown> = {
+    ...data,
+    updatedAt: new Date(),
+  };
+
+  if (typeof data.featured === 'boolean') updatePayload.featured = data.featured;
+  if (data.tags) updatePayload.tags = data.tags;
+  if (nextPublished && !beforeData.publishedAt) {
+    updatePayload.publishedAt = new Date();
+  }
+  if (!nextPublished) {
+    updatePayload.publishedAt = null;
+  }
+
+  await ref.update(updatePayload);
   const snapshot = await ref.get();
   if (!snapshot.exists) return null;
   const article = snapshot.data();
@@ -322,19 +442,15 @@ export async function updateKnowledgeArticle(
 
   await saveContentRevision({ contentType: 'knowledge_article', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
   await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'knowledge_article' });
-  return {
-    id: snapshot.id,
-    title: article.title,
-    slug: article.slug,
-    excerpt: article.excerpt,
-    content: article.content,
-    category: article.category,
-    tags: article.tags,
-    authorId: article.authorId,
-    published: Boolean(article.published),
-    createdAt: toIsoString(article.createdAt),
-    updatedAt: toIsoString(article.updatedAt),
-  };
+  return normalizeKnowledgeArticle(snapshot.id, article);
+}
+
+export async function publishKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
+  return updateKnowledgeArticle(id, { published: true });
+}
+
+export async function unpublishKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
+  return updateKnowledgeArticle(id, { published: false });
 }
 
 export async function deleteKnowledgeArticle(id: string): Promise<boolean> {

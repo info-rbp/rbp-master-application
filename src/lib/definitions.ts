@@ -67,12 +67,20 @@ export type KnowledgeArticle = {
   slug: string;
   excerpt?: string;
   content: string;
-  category?: string;
+  type: 'article' | 'guide' | 'tool' | 'knowledge_base';
   tags?: string[];
   authorId?: string;
+  authorName?: string;
   published: boolean;
+  featured?: boolean;
+  imageUrl?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  externalLink?: string;
+  ctaLabel?: string;
   createdAt: string;
   updatedAt: string;
+  publishedAt?: string;
 };
 
 export type PartnerOffer = {
