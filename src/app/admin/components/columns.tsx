@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 type ColumnActionsProps = {
   document: Document;
   onEdit: (doc: Document) => void;
-  onDelete: (id: string) => void;
+  onDelete: (doc: Document) => void;
 };
 
 function ColumnActions({ document, onEdit, onDelete }: ColumnActionsProps) {
@@ -39,7 +39,7 @@ function ColumnActions({ document, onEdit, onDelete }: ColumnActionsProps) {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onClick={() => onDelete(document.id)}
+          onClick={() => onDelete(document)}
         >
           Delete
         </DropdownMenuItem>
@@ -48,7 +48,7 @@ function ColumnActions({ document, onEdit, onDelete }: ColumnActionsProps) {
   );
 }
 
-export const columns = ({ onEdit, onDelete }: { onEdit: (doc: Document) => void, onDelete: (id: string) => void }): ColumnDef<Document>[] => [
+export const columns = ({ onEdit, onDelete }: { onEdit: (doc: Document) => void, onDelete: (doc: Document) => void }): ColumnDef<Document>[] => [
   {
     accessorKey: 'name',
     header: ({ column }) => {

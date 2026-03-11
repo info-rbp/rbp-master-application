@@ -48,10 +48,10 @@ export default function DocumentManager({ initialDocuments, suites }: DocumentMa
     }
   };
 
-  const handleDeleteDocument = async (id: string) => {
+  const handleDeleteDocument = async (docToDelete: Document) => {
     try {
-      await deleteDocumentAction(id);
-      setDocuments(prev => prev.filter(doc => doc.id !== id));
+      await deleteDocumentAction(docToDelete.id, docToDelete.suiteId);
+      setDocuments(prev => prev.filter(doc => doc.id !== docToDelete.id));
       toast({ title: "Success", description: "Document deleted." });
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to delete document." });

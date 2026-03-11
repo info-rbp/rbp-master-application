@@ -26,8 +26,8 @@ export async function updateDocument(id: string, data: Partial<Document>) {
     return updatedDoc;
 }
 
-export async function deleteDocument(id: string) {
-    const success = await dbDeleteDocument(id);
+export async function deleteDocument(id: string, suiteId: string) {
+    const success = await dbDeleteDocument(id, suiteId);
     revalidatePath('/admin/documents');
     revalidatePath('/');
     return success;

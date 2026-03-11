@@ -16,6 +16,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useAuth } from '@/firebase';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -23,31 +25,28 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate network request
-    setTimeout(() => {
-      if (
-        email === 'info@remotebusinesspartner.com.au' &&
-        password === 'Foxtrot19!'
-      ) {
-        toast({
-          title: 'Login Successful',
-          description: 'Redirecting to dashboard...',
-        });
-        router.push('/admin');
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Login Failed',
-          description: 'Invalid email or password.',
-        });
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+       toast({
+        title: 'Login Successful',
+        description: 'Redirecting to dashboard...',
+      });
+      router.push('/admin');
+    } catch (error: any) {
+       toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: error.message || 'Invalid email or password.',
+      });
+    } finally {
         setIsLoading(false);
-      }
-    }, 1000);
+    }
   };
 
   return (

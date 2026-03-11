@@ -1,131 +1,192 @@
 import type { Document, DocumentSuite } from './definitions';
+import { initializeFirebase } from '@/firebase';
+import { 
+    collection, 
+    getDocs, 
+    doc, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    Timestamp, 
+    query, 
+    orderBy,
+    collectionGroup,
+    writeBatch,
+    getDoc
+} from 'firebase/firestore';
 
-let documents: Document[] = [
-  {
-    id: 'doc-1',
-    suiteId: 'suite-1',
-    name: 'Project Brief Template.docx',
-    description: 'A comprehensive template for creating detailed project briefs. Includes sections for objectives, target audience, and deliverables.',
-    url: '#',
-    type: 'file',
-    createdAt: '2023-10-26T10:00:00Z',
-  },
-  {
-    id: 'doc-2',
-    suiteId: 'suite-1',
-    name: 'Marketing Plan Q4.pdf',
-    description: 'The official marketing plan for the fourth quarter, outlining key strategies, campaigns, and budget allocations.',
-    url: '#',
-    type: 'file',
-    createdAt: '2023-10-25T14:30:00Z',
-  },
-  {
-    id: 'doc-3',
-    suiteId: 'suite-2',
-    name: 'Onboarding Checklist for New Hires',
-    description: 'A step-by-step checklist to ensure a smooth onboarding process for new employees, linked from Google Drive.',
-    url: '#',
-    type: 'drive',
-    createdAt: '2023-09-15T09:00:00Z',
-  },
-  {
-    id: 'doc-4',
-    suiteId: 'suite-2',
-    name: 'Employee Handbook.pdf',
-    description: 'The official company employee handbook covering policies, procedures, and company culture.',
-    url: '#',
-    type: 'file',
-    createdAt: '2023-09-10T11:00:00Z',
-  },
-    {
-    id: 'doc-5',
-    suiteId: 'suite-3',
-    name: 'Q3 Financial Report.xlsx',
-    description: 'Detailed financial report for the third quarter, including profit and loss statements and balance sheets.',
-    url: '#',
-    type: 'file',
-    createdAt: '2023-10-20T16:00:00Z',
-  },
-];
+const { firestore } = initializeFirebase();
 
-let suites: Omit<DocumentSuite, 'documents'>[] = [
-    {
-        id: 'suite-1',
-        name: 'Project Management Resources',
-        description: 'Templates and guides for effective project planning and execution.'
-    },
-    {
-        id: 'suite-2',
-        name: 'Human Resources',
-        description: 'Essential documents for employee onboarding and company policies.'
-    },
-    {
-        id: 'suite-3',
-        name: 'Financial Reports',
-        description: 'Quarterly and annual financial statements for the company.'
-    }
-]
-
-// Simulate a database join
 export async function getDocumentSuites(): Promise<DocumentSuite[]> {
+  const suitesCollection = collection(firestore, 'documentation_suites');
+  const suitesSnapshot = await getDocs(query(suitesCollection));
+  
+  const suites = suitesSnapshot.docs.map(d => {
+      const data = d.data();
+      return { 
+          id: d.id, 
+          name: data.name,
+          description: data.description,
+      } as Omit<DocumentSuite, 'documents'>
+  });
+
+  const docsQuery = query(collectionGroup(firestore, 'documents'), orderBy('uploadedAt', 'desc'));
+  const docsSnapshot = await getDocs(docsQuery);
+  const allDocuments = docsSnapshot.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name,
+        description: data.aiGeneratedDescription,
+        url: data.externalUrl || '#',
+        type: data.sourceType === 'googleDrive' ? 'drive' : 'file',
+        createdAt: (data.uploadedAt as Timestamp)?.toDate().toISOString() ?? new Date().toISOString(),
+        suiteId: data.documentationSuiteId,
+      } as Document
+  });
+
   return suites.map(suite => ({
-    ...suite,
-    documents: documents
-      .filter(doc => doc.suiteId === suite.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      ...suite,
+      documents: allDocuments.filter(doc => doc.suiteId === suite.id)
   }));
 }
 
 export async function getAllDocuments(): Promise<Document[]> {
-    return [...documents].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const docsQuery = query(collectionGroup(firestore, 'documents'), orderBy('uploadedAt', 'desc'));
+    const docsSnapshot = await getDocs(docsQuery);
+    return docsSnapshot.docs.map(d => {
+        const data = d.data();
+        return {
+            id: d.id,
+            name: data.name,
+            description: data.aiGeneratedDescription,
+            url: data.externalUrl || '#',
+            type: data.sourceType === 'googleDrive' ? 'drive' : 'file',
+            createdAt: (data.uploadedAt as Timestamp)?.toDate().toISOString() ?? new Date().toISOString(),
+            suiteId: data.documentationSuiteId,
+        } as Document
+    });
 }
 
 export async function getSuites(): Promise<Omit<DocumentSuite, 'documents'>[]> {
-  return [...suites];
+  const suitesCollection = collection(firestore, 'documentation_suites');
+  const suitesSnapshot = await getDocs(query(suitesCollection));
+  return suitesSnapshot.docs.map(d => {
+      const data = d.data();
+      return { 
+          id: d.id, 
+          name: data.name,
+          description: data.description
+      }
+  });
 }
 
-export async function addDocument(doc: Omit<Document, 'id' | 'createdAt'>): Promise<Document> {
-    const newDoc: Document = {
-        ...doc,
-        id: `doc-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-    }
-    documents.unshift(newDoc);
-    return newDoc;
+export async function addDocument(docData: Omit<Document, 'id' | 'createdAt'>): Promise<Document> {
+    const { suiteId, name, description, url, type } = docData;
+    const docsCollection = collection(firestore, `documentation_suites/${suiteId}/documents`);
+    
+    const newDocData = {
+        name,
+        aiGeneratedDescription: description,
+        sourceType: type === 'drive' ? 'googleDrive' : 'upload',
+        externalUrl: type === 'drive' ? url : '',
+        storagePath: type === 'file' ? url : '', // Assuming URL is path for file
+        fileType: 'unknown', // This would need to be determined from the file
+        fileSize: 0, // This would need to be determined from the file
+        downloadCount: 0,
+        uploadedAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        documentationSuiteId: suiteId,
+    };
+    
+    const docRef = await addDoc(docsCollection, newDocData);
+
+    return {
+        id: docRef.id,
+        ...docData,
+        createdAt: (newDocData.uploadedAt as Timestamp).toDate().toISOString(),
+    };
 }
 
 export async function updateDocument(id: string, data: Partial<Document>): Promise<Document | null> {
-    const index = documents.findIndex(d => d.id === id);
-    if(index === -1) return null;
-    documents[index] = { ...documents[index], ...data };
-    return documents[index];
+    if (!data.suiteId) throw new Error("suiteId is required for updating a document");
+    const docRef = doc(firestore, `documentation_suites/${data.suiteId}/documents`, id);
+    
+    const updateData: {[key: string]: any} = { updatedAt: Timestamp.now() };
+    if (data.name) updateData.name = data.name;
+    if (data.description) updateData.aiGeneratedDescription = data.description;
+    if (data.url) {
+        if(data.type === 'drive') updateData.externalUrl = data.url;
+        else updateData.storagePath = data.url;
+    }
+    if (data.type) updateData.sourceType = data.type === 'drive' ? 'googleDrive' : 'upload';
+    if (data.suiteId) updateData.documentationSuiteId = data.suiteId;
+
+    await updateDoc(docRef, updateData);
+    
+    const updatedDocSnap = await getDoc(docRef);
+    if (!updatedDocSnap.exists()) return null;
+
+    const docSnapData = updatedDocSnap.data();
+    return {
+        id: updatedDocSnap.id,
+        name: docSnapData.name,
+        description: docSnapData.aiGeneratedDescription,
+        url: docSnapData.externalUrl || '#',
+        type: docSnapData.sourceType === 'googleDrive' ? 'drive' : 'file',
+        createdAt: (docSnapData.uploadedAt as Timestamp).toDate().toISOString(),
+        suiteId: docSnapData.documentationSuiteId,
+    };
 }
 
-export async function deleteDocument(id: string): Promise<boolean> {
-    const initialLength = documents.length;
-    documents = documents.filter(d => d.id !== id);
-    return documents.length < initialLength;
+export async function deleteDocument(id: string, suiteId: string): Promise<boolean> {
+    if (!suiteId) return false;
+    const docRef = doc(firestore, `documentation_suites/${suiteId}/documents`, id);
+    await deleteDoc(docRef);
+    return true;
 }
 
 export async function addSuite(suite: Omit<DocumentSuite, 'id' | 'documents'>): Promise<Omit<DocumentSuite, 'documents'>> {
-    const newSuite = {
+    const newSuiteData = {
         ...suite,
-        id: `suite-${Date.now()}`,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+    }
+    const docRef = await addDoc(collection(firestore, 'documentation_suites'), newSuiteData);
+    return {
+        id: docRef.id,
+        ...suite
     };
-    suites.push(newSuite);
-    return newSuite;
 }
 
 export async function updateSuite(id: string, data: Partial<Omit<DocumentSuite, 'id' | 'documents'>>): Promise<Omit<DocumentSuite, 'documents'> | null> {
-    const index = suites.findIndex(s => s.id === id);
-    if(index === -1) return null;
-    suites[index] = { ...suites[index], ...data };
-    return suites[index];
+    const suiteRef = doc(firestore, 'documentation_suites', id);
+    await updateDoc(suiteRef, { ...data, updatedAt: Timestamp.now() });
+
+    const updatedDocSnap = await getDoc(suiteRef);
+    if (!updatedDocSnap.exists()) return null;
+
+    const docData = updatedDocSnap.data();
+    return {
+        id: updatedDocSnap.id,
+        name: docData.name,
+        description: docData.description,
+    };
 }
 
 export async function deleteSuite(id: string): Promise<boolean> {
-    const initialLength = suites.length;
-    suites = suites.filter(s => s.id !== id);
-    documents = documents.filter(d => d.suiteId !== id);
-    return suites.length < initialLength;
+    const suiteRef = doc(firestore, 'documentation_suites', id);
+    const docsCollectionRef = collection(firestore, `documentation_suites/${id}/documents`);
+    
+    const batch = writeBatch(firestore);
+    
+    const docsSnapshot = await getDocs(docsCollectionRef);
+    docsSnapshot.docs.forEach(d => {
+        batch.delete(d.ref);
+    });
+    
+    batch.delete(suiteRef);
+    
+    await batch.commit();
+    return true;
 }
