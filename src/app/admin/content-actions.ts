@@ -27,6 +27,7 @@ export async function savePartnerOffer(input: Partial<PartnerOffer> & Pick<Partn
     description: input.description,
     link: input.link,
     active: input.active ?? true,
+    imageUrl: input.imageUrl,
     displayOrder: input.displayOrder ?? 0,
     expiresAt: input.expiresAt ?? null,
   });
@@ -44,6 +45,7 @@ export async function saveTestimonial(input: Partial<Testimonial> & Pick<Testimo
     role: input.role,
     company: input.company,
     active: input.active ?? true,
+    imageUrl: input.imageUrl,
     displayOrder: input.displayOrder ?? 0,
   });
 }
@@ -59,6 +61,7 @@ export async function savePastProject(input: Partial<PastProject> & Pick<PastPro
     description: input.description,
     link: input.link,
     active: input.active ?? true,
+    imageUrl: input.imageUrl,
     displayOrder: input.displayOrder ?? 0,
   });
 }

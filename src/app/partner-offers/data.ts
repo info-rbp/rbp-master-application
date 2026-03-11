@@ -19,13 +19,23 @@ export type Offer = {
   categories: OfferCategory[];
 };
 
-export function toOfferView(offer: PartnerOffer): Offer {
+export function getOfferCategories(index: number, total: number): OfferCategory[] {
+  const categoriesForOffer: OfferCategory[] = ['all', 'our'];
+
+  if (index < 3) categoriesForOffer.push('top');
+  if (index < 6) categoriesForOffer.push('new');
+  if (index % 2 === 0 || total <= 2) categoriesForOffer.push('exclusive');
+
+  return Array.from(new Set(categoriesForOffer));
+}
+
+export function toOfferView(offer: PartnerOffer, index = 0, total = 1): Offer {
   return {
     id: offer.id,
     partner: offer.title,
     title: offer.title,
     description: offer.description,
     href: offer.link,
-    categories: ['all', 'top', 'new', 'exclusive', 'our'],
+    categories: getOfferCategories(index, total),
   };
 }

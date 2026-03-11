@@ -28,6 +28,16 @@ const toIsoString = (value: unknown): string => {
   return new Date().toISOString();
 };
 
+
+const sortByDisplayOrderThenCreatedAt = <T extends { displayOrder?: number; createdAt: string }>(items: T[]): T[] => {
+  return [...items].sort((a, b) => {
+    const orderA = typeof a.displayOrder === 'number' ? a.displayOrder : 0;
+    const orderB = typeof b.displayOrder === 'number' ? b.displayOrder : 0;
+    if (orderA !== orderB) return orderA - orderB;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+};
+
 export async function getDocumentSuites(): Promise<DocumentSuite[]> {
   const suitesSnapshot = await firestore.collection('documentation_suites').get();
 
@@ -434,6 +444,7 @@ export async function getPartnerOffers(): Promise<PartnerOffer[]> {
       description: data.description,
       link: data.link,
       active: Boolean(data.active),
+      imageUrl: data.imageUrl ?? undefined,
       displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
       expiresAt: data.expiresAt ? toIsoString(data.expiresAt) : null,
       createdAt: toIsoString(data.createdAt),
@@ -451,6 +462,7 @@ export async function createPartnerOffer(
     createdAt: now,
     updatedAt: now,
   });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'partner_offer' });
   await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'partner_offer' });
   return { id: docRef.id, ...offer, createdAt: now.toISOString(), updatedAt: now.toISOString() };
 }
@@ -468,12 +480,15 @@ export async function updatePartnerOffer(
   if (!offer) return null;
 
   await saveContentRevision({ contentType: 'partner_offer', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'partner_offer' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userRole: 'admin', targetId: id, targetType: 'partner_offer' });
   return {
     id: snapshot.id,
     title: offer.title,
     description: offer.description,
     link: offer.link,
     active: Boolean(offer.active),
+    imageUrl: offer.imageUrl ?? undefined,
     displayOrder: typeof offer.displayOrder === 'number' ? offer.displayOrder : 0,
     expiresAt: offer.expiresAt ? toIsoString(offer.expiresAt) : null,
     createdAt: toIsoString(offer.createdAt),
@@ -486,6 +501,8 @@ export async function deletePartnerOffer(id: string): Promise<boolean> {
   const before = await ref.get();
   await ref.delete();
   await saveContentRevision({ contentType: 'partner_offer', contentId: id, editorUserId: 'system-admin', previousContent: before.data() ?? null, currentContent: null });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'partner_offer' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_deleted', userRole: 'admin', targetId: id, targetType: 'partner_offer' });
   return true;
 }
 
@@ -500,6 +517,7 @@ export async function getTestimonials(): Promise<Testimonial[]> {
       role: data.role,
       company: data.company,
       active: Boolean(data.active ?? true),
+      imageUrl: data.imageUrl ?? undefined,
       displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
       createdAt: toIsoString(data.createdAt),
       updatedAt: toIsoString(data.updatedAt),
@@ -516,6 +534,8 @@ export async function createTestimonial(
     createdAt: now,
     updatedAt: now,
   });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'testimonial' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'testimonial' });
   return {
     id: docRef.id,
     ...testimonial,
@@ -537,6 +557,8 @@ export async function updateTestimonial(
   if (!testimonial) return null;
 
   await saveContentRevision({ contentType: 'testimonial', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'testimonial' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userRole: 'admin', targetId: id, targetType: 'testimonial' });
   return {
     id: snapshot.id,
     clientName: testimonial.clientName,
@@ -544,6 +566,7 @@ export async function updateTestimonial(
     role: testimonial.role,
     company: testimonial.company,
     active: Boolean(testimonial.active ?? true),
+    imageUrl: testimonial.imageUrl ?? undefined,
     displayOrder: typeof testimonial.displayOrder === 'number' ? testimonial.displayOrder : 0,
     createdAt: toIsoString(testimonial.createdAt),
     updatedAt: toIsoString(testimonial.updatedAt),
@@ -555,6 +578,8 @@ export async function deleteTestimonial(id: string): Promise<boolean> {
   const before = await ref.get();
   await ref.delete();
   await saveContentRevision({ contentType: 'testimonial', contentId: id, editorUserId: 'system-admin', previousContent: before.data() ?? null, currentContent: null });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'testimonial' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_deleted', userRole: 'admin', targetId: id, targetType: 'testimonial' });
   return true;
 }
 
@@ -568,6 +593,7 @@ export async function getPastProjects(): Promise<PastProject[]> {
       description: data.description,
       link: data.link,
       active: Boolean(data.active ?? true),
+      imageUrl: data.imageUrl ?? undefined,
       displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
       createdAt: toIsoString(data.createdAt),
       updatedAt: toIsoString(data.updatedAt),
@@ -584,6 +610,8 @@ export async function createPastProject(
     createdAt: now,
     updatedAt: now,
   });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'past_project' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'past_project' });
   return {
     id: docRef.id,
     ...project,
@@ -605,12 +633,15 @@ export async function updatePastProject(
   if (!project) return null;
 
   await saveContentRevision({ contentType: 'past_project', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'past_project' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userRole: 'admin', targetId: id, targetType: 'past_project' });
   return {
     id: snapshot.id,
     name: project.name,
     description: project.description,
     link: project.link,
     active: Boolean(project.active ?? true),
+    imageUrl: project.imageUrl ?? undefined,
     displayOrder: typeof project.displayOrder === 'number' ? project.displayOrder : 0,
     createdAt: toIsoString(project.createdAt),
     updatedAt: toIsoString(project.updatedAt),
@@ -622,9 +653,28 @@ export async function deletePastProject(id: string): Promise<boolean> {
   const before = await ref.get();
   await ref.delete();
   await saveContentRevision({ contentType: 'past_project', contentId: id, editorUserId: 'system-admin', previousContent: before.data() ?? null, currentContent: null });
+  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'past_project' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_deleted', userRole: 'admin', targetId: id, targetType: 'past_project' });
   return true;
 }
 
+
+export async function getActivePartnerOffers(): Promise<PartnerOffer[]> {
+  const offers = await getPartnerOffers();
+  return sortByDisplayOrderThenCreatedAt(
+    offers.filter((offer) => offer.active && (!offer.expiresAt || new Date(offer.expiresAt).getTime() > Date.now())),
+  );
+}
+
+export async function getPublishedTestimonials(): Promise<Testimonial[]> {
+  const testimonials = await getTestimonials();
+  return sortByDisplayOrderThenCreatedAt(testimonials.filter((testimonial) => testimonial.active));
+}
+
+export async function getPublishedPastProjects(): Promise<PastProject[]> {
+  const projects = await getPastProjects();
+  return sortByDisplayOrderThenCreatedAt(projects.filter((project) => project.active));
+}
 
 export async function getUsersForAdmin(): Promise<UserProfile[]> {
   const snapshot = await firestore.collection('users').orderBy('createdAt', 'desc').get();
