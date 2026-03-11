@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createKnowledgeArticle, getKnowledgeArticles } from '@/lib/data';
+import { createKnowledgeArticle, getKnowledgeArticlesWithFilters } from '@/lib/data';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { isKnowledgeContentType, normalizeKnowledgeSlug, parseTagInput } from '@/lib/knowledge-center';
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const sortBy = (searchParams.get('sortBy') as 'updatedAt' | 'createdAt' | 'publishedAt' | null) ?? 'updatedAt';
   const sortDirection = (searchParams.get('sortDirection') as 'asc' | 'desc' | null) ?? 'desc';
 
-  const articles = await getKnowledgeArticles({
+  const articles = await getKnowledgeArticlesWithFilters({
     type: type && isKnowledgeContentType(type) ? type : undefined,
     published: published === null ? undefined : published === 'true',
     featured: featured === null ? undefined : featured === 'true',
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     slug: normalizeKnowledgeSlug(String(payload.slug ?? '')),
     excerpt: String(payload.excerpt ?? '').trim(),
     content: String(payload.content ?? '').trim(),
-    type: payload.type,
+    contentType: payload.type,
     tags: Array.isArray(payload.tags) ? payload.tags : parseTagInput(String(payload.tags ?? '')),
     authorId: auth.userId,
     authorName: payload.authorName ? String(payload.authorName).trim() : undefined,

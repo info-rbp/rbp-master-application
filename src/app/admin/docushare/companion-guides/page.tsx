@@ -3,5 +3,5 @@ import { getSuites } from '@/lib/data';
 
 export default async function AdminDocusharePage() {
   const suites = await getSuites();
-  return <div className="flex-1 space-y-4 p-4 md:p-8 pt-6"><h2 className="text-3xl font-bold tracking-tight">companion-guides</h2><DocushareTypeManager initial={suites} type="companion-guides" /></div>;
+  return <div className="flex-1 space-y-4 p-4 md:p-8 pt-6"><h2 className="text-3xl font-bold tracking-tight">Companion Guides</h2><DocushareTypeManager initial={suites} type="companion-guides" /></div>;
 }
