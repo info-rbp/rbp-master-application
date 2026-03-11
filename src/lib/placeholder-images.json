@@ -22,5 +22,77 @@
     "width": 100,
     "height": 100,
     "hint": "entrepreneur portrait"
+  },
+  "homeHero": {
+    "src": "https://picsum.photos/seed/homehero/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "business meeting"
+  },
+  "servicesHero": {
+    "src": "https://picsum.photos/seed/serviceshero/1200/400",
+    "width": 1200,
+    "height": 400,
+    "hint": "strategy planning"
+  },
+  "projectsHero": {
+    "src": "https://picsum.photos/seed/projectshero/1200/400",
+    "width": 1200,
+    "height": 400,
+    "hint": "project management"
+  },
+  "offersHero": {
+    "src": "https://picsum.photos/seed/offershero/1200/400",
+    "width": 1200,
+    "height": 400,
+    "hint": "business partnership"
+  },
+  "contactHero": {
+    "src": "https://picsum.photos/seed/contacthero/1200/400",
+    "width": 1200,
+    "height": 400,
+    "hint": "contact support"
+  },
+  "partnerLogo1": {
+    "src": "https://picsum.photos/seed/pl1/200/100",
+    "width": 200,
+    "height": 100,
+    "hint": "company logo"
+  },
+  "partnerLogo2": {
+    "src": "https://picsum.photos/seed/pl2/200/100",
+    "width": 200,
+    "height": 100,
+    "hint": "company logo"
+  },
+  "partnerLogo3": {
+    "src": "https://picsum.photos/seed/pl3/200/100",
+    "width": 200,
+    "height": 100,
+    "hint": "company logo"
+  },
+  "partnerLogo4": {
+    "src": "https://picsum.photos/seed/pl4/200/100",
+    "width": 200,
+    "height": 100,
+    "hint": "company logo"
+  },
+  "projectImage1": {
+    "src": "https://picsum.photos/seed/pi1/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "project outcome"
+  },
+  "projectImage2": {
+    "src": "https://picsum.photos/seed/pi2/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "team working"
+  },
+  "projectImage3": {
+    "src": "https://picsum.photos/seed/pi3/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "data analytics"
   }
 }
