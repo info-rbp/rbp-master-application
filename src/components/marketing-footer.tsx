@@ -46,6 +46,7 @@ export default function MarketingFooter() {
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/services" className="text-muted-foreground hover:text-foreground">Advisory on Demand</Link></li>
               <li><Link href="/docushare" className="text-muted-foreground hover:text-foreground">DocuShare Portal</Link></li>
+              <li><Link href="/knowledge-center" className="text-muted-foreground hover:text-foreground">Knowledge Center</Link></li>
               <li><Link href="/partner-offers" className="text-muted-foreground hover:text-foreground">Partner Offers</Link></li>
               <li><Link href="/membership" className="text-muted-foreground hover:text-foreground">Membership</Link></li>
             </ul>

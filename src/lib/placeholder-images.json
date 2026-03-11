@@ -53,6 +53,30 @@
     "height": 400,
     "hint": "contact support"
   },
+  "knowledgeCenterHero": {
+    "src": "https://picsum.photos/seed/kchero/1200/400",
+    "width": 1200,
+    "height": 400,
+    "hint": "library books"
+  },
+  "articleImage1": {
+    "src": "https://picsum.photos/seed/a1/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "business strategy"
+  },
+  "articleImage2": {
+    "src": "https://picsum.photos/seed/a2/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "financial growth"
+  },
+  "articleImage3": {
+    "src": "https://picsum.photos/seed/a3/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "team collaboration"
+  },
   "partnerLogo1": {
     "src": "https://picsum.photos/seed/pl1/200/100",
     "width": 200,

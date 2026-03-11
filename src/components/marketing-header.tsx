@@ -13,6 +13,7 @@ const navLinks = [
   { href: '/partner-offers', label: 'Partner Offers' },
   { href: '/docushare', label: 'DocuShare' },
   { href: '/membership', label: 'Membership' },
+  { href: '/knowledge-center', label: 'Knowledge Center' },
   { href: '/contact', label: 'Contact Us' },
 ];
 
