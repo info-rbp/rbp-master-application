@@ -202,5 +202,65 @@
     "width": 600,
     "height": 400,
     "hint": "tailored solution"
+  },
+  "membershipHero": {
+    "src": "https://picsum.photos/seed/memhero/1200/400",
+    "width": 1200,
+    "height": 400,
+    "hint": "exclusive access"
+  },
+  "kcHero": {
+    "src": "https://picsum.photos/seed/kchero2/1200/400",
+    "width": 1200,
+    "height": 400,
+    "hint": "knowledge sharing"
+  },
+  "basicMembership": {
+    "src": "https://picsum.photos/seed/basicmem/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "simple start"
+  },
+  "standardMembership": {
+    "src": "https://picsum.photos/seed/stdmem/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "business growth"
+  },
+  "premiumMembership": {
+    "src": "https://picsum.photos/seed/premmem/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "premium service"
+  },
+  "faqHero": {
+    "src": "https://picsum.photos/seed/faqhero/1200/400",
+    "width": 1200,
+    "height": 400,
+    "hint": "questions answers"
+  },
+  "articlesHero": {
+    "src": "https://picsum.photos/seed/artcleshero/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "reading blog"
+  },
+  "guidesHero": {
+    "src": "https://picsum.photos/seed/guideshero/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "step-by-step"
+  },
+  "toolsHero": {
+    "src": "https://picsum.photos/seed/toolshero/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "business tools"
+  },
+  "knowledgeBaseHero": {
+    "src": "https://picsum.photos/seed/kbhero/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "search database"
   }
 }

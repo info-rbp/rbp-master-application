@@ -51,8 +51,29 @@ const navLinks = [
         { href: '/docushare/customisation-service', label: 'Customisation Service' },
     ]
   },
-  { href: '/membership', label: 'Membership' },
-  { href: '/knowledge-center', label: 'Knowledge Center' },
+  {
+    label: 'Membership',
+    href: '/membership',
+    subLinks: [
+        { href: '/membership', label: 'Membership Overview' },
+        { href: '/membership/basic', label: 'Basic Membership' },
+        { href: '/membership/standard', label: 'Standard Membership' },
+        { href: '/membership/premium', label: 'Premium Membership' },
+        { href: '/membership/faq', label: 'FAQ' },
+        { href: '/signup', label: 'Sign Up Now' },
+    ]
+  },
+  { 
+    label: 'Knowledge Center',
+    href: '/knowledge-center',
+    subLinks: [
+        { href: '/knowledge-center', label: 'Knowledge Center Home' },
+        { href: '/knowledge-center/articles', label: 'Articles' },
+        { href: '/knowledge-center/guides', label: 'Guides' },
+        { href: '/knowledge-center/tools', label: 'Tools' },
+        { href: '/knowledge-center/knowledge', label: 'Knowledge Base' },
+    ]
+  },
   { href: '/contact', label: 'Contact Us' },
 ];
 

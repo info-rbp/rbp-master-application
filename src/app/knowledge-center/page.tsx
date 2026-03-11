@@ -1,40 +1,37 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, ArrowRight } from 'lucide-react';
-import Image from 'next/image';
+import { Search, ArrowRight, BookOpen, Wrench, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
-import placeholderImages from '@/lib/placeholder-images.json';
-import { Badge } from '@/components/ui/badge';
 
-const articles = [
-  {
-    title: "10 Essential Legal Documents for Every Startup",
-    description: "Navigate the legal landscape with confidence. This guide covers the top 10 legal documents your new business needs to have in place from day one.",
-    image: placeholderImages.articleImage1,
-    category: "Legal",
-    href: "#"
-  },
-  {
-    title: "Mastering Your Startup's Finances: A Guide to Financial Modeling",
-    description: "Unlock the power of financial forecasting. Learn how to build a robust financial model to impress investors and steer your business.",
-    image: placeholderImages.articleImage2,
-    category: "Finance",
-    href: "#"
-  },
-  {
-    title: "How to Build a High-Performing Remote Team",
-    description: "The future of work is remote. Discover best practices for hiring, managing, and motivating a distributed team for maximum productivity.",
-    image: placeholderImages.articleImage3,
-    category: "Operations",
-    href: "#"
-  }
-];
+const categories = [
+    {
+        title: "Articles",
+        description: "In-depth articles and analysis on strategy, finance, and operations to help you grow your business.",
+        href: "/knowledge-center/articles",
+        icon: BookOpen
+    },
+    {
+        title: "Guides & Playbooks",
+        description: "Practical, step-by-step guides and strategic playbooks to navigate complex business challenges.",
+        href: "/knowledge-center/guides",
+        icon: GraduationCap
+    },
+    {
+        title: "Tools & Templates",
+        description: "Downloadable financial models, report templates, and other tools to streamline your workflow.",
+        href: "/knowledge-center/tools",
+        icon: Wrench
+    },
+    {
+        title: "Knowledge Base",
+        description: "Your searchable repository of business definitions, concepts, and frequently asked questions.",
+        href: "/knowledge-center/knowledge",
+        icon: Search
+    }
+]
 
 export default function KnowledgeCenterPage() {
-  const { knowledgeCenterHero } = placeholderImages;
-
   return (
     <div>
       <section className="relative w-full pt-20 pb-12 md:pt-32 md:pb-20 lg:pt-40 lg:pb-28 bg-muted/40">
@@ -45,46 +42,28 @@ export default function KnowledgeCenterPage() {
           <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground md:text-xl">
             Your hub for expert insights, guides, and resources to help you build and scale your business.
           </p>
-          <div className="mt-8 max-w-lg mx-auto">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search articles, guides, and more..."
-                className="w-full pl-10"
-              />
-            </div>
-          </div>
         </div>
       </section>
       
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {articles.map((article) => (
-              <Card key={article.title} className="flex flex-col overflow-hidden">
-                <Image
-                  src={article.image.src}
-                  alt={article.title}
-                  width={article.image.width}
-                  height={article.image.height}
-                  data-ai-hint={article.image.hint}
-                  className="w-full h-48 object-cover"
-                />
-                <CardHeader>
-                  <Badge variant="secondary" className="w-fit">{article.category}</Badge>
-                  <CardTitle className="mt-2 text-xl">{article.title}</CardTitle>
+          <div className="grid gap-8 md:grid-cols-2">
+            {categories.map((category) => (
+              <Card key={category.title} className="flex flex-col group">
+                <CardHeader className="flex-row items-center gap-4">
+                    <category.icon className="h-8 w-8 text-primary flex-shrink-0" />
+                    <CardTitle className="text-2xl">{category.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-grow">
-                  <CardDescription>{article.description}</CardDescription>
+                    <CardDescription>{category.description}</CardDescription>
                 </CardContent>
-                <CardFooter>
-                  <Button variant="link" asChild className="p-0 h-auto">
-                    <Link href={article.href}>
-                      Read More <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardFooter>
+                <CardContent>
+                    <Button variant="outline" asChild>
+                        <Link href={category.href}>
+                            Explore {category.title} <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
+                </CardContent>
               </Card>
             ))}
           </div>
