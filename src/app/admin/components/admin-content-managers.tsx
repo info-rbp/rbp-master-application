@@ -10,57 +10,110 @@ import { useToast } from '@/hooks/use-toast';
 import type { KnowledgeArticle, PartnerOffer, PastProject, Testimonial, UserProfile } from '@/lib/definitions';
 import { removeKnowledgeArticle, removePartnerOffer, removePastProject, removeTestimonial, saveKnowledgeArticle, savePartnerOffer, savePastProject, saveTestimonial, saveUserAdminChanges } from '../content-actions';
 
+const formatDate = (value?: string) => (value ? new Date(value).toLocaleString() : '—');
+
+function ContentListShell({ title, onAdd, children, isEmpty }: { title: string; onAdd: () => void; children: ReactNode; isEmpty: boolean; }) {
+  return <div className="space-y-4"><div className="flex justify-between"><h3 className="text-xl font-semibold capitalize">{title}</h3><Button onClick={onAdd}>Create</Button></div>{isEmpty ? <Card><CardContent className="p-6 text-muted-foreground">No records yet.</CardContent></Card> : <div className="space-y-2">{children}</div>}</div>;
+}
+
 export function PartnerOffersManager({ initial }: { initial: PartnerOffer[] }) {
   const [items, setItems] = useState(initial);
   const [editing, setEditing] = useState<PartnerOffer | null>(null);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   async function submit(formData: FormData) {
-    const payload = {
+    const title = String(formData.get('title') ?? '').trim();
+    const description = String(formData.get('description') ?? '').trim();
+    const link = String(formData.get('link') ?? '').trim();
+    if (!title || !description || !link) {
+      toast({ title: 'Missing fields', description: 'Title, description and link are required.', variant: 'destructive' });
+      return;
+    }
+
+    setSubmitting(true);
+    const saved = await savePartnerOffer({
       id: editing?.id,
-      title: String(formData.get('title') ?? ''),
-      description: String(formData.get('description') ?? ''),
-      link: String(formData.get('link') ?? ''),
+      title,
+      description,
+      link,
+      imageUrl: String(formData.get('imageUrl') ?? '').trim() || undefined,
       active: formData.get('active') === 'on',
-    };
-    const saved = await savePartnerOffer(payload);
-    if (!saved) return;
+      displayOrder: Number(formData.get('displayOrder') ?? 0),
+      expiresAt: String(formData.get('expiresAt') ?? '').trim() || null,
+    });
+    setSubmitting(false);
+
+    if (!saved) {
+      toast({ title: 'Save failed', description: 'Unable to save partner offer.', variant: 'destructive' });
+      return;
+    }
+
     setItems((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)]);
     setOpen(false);
     setEditing(null);
-    toast({ title: 'Saved', description: 'Partner offer updated.' });
+    toast({ title: 'Saved', description: 'Partner offer saved.' });
   }
 
-  return <CrudShell title="Partner offers" onAdd={() => { setEditing(null); setOpen(true); }}>
-    {items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.title}</p><p className="text-sm text-muted-foreground">{item.description}</p><p className="text-xs">{item.link}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="destructive" onClick={async () => { await removePartnerOffer(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); toast({title:'Deleted'}); }}>Delete</Button></div></CardContent></Card>)}
-    <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit offer' : 'Create offer'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="title" defaultValue={editing?.title} placeholder="Title" required /><Textarea name="description" defaultValue={editing?.description} placeholder="Description" required /><Input name="link" defaultValue={editing?.link} placeholder="https://" required /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Active</label><Button type="submit">Save</Button></form></DialogContent></Dialog>
-  </CrudShell>;
+  async function onDelete(id: string) {
+    if (!window.confirm('Delete this partner offer? This cannot be undone.')) return;
+    await removePartnerOffer(id);
+    setItems((p) => p.filter((x) => x.id !== id));
+    toast({ title: 'Deleted', description: 'Partner offer removed.' });
+  }
+
+  return <ContentListShell title="Partner offers" onAdd={() => { setEditing(null); setOpen(true); }} isEmpty={items.length === 0}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between gap-4"><div><p className="font-semibold">{item.title}</p><p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p><p className="text-xs">{item.link}</p><p className="text-xs text-muted-foreground">Active: {String(item.active)} • Order: {item.displayOrder ?? 0}</p><p className="text-xs text-muted-foreground">Created: {formatDate(item.createdAt)} • Updated: {formatDate(item.updatedAt)}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="outline" onClick={async () => { const saved = await savePartnerOffer({ id: item.id, title: item.title, description: item.description, link: item.link, active: !item.active, displayOrder: item.displayOrder ?? 0, imageUrl: item.imageUrl, expiresAt: item.expiresAt ?? null }); if (saved) { setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); toast({ title: saved.active ? 'Offer activated' : 'Offer deactivated' }); } }}>Toggle</Button><Button size="sm" variant="destructive" onClick={() => onDelete(item.id)}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit offer' : 'Create offer'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="title" defaultValue={editing?.title} placeholder="Title" required /><Textarea name="description" defaultValue={editing?.description} placeholder="Description" required /><Input name="link" defaultValue={editing?.link} placeholder="https://" required /><Input name="imageUrl" defaultValue={editing?.imageUrl} placeholder="Image URL (optional)" /><Input name="displayOrder" defaultValue={editing?.displayOrder ?? 0} type="number" min={0} /><Input name="expiresAt" defaultValue={editing?.expiresAt ?? ''} type="datetime-local" /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Active</label><Button disabled={submitting} type="submit">{submitting ? 'Saving...' : 'Save'}</Button></form></DialogContent></Dialog></ContentListShell>;
 }
 
 export function TestimonialsManager({ initial }: { initial: Testimonial[] }) {
   const [items, setItems] = useState(initial);
   const [editing, setEditing] = useState<Testimonial | null>(null);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+
   async function submit(formData: FormData) {
-    const saved = await saveTestimonial({ id: editing?.id, clientName: String(formData.get('clientName')), content: String(formData.get('content')), company: String(formData.get('company') || ''), role: String(formData.get('role') || ''), active: formData.get('active') === 'on' });
-    if (!saved) return;
+    const clientName = String(formData.get('clientName') ?? '').trim();
+    const content = String(formData.get('content') ?? '').trim();
+    if (!clientName || !content) {
+      toast({ title: 'Missing fields', description: 'Client name and content are required.', variant: 'destructive' });
+      return;
+    }
+
+    setSubmitting(true);
+    const saved = await saveTestimonial({ id: editing?.id, clientName, content, company: String(formData.get('company') || ''), role: String(formData.get('role') || ''), imageUrl: String(formData.get('imageUrl') || ''), displayOrder: Number(formData.get('displayOrder') ?? 0), active: formData.get('active') === 'on' });
+    setSubmitting(false);
+    if (!saved) return toast({ title: 'Save failed', variant: 'destructive' });
     setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null); toast({ title: 'Saved' });
   }
-  return <CrudShell title="Testimonials" onAdd={() => { setEditing(null); setOpen(true); }}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.clientName}</p><p className="text-sm text-muted-foreground">{item.content}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="destructive" onClick={async () => { await removeTestimonial(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); }}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit testimonial' : 'Create testimonial'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="clientName" defaultValue={editing?.clientName} required /><Textarea name="content" defaultValue={editing?.content} required /><Input name="company" defaultValue={editing?.company} placeholder="Company" /><Input name="role" defaultValue={editing?.role} placeholder="Role" /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Published</label><Button type="submit">Save</Button></form></DialogContent></Dialog></CrudShell>;
+
+  return <ContentListShell title="Testimonials" onAdd={() => { setEditing(null); setOpen(true); }} isEmpty={items.length===0}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.clientName}</p><p className="text-sm text-muted-foreground line-clamp-2">{item.content}</p><p className="text-xs text-muted-foreground">{[item.role, item.company].filter(Boolean).join(', ') || '—'}</p><p className="text-xs text-muted-foreground">Created: {formatDate(item.createdAt)} • Updated: {formatDate(item.updatedAt)}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="outline" onClick={async () => { const saved = await saveTestimonial({ id: item.id, clientName: item.clientName, content: item.content, company: item.company, role: item.role, imageUrl: item.imageUrl, displayOrder: item.displayOrder ?? 0, active: !item.active }); if (saved) { setItems((p)=>[saved,...p.filter((x)=>x.id!==saved.id)]); toast({ title: saved.active ? 'Published' : 'Unpublished' }); } }}>Toggle</Button><Button size="sm" variant="destructive" onClick={async () => { if (!window.confirm('Delete this testimonial?')) return; await removeTestimonial(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); toast({ title: 'Deleted' }); }}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit testimonial' : 'Create testimonial'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="clientName" defaultValue={editing?.clientName} required /><Textarea name="content" defaultValue={editing?.content} required /><Input name="company" defaultValue={editing?.company} placeholder="Company" /><Input name="role" defaultValue={editing?.role} placeholder="Role" /><Input name="imageUrl" defaultValue={editing?.imageUrl} placeholder="Avatar/image URL (optional)" /><Input name="displayOrder" type="number" min={0} defaultValue={editing?.displayOrder ?? 0} /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Published</label><Button disabled={submitting} type="submit">{submitting ? 'Saving...' : 'Save'}</Button></form></DialogContent></Dialog></ContentListShell>;
 }
 
 export function PastProjectsManager({ initial }: { initial: PastProject[] }) {
   const [items, setItems] = useState(initial);
   const [editing, setEditing] = useState<PastProject | null>(null);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
+
   async function submit(formData: FormData) {
-    const saved = await savePastProject({ id: editing?.id, name: String(formData.get('name')), description: String(formData.get('description')), link: String(formData.get('link') || ''), active: formData.get('active') === 'on' });
-    if (!saved) return;
-    setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null);
+    const name = String(formData.get('name') ?? '').trim();
+    const description = String(formData.get('description') ?? '').trim();
+    if (!name || !description) {
+      toast({ title: 'Missing fields', description: 'Name and description are required.', variant: 'destructive' });
+      return;
+    }
+
+    setSubmitting(true);
+    const saved = await savePastProject({ id: editing?.id, name, description, link: String(formData.get('link') || ''), imageUrl: String(formData.get('imageUrl') || ''), displayOrder: Number(formData.get('displayOrder') ?? 0), active: formData.get('active') === 'on' });
+    setSubmitting(false);
+    if (!saved) return toast({ title: 'Save failed', variant: 'destructive' });
+    setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null); toast({ title: 'Saved' });
   }
-  return <CrudShell title="Past projects" onAdd={() => { setEditing(null); setOpen(true); }}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.name}</p><p className="text-sm text-muted-foreground">{item.description}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="destructive" onClick={async () => { await removePastProject(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); }}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit project' : 'Create project'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="name" defaultValue={editing?.name} required /><Textarea name="description" defaultValue={editing?.description} required /><Input name="link" defaultValue={editing?.link} placeholder="https://" /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Published</label><Button type="submit">Save</Button></form></DialogContent></Dialog></CrudShell>;
+
+  return <ContentListShell title="Past projects" onAdd={() => { setEditing(null); setOpen(true); }} isEmpty={items.length===0}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.name}</p><p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p><p className="text-xs text-muted-foreground">{item.link || 'No link'}</p><p className="text-xs text-muted-foreground">Created: {formatDate(item.createdAt)} • Updated: {formatDate(item.updatedAt)}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="outline" onClick={async () => { const saved = await savePastProject({ id: item.id, name: item.name, description: item.description, link: item.link, imageUrl: item.imageUrl, displayOrder: item.displayOrder ?? 0, active: !item.active }); if (saved) { setItems((p)=>[saved,...p.filter((x)=>x.id!==saved.id)]); toast({ title: saved.active ? 'Published' : 'Unpublished' }); } }}>Toggle</Button><Button size="sm" variant="destructive" onClick={async () => { if (!window.confirm('Delete this project?')) return; await removePastProject(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); toast({ title: 'Deleted' }); }}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit project' : 'Create project'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="name" defaultValue={editing?.name} required /><Textarea name="description" defaultValue={editing?.description} required /><Input name="link" defaultValue={editing?.link} placeholder="https://" /><Input name="imageUrl" defaultValue={editing?.imageUrl} placeholder="Image URL (optional)" /><Input name="displayOrder" type="number" min={0} defaultValue={editing?.displayOrder ?? 0} /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Published</label><Button disabled={submitting} type="submit">{submitting ? 'Saving...' : 'Save'}</Button></form></DialogContent></Dialog></ContentListShell>;
 }
 
 export function KnowledgeManager({ initial, type }: { initial: KnowledgeArticle[]; type: NonNullable<KnowledgeArticle['contentType']> }) {
@@ -72,7 +125,7 @@ export function KnowledgeManager({ initial, type }: { initial: KnowledgeArticle[
     if (!saved) return;
     setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null);
   }
-  return <CrudShell title={type} onAdd={() => { setEditing(null); setOpen(true); }}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.title}</p><p className="text-sm text-muted-foreground">/{item.slug}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="destructive" onClick={async () => { await removeKnowledgeArticle(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); }}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit entry' : 'Create entry'}</DialogTitle></DialogHeader><form action={submit} className="space-y-2"><Input name="title" defaultValue={editing?.title} required /><Input name="slug" defaultValue={editing?.slug} required /><Input name="excerpt" defaultValue={editing?.excerpt} placeholder="Summary" /><Textarea name="content" defaultValue={editing?.content} required className="min-h-40" /><Input name="category" defaultValue={editing?.category} /><Input name="tags" defaultValue={editing?.tags?.join(',')} placeholder="tag1, tag2" /><label className="flex items-center gap-2"><input type="checkbox" name="published" defaultChecked={editing?.published ?? false}/>Published</label><Button type="submit">Save</Button></form></DialogContent></Dialog></CrudShell>;
+  return <div className="space-y-4"><div className="flex justify-between"><h3 className="text-xl font-semibold capitalize">{type}</h3><Button onClick={() => { setEditing(null); setOpen(true); }}>Create</Button></div><div className="space-y-2">{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.title}</p><p className="text-sm text-muted-foreground">/{item.slug}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="destructive" onClick={async () => { await removeKnowledgeArticle(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); }}>Delete</Button></div></CardContent></Card>)}</div><Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit entry' : 'Create entry'}</DialogTitle></DialogHeader><form action={submit} className="space-y-2"><Input name="title" defaultValue={editing?.title} required /><Input name="slug" defaultValue={editing?.slug} required /><Input name="excerpt" defaultValue={editing?.excerpt} placeholder="Summary" /><Textarea name="content" defaultValue={editing?.content} required className="min-h-40" /><Input name="category" defaultValue={editing?.category} /><Input name="tags" defaultValue={editing?.tags?.join(',')} placeholder="tag1, tag2" /><label className="flex items-center gap-2"><input type="checkbox" name="published" defaultChecked={editing?.published ?? false}/>Published</label><Button type="submit">Save</Button></form></DialogContent></Dialog></div>;
 }
 
 export function UsersAdminManager({ initial }: { initial: UserProfile[] }) {
@@ -80,8 +133,4 @@ export function UsersAdminManager({ initial }: { initial: UserProfile[] }) {
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => users.filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase())), [users, query]);
   return <Card><CardHeader><CardTitle>Users administration</CardTitle><Input placeholder="Search by name or email" value={query} onChange={(e) => setQuery(e.target.value)} /></CardHeader><CardContent className="space-y-2">{filtered.map((u) => <div key={u.uid} className="border rounded p-3"><div className="font-medium">{u.name} <span className="text-xs text-muted-foreground">{u.email}</span></div><form action={async (fd: FormData) => { const updated = await saveUserAdminChanges(u.uid, { role: String(fd.get('role')), membershipTier: String(fd.get('tier')), membershipStatus: String(fd.get('status')), accountStatus: String(fd.get('accountStatus')) as UserProfile['accountStatus'] }); if (updated) setUsers((prev) => prev.map((x) => x.uid === u.uid ? updated : x)); }} className="mt-2 grid md:grid-cols-4 gap-2"><Input name="role" defaultValue={u.role} /><Input name="tier" defaultValue={u.membershipTier ?? ''} /><Input name="status" defaultValue={u.membershipStatus ?? ''} /><Input name="accountStatus" defaultValue={u.accountStatus ?? 'active'} /><Button type="submit" className="md:col-span-4">Save</Button></form></div>)}</CardContent></Card>;
-}
-
-function CrudShell({ title, onAdd, children }: { title: string; onAdd: () => void; children: ReactNode }) {
-  return <div className="space-y-4"><div className="flex justify-between"><h3 className="text-xl font-semibold capitalize">{title}</h3><Button onClick={onAdd}>Create</Button></div><div className="space-y-2">{children}</div></div>;
 }

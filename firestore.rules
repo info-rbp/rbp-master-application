@@ -93,17 +93,20 @@ service cloud.firestore {
     }
 
     match /partner_offers/{offerId} {
-      allow get, list: if resource.data.active == true || isAdmin();
+      allow get: if resource.data.active == true || isAdmin();
+      allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /testimonials/{testimonialId} {
-      allow get, list: if resource.data.active == true || isAdmin();
+      allow get: if resource.data.active == true || isAdmin();
+      allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /past_projects/{projectId} {
-      allow get, list: if resource.data.active == true || isAdmin();
+      allow get: if resource.data.active == true || isAdmin();
+      allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
     }
 

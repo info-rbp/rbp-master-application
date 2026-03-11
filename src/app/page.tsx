@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, Briefcase, Users, Handshake } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getPublishedTestimonials } from '@/lib/data';
 
-export default function HomePage() {
-  const { homeHero, testimonial1, testimonial2 } = placeholderImages;
+export default async function HomePage() {
+  const { homeHero } = placeholderImages;
+  const testimonials = await getPublishedTestimonials();
 
   return (
     <div className="flex flex-col">
@@ -148,40 +149,21 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 pt-12 lg:grid-cols-2">
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-muted-foreground">
-                  “Working with Remote Business Partner was a pivotal moment for our company. Their strategic insights and hands-on support were invaluable during our market expansion.”
-                </p>
-                <div className="mt-4 flex items-center gap-4">
-                  <Avatar>
-                    <AvatarImage src={testimonial1.src} alt="Testimonial author" data-ai-hint={testimonial1.hint} />
-                    <AvatarFallback>JD</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">Sarah Jones</p>
-                    <p className="text-sm text-muted-foreground">CEO, InnovateTech</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-muted-foreground">
-                  “Their fractional CFO service gave us the financial discipline we needed to secure our Series A. Highly recommend for any startup looking to level up.”
-                </p>
-                 <div className="mt-4 flex items-center gap-4">
-                  <Avatar>
-                    <AvatarImage src={testimonial2.src} alt="Testimonial author" data-ai-hint={testimonial2.hint} />
-                    <AvatarFallback>MS</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">Michael Smith</p>
-                    <p className="text-sm text-muted-foreground">Founder, NextGen Solutions</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {testimonials.length === 0 ? (
+              <Card className="lg:col-span-2"><CardContent className="p-6 text-muted-foreground">No testimonials published yet.</CardContent></Card>
+            ) : (
+              testimonials.slice(0, 2).map((testimonial) => (
+                <Card key={testimonial.id}>
+                  <CardContent className="p-6">
+                    <p className="text-muted-foreground">“{testimonial.content}”</p>
+                    <div className="mt-4">
+                      <p className="font-semibold">{testimonial.clientName}</p>
+                      <p className="text-sm text-muted-foreground">{[testimonial.role, testimonial.company].filter(Boolean).join(', ') || 'Client'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       </section>

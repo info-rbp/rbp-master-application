@@ -83,6 +83,7 @@ export type PartnerOffer = {
   description: string;
   link: string;
   active: boolean;
+  imageUrl?: string;
   displayOrder?: number;
   expiresAt?: string | null;
   createdAt: string;
@@ -96,6 +97,7 @@ export type Testimonial = {
   role?: string;
   company?: string;
   active: boolean;
+  imageUrl?: string;
   displayOrder?: number;
   createdAt: string;
   updatedAt: string;
@@ -107,6 +109,7 @@ export type PastProject = {
   description: string;
   link?: string;
   active: boolean;
+  imageUrl?: string;
   displayOrder?: number;
   createdAt: string;
   updatedAt: string;
