@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx --test tests/unit/wave3-helpers.test.ts",
+    "test:unit": "tsx --test tests/unit/*.test.ts",
     "test:smoke": "tsx --test tests/smoke/basic-routes.test.ts",
     "test": "npm run test:unit"
   },

@@ -14,7 +14,7 @@ import type { Document, DocumentSuite } from '@/lib/definitions';
 import { firestore } from '@/firebase/server';
 import { triggerAdminAlert } from '@/lib/alerts';
 import { sendTemplatedEmail } from '@/lib/email';
-import { trackEvent } from '@/lib/analytics';
+import { safeLogAnalyticsEvent } from '@/lib/analytics';
 
 export async function addDocument(data: Omit<Document, 'id' | 'createdAt'>) {
     const newDoc = await dbAddDocument(data);
@@ -89,12 +89,12 @@ export async function sendContactMessage(_prevState: { success: boolean; message
     });
 
     await Promise.all([
-      trackEvent({
-        eventType: 'contact_enquiry_submitted',
+      safeLogAnalyticsEvent({
+        eventType: 'contact_submitted',
         metadata: { enquiryId: ref.id, source },
       }),
       triggerAdminAlert({
-        type: 'enquiry',
+        type: 'new_contact_enquiry',
         title: 'New contact enquiry submitted',
         message: `${name} submitted a contact enquiry.`,
         actionUrl: '/admin/notifications',

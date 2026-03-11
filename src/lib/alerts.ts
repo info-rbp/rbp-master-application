@@ -1,6 +1,6 @@
 import { createNotification } from './notifications';
 import { sendTemplatedEmail } from './email';
-import { trackEvent } from './analytics';
+import { safeLogAnalyticsEvent } from './analytics';
 
 type MembershipAlertType =
   | 'membership_expiring'
@@ -22,11 +22,13 @@ export async function triggerMembershipAlert(input: {
   await createNotification({
     userId: input.userId,
     audienceRole: 'member',
-    type: input.type === 'payment_failed' ? 'payment' : 'membership',
+    audienceType: 'direct',
+    type: input.type,
     title: input.title,
     message: input.message,
     actionUrl: input.actionUrl,
     severity: input.type === 'payment_failed' ? 'error' : 'warning',
+    metadata: { reason: input.reason },
   });
 
   await sendTemplatedEmail({
@@ -39,26 +41,28 @@ export async function triggerMembershipAlert(input: {
     },
   });
 
-  await trackEvent({
+  await safeLogAnalyticsEvent({
     eventType: 'membership_status_changed',
     userId: input.userId,
-    role: 'member',
+    userRole: 'member',
+    targetType: 'membership',
     metadata: { alertType: input.type },
   });
 }
 
 export async function triggerAdminAlert(input: {
-  type: 'enquiry' | 'resource' | 'payment' | 'membership' | 'email_failure';
+  type: 'new_contact_enquiry' | 'resource_published' | 'payment_failed' | 'membership_expiring' | 'failed_email_send' | 'new_signup';
   title: string;
   message: string;
   actionUrl?: string;
 }) {
   await createNotification({
     audienceRole: 'admin',
+    audienceType: 'role',
     type: input.type,
     title: input.title,
     message: input.message,
     actionUrl: input.actionUrl,
-    severity: input.type === 'email_failure' || input.type === 'payment' ? 'error' : 'info',
+    severity: input.type === 'failed_email_send' || input.type === 'payment_failed' ? 'error' : 'info',
   });
 }

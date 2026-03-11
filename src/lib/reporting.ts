@@ -4,7 +4,7 @@ export async function getAdminSummaryMetrics() {
   const [users, enquiries, downloads, offers, unreadAdmin] = await Promise.all([
     firestore.collection('users').get(),
     firestore.collection('contact_enquiries').get(),
-    firestore.collection('analytics_events').where('eventType', '==', 'resource_download').get(),
+    firestore.collection('analytics_events').where('eventType', '==', 'resource_downloaded').get(),
     firestore.collection('partner_offers').where('active', '==', true).get(),
     firestore.collection('notifications').where('audienceRole', '==', 'admin').where('read', '==', false).get(),
   ]);
@@ -31,8 +31,8 @@ export async function getAdminSummaryMetrics() {
 
 export async function getResourceUsageMetrics() {
   const [views, downloads] = await Promise.all([
-    firestore.collection('analytics_events').where('eventType', '==', 'resource_view').get(),
-    firestore.collection('analytics_events').where('eventType', '==', 'resource_download').get(),
+    firestore.collection('analytics_events').where('eventType', '==', 'resource_viewed').get(),
+    firestore.collection('analytics_events').where('eventType', '==', 'resource_downloaded').get(),
   ]);
 
   const summarize = (snapshot: FirebaseFirestore.QuerySnapshot) => {

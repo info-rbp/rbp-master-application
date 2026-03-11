@@ -103,7 +103,7 @@ export default function PortalClientView({
         <div className="max-w-4xl mx-auto">
           <AnnouncementBanner announcements={announcements} />
           <div className="space-y-8">
-            <NotificationCenter userId={user.uid} role="member" />
+            <NotificationCenter />
             {documentSuites.map((suite) => (
               <Card
                 key={suite.id}

@@ -117,9 +117,9 @@ export type AnalyticsEventRecord = {
   id: string;
   eventType: string;
   userId?: string;
-  role?: string;
-  resourceId?: string;
-  resourceType?: string;
+  userRole?: string;
+  targetId?: string;
+  targetType?: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
   sessionId?: string;
