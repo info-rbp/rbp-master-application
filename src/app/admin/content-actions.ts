@@ -14,9 +14,8 @@ import {
   updatePartnerOffer,
   updatePastProject,
   updateTestimonial,
-  updateUserAdminProfile,
 } from '@/lib/data';
-import type { KnowledgeArticle, PartnerOffer, PastProject, Testimonial, UserProfile } from '@/lib/definitions';
+import type { KnowledgeArticle, PartnerOffer, PastProject, Testimonial } from '@/lib/definitions';
 
 export async function savePartnerOffer(input: Partial<PartnerOffer> & Pick<PartnerOffer, 'title' | 'description' | 'link'>) {
   if (input.id) {
@@ -89,9 +88,6 @@ export async function removeKnowledgeArticle(id: string) {
   await deleteKnowledgeArticle(id);
 }
 
-export async function saveUserAdminChanges(uid: string, data: Partial<Pick<UserProfile, 'name' | 'role' | 'membershipTier' | 'membershipStatus' | 'accountStatus'>>) {
-  return updateUserAdminProfile(uid, data);
-}
 
 export async function revalidateAdminPath(path: string) {
   revalidatePath(path);
