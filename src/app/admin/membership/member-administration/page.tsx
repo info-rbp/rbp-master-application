@@ -1,98 +1,131 @@
-
 'use client';
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Search, FileDown, FileUp, Filter, Trash2 } from 'lucide-react';
-import { MemberListTable } from './components/member-list-table';
-import { useReactTable } from '@tanstack/react-table';
-import { Member, columns } from './components/columns';
-import { members } from './data';
-import { MemberFiltersDrawer } from './components/member-filters-drawer';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import type { MemberCRMRow, MembershipHistoryItem } from '@/lib/definitions';
+import { buildMembershipMetrics, normalizeMemberRow } from '@/lib/membership-crm';
 
-// Placeholder for the summary metric cards
-const SummaryMetrics = () => (
-  <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6 mb-6">
-    <div className="border p-4 rounded-lg">
-      <h3 className="text-sm font-medium text-muted-foreground">Total Members</h3>
-      <p className="text-2xl font-bold">1,234</p>
-    </div>
-    <div className="border p-4 rounded-lg">
-      <h3 className="text-sm font-medium text-muted-foreground">Active</h3>
-      <p className="text-2xl font-bold">987</p>
-    </div>
-    <div className="border p-4 rounded-lg">
-      <h3 className="text-sm font-medium text-muted-foreground">Trial</h3>
-      <p className="text-2xl font-bold">56</p>
-    </div>
-    <div className="border p-4 rounded-lg">
-      <h3 className="text-sm font-medium text-muted-foreground">Past Due</h3>
-      <p className="text-2xl font-bold">23</p>
-    </div>
-    <div className="border p-4 rounded-lg">
-      <h3 className="text-sm font-medium text-muted-foreground">Lapsed</h3>
-      <p className="text-2xl font-bold">168</p>
-    </div>
-    <div className="border p-4 rounded-lg">
-      <h3 className="text-sm font-medium text-muted-foreground">VIP</h3>
-      <p className="text-2xl font-bold">12</p>
-    </div>
-  </div>
-);
+const PAGE_SIZE = 20;
 
 export default function MemberAdministrationPage() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<MemberCRMRow[]>([]);
+  const [history, setHistory] = useState<MembershipHistoryItem[]>([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [tierFilter, setTierFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'joinDate' | 'lastLogin'>('joinDate');
+  const [page, setPage] = useState(1);
 
-    const [isFilterDrawerOpen, setIsFilterDrawerOpen] = React.useState(false);
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [usersSnapshot, overridesSnapshot, historySnapshot] = await Promise.all([
+          getDocs(query(collection(firestore, 'users'), orderBy('createdAt', 'desc'))),
+          getDocs(collection(firestore, 'member_overrides')),
+          getDocs(query(collection(firestore, 'membership_history'), orderBy('changedAt', 'desc'))),
+        ]);
+
+        const overrideMap = new Map(overridesSnapshot.docs.map((doc) => [doc.data().memberId as string, Boolean(doc.data().enabled)]));
+
+        setMembers(usersSnapshot.docs.map((doc) => normalizeMemberRow({ id: doc.id, ...doc.data(), overrideEnabled: overrideMap.get(doc.id) })));
+        setHistory(historySnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<MembershipHistoryItem, 'id'>) })));
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Failed to load membership CRM',
+          description: error instanceof Error ? error.message : 'Please retry.',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [firestore, toast]);
+
+  const metrics = useMemo(() => buildMembershipMetrics(members, history), [members, history]);
+
+  const filteredMembers = useMemo(() => {
+    const lowerSearch = search.trim().toLowerCase();
+    return members
+      .filter((member) => {
+        if (lowerSearch && !`${member.name} ${member.email}`.toLowerCase().includes(lowerSearch)) return false;
+        if (statusFilter !== 'all' && member.membershipStatus !== statusFilter) return false;
+        if (tierFilter !== 'all' && member.membershipTier !== tierFilter) return false;
+        if (roleFilter !== 'all' && member.role !== roleFilter) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'lastLogin') {
+          return (new Date(b.lastLogin || 0).getTime() || 0) - (new Date(a.lastLogin || 0).getTime() || 0);
+        }
+        return new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime();
+      });
+  }, [members, roleFilter, search, sortBy, statusFilter, tierFilter]);
+
+  const paginated = filteredMembers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-4">Member Administration</h1>
-      
-      <SummaryMetrics />
-
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input type="search" placeholder="Search members..." className="pl-10" />
-          </div>
-          <Button variant="outline" className="gap-1.5" onClick={() => setIsFilterDrawerOpen(true)}>
-            <Filter className="h-4 w-4" />
-            <span>Filter</span>
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">Saved Views</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuLabel>Saved Views</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Past Due Members</DropdownMenuItem>
-              <DropdownMenuItem>Premium Members</DropdownMenuItem>
-              <DropdownMenuItem>Inactive 30+ Days</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" className="gap-1.5">
-            <FileUp className="h-4 w-4" />
-            <span>Import</span>
-          </Button>
-          <Button variant="outline" className="gap-1.5">
-            <FileDown className="h-4 w-4" />
-            <span>Export</span>
-          </Button>
-          <Button variant="destructive" disabled className="gap-1.5">
-            <Trash2 className="h-4 w-4" />
-            <span>Bulk Actions</span>
-          </Button>
-          <Button>Create Member</Button>
-        </div>
+    <div className="space-y-6 p-4 md:p-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Membership CRM</h1>
+        <Button asChild variant="outline"><Link href="/admin/membership/plans">Manage plans</Link></Button>
       </div>
 
-      <MemberListTable open={isFilterDrawerOpen} onOpenChange={setIsFilterDrawerOpen} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Object.entries(metrics).map(([key, value]) => (
+          <Card key={key}><CardHeader className="pb-2"><CardTitle className="text-sm capitalize">{key.replace(/([A-Z])/g, ' $1')}</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{value}</p></CardContent></Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle>Members</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-5">
+            <Input placeholder="Search name or email" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}><SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="suspended">Suspended</SelectItem><SelectItem value="lapsed">Lapsed</SelectItem></SelectContent></Select>
+            <Select value={tierFilter} onValueChange={(v) => { setTierFilter(v); setPage(1); }}><SelectTrigger><SelectValue placeholder="Tier" /></SelectTrigger><SelectContent><SelectItem value="all">All tiers</SelectItem><SelectItem value="basic">Basic</SelectItem><SelectItem value="standard">Standard</SelectItem><SelectItem value="premium">Premium</SelectItem></SelectContent></Select>
+            <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}><SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger><SelectContent><SelectItem value="all">All roles</SelectItem><SelectItem value="member">Member</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select>
+            <Select value={sortBy} onValueChange={(v: 'joinDate' | 'lastLogin') => setSortBy(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="joinDate">Sort by join date</SelectItem><SelectItem value="lastLogin">Sort by last login</SelectItem></SelectContent></Select>
+          </div>
+
+          {loading ? <p className="text-muted-foreground">Loading members…</p> : filteredMembers.length === 0 ? <p className="text-muted-foreground">No members match your filters.</p> : (
+            <div className="space-y-2">
+              {paginated.map((member) => (
+                <Link key={member.id} href={`/admin/membership/member-administration/${member.id}`} className="grid gap-2 rounded border p-3 md:grid-cols-9 hover:bg-muted/50">
+                  <div className="md:col-span-2"><p className="font-medium">{member.name}</p><p className="text-sm text-muted-foreground">{member.email}</p></div>
+                  <div>{member.role}</div>
+                  <div><Badge variant="outline">{member.membershipTier}</Badge></div>
+                  <div><Badge variant={member.membershipStatus === 'active' ? 'default' : 'secondary'}>{member.membershipStatus}</Badge></div>
+                  <div>{new Date(member.joinDate).toLocaleDateString()}</div>
+                  <div>{member.accessExpiry ? new Date(member.accessExpiry).toLocaleDateString() : '—'}</div>
+                  <div>{member.lastLogin ? new Date(member.lastLogin).toLocaleDateString() : '—'}</div>
+                  <div>{member.overrideEnabled ? <Badge variant="destructive">Override</Badge> : '—'}</div>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+            <div className="space-x-2"><Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Previous</Button><Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Next</Button></div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

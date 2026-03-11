@@ -21,7 +21,6 @@ import {
   Wrench,
   Database,
   LayoutList,
-  ClipboardList,
   Star,
   Users,
   ChevronRight,
@@ -220,38 +219,13 @@ export default function AdminSidebar() {
           <SidebarMenuItem>
             <CollapsibleSidebarItem icon={Star} title="Membership" pathPrefix="/admin/membership">
                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/member-administration')} tooltip="Member Administration" variant="ghost">
-                        <Link href="/admin/membership/member-administration"><Users /><span>Member Administration</span></Link>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/member-administration')} tooltip="Membership CRM" variant="ghost">
+                        <Link href="/admin/membership/member-administration"><Users /><span>Membership CRM</span></Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/plans')} tooltip="Membership Plans" variant="ghost">
-                        <Link href="/admin/membership/plans"><Gift /><span>Membership Plans</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/members')} tooltip="Membership CRM" variant="ghost">
-                        <Link href="/admin/membership/members"><Users /><span>Membership CRM</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/access-control')} tooltip="Access Control" variant="ghost">
-                        <Link href="/admin/membership/access-control"><ClipboardList /><span>Access Control</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/subscription-and-billing-oversight')} tooltip="Subscription & Billing" variant="ghost">
-                        <Link href="/admin/membership/subscription-and-billing-oversight"><Gift /><span>Subscription & Billing</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/content-gating-and-release-logic')} tooltip="Content Gating" variant="ghost">
-                        <Link href="/admin/membership/content-gating-and-release-logic"><Workflow /><span>Content Gating</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/reporting-and-operational-visibility')} tooltip="Reporting" variant="ghost">
-                        <Link href="/admin/membership/reporting-and-operational-visibility"><LayoutList /><span>Reporting</span></Link>
+                        <Link href="/admin/membership/plans"><Gift /><span>Plans</span></Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </CollapsibleSidebarItem>
