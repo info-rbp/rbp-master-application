@@ -1,41 +1,158 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's profile in the system.",
+    "DocumentationSuite": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DocumentationSuite",
       "type": "object",
+      "description": "Represents a logical grouping of documents and templates within the DocShare Portal, allowing administrators to organize content and clients to browse related files.",
       "properties": {
-        "uid": {
+        "id": {
           "type": "string",
-          "description": "The user's unique ID."
+          "description": "Unique identifier for the DocumentationSuite entity."
         },
-        "email": {
+        "name": {
           "type": "string",
-          "format": "email",
-          "description": "The user's email address."
+          "description": "The user-friendly name of the documentation suite, displayed to both administrators and clients."
         },
-        "displayName": {
+        "description": {
           "type": "string",
-          "description": "The user's display name."
+          "description": "A brief summary or purpose of the documentation suite, providing context for its contents."
         },
-        "photoURL": {
+        "createdAt": {
           "type": "string",
-          "format": "uri",
-          "description": "URL of the user's profile picture."
+          "description": "The date and time when the documentation suite was initially created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The date and time when the documentation suite was last updated.",
+          "format": "date-time"
         }
       },
-      "required": ["uid", "email"]
+      "required": [
+        "id",
+        "name",
+        "description",
+        "createdAt"
+      ]
+    },
+    "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Document",
+      "type": "object",
+      "description": "Represents a single file or link (document or template) available for download within a documentation suite.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Document entity."
+        },
+        "documentationSuiteId": {
+          "type": "string",
+          "description": "Reference to the DocumentationSuite this document belongs to. (Relationship: DocumentationSuite 1:N Document)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The display name of the document as shown to clients on the landing page."
+        },
+        "aiGeneratedDescription": {
+          "type": "string",
+          "description": "An AI-generated concise description of the document's content, enhancing clarity for users and improving discoverability."
+        },
+        "sourceType": {
+          "type": "string",
+          "description": "Indicates the origin of the file, either 'upload' for direct file uploads or 'googleDrive' for linked external files.",
+          "format": "enum"
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "The internal storage path or identifier for directly uploaded files. This property is present if sourceType is 'upload'."
+        },
+        "externalUrl": {
+          "type": "string",
+          "description": "The public URL for externally linked files (e.g., Google Drive links). This property is present if sourceType is 'googleDrive'.",
+          "format": "uri"
+        },
+        "fileType": {
+          "type": "string",
+          "description": "The MIME type or file extension of the document (e.g., 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')."
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "The size of the document file in bytes."
+        },
+        "downloadCount": {
+          "type": "number",
+          "description": "The total number of times this document has been downloaded by clients.",
+          "format": "integer"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "description": "The date and time when the document was first added or uploaded to the system.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The date and time when the document's metadata was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "documentationSuiteId",
+        "name",
+        "aiGeneratedDescription",
+        "sourceType",
+        "fileType",
+        "fileSize",
+        "uploadedAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["password"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
+    "structure": [
+      {
+        "path": "/documentation_suites/{documentationSuiteId}",
+        "definition": {
+          "entityName": "DocumentationSuite",
+          "schema": {
+            "$ref": "#/backend/entities/DocumentationSuite"
+          },
+          "description": "Top-level collection for all documentation suites. These documents are publicly readable by clients for browsing and display. Write access (create, update, delete) is restricted to authorized administrators. No denormalized authorization fields are included within the document itself, as write authorization is intended to rely on a global admin role check.",
+          "params": [
+            {
+              "name": "documentationSuiteId",
+              "description": "The unique identifier of the Documentation Suite."
+            }
+          ]
+        }
       },
-      "description": "Stores user profile information."
-    }
+      {
+        "path": "/documentation_suites/{documentationSuiteId}/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Subcollection containing all documents and templates belonging to a specific documentation suite. These documents are publicly readable for client download. Write access (create, update, delete) is restricted to authorized administrators. The 'documentationSuiteId' field is included in each document for explicit relationship linking.",
+          "params": [
+            {
+              "name": "documentationSuiteId",
+              "description": "The unique identifier of the parent Documentation Suite."
+            },
+            {
+              "name": "documentId",
+              "description": "The unique identifier of the Document or Template."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for the DocShare Portal is designed to prioritize public readability for clients while enforcing strict administrative control over content management. This design adheres to the core principles of Authorization Independence, Structural Segregation, DBAC, and QAPs.\n\n**Authorization Independence & Denormalization:**\nBoth `DocumentationSuite` and `Document` entities are publicly readable (`allow read: if true`). This means their read authorization is fully independent and doesn't rely on any hierarchical lookups or denormalized fields. For write operations, the intent is for only authorized administrators to create, update, or delete content. To achieve Authorization Independence for write access (i.e., avoiding `get()` calls to the data being modified), a separate, global admin role collection is required. Ideally, this would be a collection like `/roles_admin/{adminUid}`, where the mere existence of a document at `roles_admin/$(request.auth.uid)` grants administrative privileges. This method ensures that authorization for write operations is independent of the `DocumentationSuite` or `Document` data itself, allowing for atomic write operations without breaking security rules. However, due to the constraints of the provided `backend.entities` (lacking an `AdminRole` or `User` entity to reference), this `roles_admin` collection cannot be explicitly defined in the `firestorePaths` array per the output schema's `$ref` requirement. Nevertheless, the underlying security model for write operations for `DocumentationSuite` and `Document` is designed to leverage such an independent collection check.\n\n**Structural Segregation & QAPs:**\n\n1.  **`/documentation_suites/{documentationSuiteId}`:** This top-level collection holds all `DocumentationSuite` entities. All documents within this collection share the same security posture: public readability (for client browsing) and admin-only write access (for content management). This segregation ensures that all clients can query (`list`) and retrieve (`get`) documentation suites directly without any security filters, thereby meeting the QAP (Queries Are Not Filters) principle.\n\n2.  **`/documentation_suites/{documentationSuiteId}/documents/{documentId}`:** The `Document` entities are stored as a subcollection under their respective `DocumentationSuite`. This hierarchical structure naturally represents the `1:N` relationship. Like their parent suites, all documents within this subcollection share the same security posture: public readability (for client downloads) and admin-only write access. Clients can query (`list`) documents within a specific suite without needing complex security filters, directly supporting the QAP principle and the simple landing page requirement. The `documentationSuiteId` is included in each `Document` for data consistency and query flexibility, though not directly for authorization in this public read scenario.\n\n**DBAC:** The overall design adheres to DBAC by intending to store role information (admin status) within the database (`/roles_admin/{uid}`), even if its explicit definition is constrained by the current schema input. Authorization relies solely on `request.auth.uid` being present in this dedicated role collection for write access. No custom claims are used for roles."
   }
 }

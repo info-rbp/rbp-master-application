@@ -1,9 +1,111 @@
+/**
+ * Core Philosophy: This ruleset enforces a "public read, admin-only write" model
+ * for a document sharing portal. All documentation suites and their associated
+ * documents are publicly accessible for browsing and downloading by any user,
+ * including anonymous ones. All content management operations (creating,
+ * updating, or deleting suites and documents) are strictly limited to users
+ * designated as administrators.
+ *
+ * Data Structure:
+ * - /documentation_suites/{suiteId}: Top-level collection holding suite metadata.
+ * - /documentation_suites/{suiteId}/documents/{docId}: Subcollection of documents
+ *   belonging to a specific suite.
+ *
+ * Key Security Decisions:
+ * - Public Read Access: All content is world-readable to support the client-facing
+ *   portal. This is achieved with `allow get, list: if true;`.
+ * - Admin-Only Writes: Write access is controlled by checking for the existence
+ *   of a document in a dedicated `/roles_admin` collection. A user is considered
+ *   an admin if a document exists at `/roles_admin/{their_uid}`.
+ * - Denormalization for Authorization: The admin role check avoids costly lookups
+ *   and enables a scalable, independent authorization model. The admin status is
+ *   stored separately from the content it governs.
+ * - No User Data: This ruleset does not manage any user-specific private data.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // -------------------------------------------------------------------------
+    // Helper Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user has administrative privileges.
+     * Admin status is granted if a document with the user's UID exists in the
+     * `/roles_admin` collection. This is a highly performant and secure way
+     * to manage global roles.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * Checks if the user is an admin AND the document they are trying to modify
+     * already exists. This is a standard security check for all update and
+     * delete operations.
+     */
+    function isExistingAdmin() {
+      return isAdmin() && resource != null;
+    }
+
+    /**
+     * On create, ensures the document's internal `documentationSuiteId` matches
+     * the ID from the path, maintaining relational integrity.
+     */
+    function hasValidDocumentDataOnCreate(documentationSuiteId) {
+      return request.resource.data.documentationSuiteId == documentationSuiteId;
+    }
+
+    /**
+     * On update, ensures the `documentationSuiteId` cannot be changed,
+     * preventing documents from being moved between suites.
+     */
+    function isDocumentDataImmutable() {
+      return request.resource.data.documentationSuiteId == resource.data.documentationSuiteId;
+    }
+
+    // -------------------------------------------------------------------------
+    // Collection Rules
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Rules for the top-level collection of documentation suites.
+     * @path /documentation_suites/{documentationSuiteId}
+     * @allow (get) Any user, signed in or not, can read a documentation suite.
+     * @allow (create) An authenticated admin can create a new documentation suite.
+     * @deny (update) A non-admin user cannot update a documentation suite.
+     * @principle Implements a "public read, admin-only write" access pattern.
+     */
+    match /documentation_suites/{documentationSuiteId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin();
+      allow update: if isExistingAdmin();
+      allow delete: if isExistingAdmin();
+
+      /**
+       * @description Rules for documents within a specific documentation suite.
+       * @path /documentation_suites/{documentationSuiteId}/documents/{documentId}
+       * @allow (list) Any user, signed in or not, can list all documents in a suite.
+       * @allow (create) An admin can create a new document, provided its internal `documentationSuiteId` field matches its parent path.
+       * @deny (create) An admin attempts to create a document with a mismatched `documentationSuiteId`.
+       * @principle Enforces relational integrity and "public read, admin-only write".
+       */
+      match /documents/{documentId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if isAdmin() && hasValidDocumentDataOnCreate(documentationSuiteId);
+        allow update: if isExistingAdmin() && isDocumentDataImmutable();
+        allow delete: if isExistingAdmin();
+      }
     }
   }
 }
