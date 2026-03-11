@@ -91,6 +91,8 @@ export type PartnerOffer = {
   description: string;
   link: string;
   active: boolean;
+  partnerName?: string;
+  categories?: string[];
   imageUrl?: string;
   displayOrder?: number;
   expiresAt?: string | null;
@@ -315,4 +317,39 @@ export type MemberCRMMetricSummary = {
   membersOnOverride: number;
   recentSignups: number;
   recentStatusChanges: number;
+};
+
+
+export type SitePageSectionItem = {
+  title: string;
+  description?: string;
+  href?: string;
+  imageUrl?: string;
+  order?: number;
+};
+
+export type SitePageSection = {
+  id: string;
+  title: string;
+  description?: string;
+  items?: SitePageSectionItem[];
+};
+
+export type SitePageContent = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  eyebrow?: string;
+  heroImageUrl?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  sections?: SitePageSection[];
+  seoTitle?: string;
+  seoDescription?: string;
+  published: boolean;
+  publishedAt?: string;
+  displayOrder?: number;
+  createdAt: string;
+  updatedAt: string;
 };

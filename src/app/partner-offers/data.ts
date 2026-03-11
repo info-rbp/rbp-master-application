@@ -19,12 +19,17 @@ export type Offer = {
   categories: OfferCategory[];
 };
 
-export function getOfferCategories(index: number, total: number): OfferCategory[] {
-  const categoriesForOffer: OfferCategory[] = ['all', 'our'];
+export function getOfferCategories(index: number, total: number, explicit?: string[]): OfferCategory[] {
+  const fromDoc = Array.isArray(explicit)
+    ? explicit.filter((x): x is OfferCategory => x in categories)
+    : [];
 
-  if (index < 3) categoriesForOffer.push('top');
-  if (index < 6) categoriesForOffer.push('new');
-  if (index % 2 === 0 || total <= 2) categoriesForOffer.push('exclusive');
+  const categoriesForOffer: OfferCategory[] = fromDoc.length > 0 ? [...fromDoc, 'all'] : ['all', 'our'];
+  if (fromDoc.length === 0) {
+    if (index < 3) categoriesForOffer.push('top');
+    if (index < 6) categoriesForOffer.push('new');
+    if (index % 2 === 0 || total <= 2) categoriesForOffer.push('exclusive');
+  }
 
   return Array.from(new Set(categoriesForOffer));
 }
@@ -32,10 +37,10 @@ export function getOfferCategories(index: number, total: number): OfferCategory[
 export function toOfferView(offer: PartnerOffer, index = 0, total = 1): Offer {
   return {
     id: offer.id,
-    partner: offer.title,
+    partner: offer.partnerName ?? offer.title,
     title: offer.title,
     description: offer.description,
     href: offer.link,
-    categories: getOfferCategories(index, total),
+    categories: getOfferCategories(index, total, offer.categories),
   };
 }

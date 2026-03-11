@@ -101,21 +101,35 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+
+
+    match /site_pages/{pageId} {
+      allow get, list: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /service_pages/{serviceId} {
+      allow get, list: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /faqs/{faqId} {
+      allow get, list: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /partner_offers/{offerId} {
-      allow get: if resource.data.active == true || isAdmin();
-      allow list: if isAdmin();
+      allow get, list: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /testimonials/{testimonialId} {
-      allow get: if resource.data.active == true || isAdmin();
-      allow list: if isAdmin();
+      allow get, list: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /past_projects/{projectId} {
-      allow get: if resource.data.active == true || isAdmin();
-      allow list: if isAdmin();
+      allow get, list: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 

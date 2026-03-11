@@ -14,6 +14,7 @@ import { safeLogAnalyticsEvent } from './analytics';
 import { canPublishKnowledgeArticle, type KnowledgeContentType } from './knowledge-center';
 import { filterAndSortUsers, validateAdminRole } from './user-admin';
 import { getPublicPartnerOffers, getPublicPastProjects, getPublicTestimonials } from './content-admin';
+import { getDocuShareSectionContent as getDocuShareSectionContentFromCms, getFAQsByCategory as getFAQsByCategoryFromCms, getHomepageContent as getHomepageContentFromCms, getKnowledgeLandingContent as getKnowledgeLandingContentFromCms, getMembershipPageContent as getMembershipPageContentFromCms, getPageContentBySlug as getPageContentBySlugFromCms, getPublishedServicePages as getPublishedServicePagesFromCms, getServicePageBySlug as getServicePageBySlugFromCms, getServicesLandingContent as getServicesLandingContentFromCms } from './public-content';
 
 const toIsoString = (value: unknown): string => {
   if (!value) return new Date().toISOString();
@@ -487,6 +488,8 @@ export async function getPartnerOffers(): Promise<PartnerOffer[]> {
       description: data.description,
       link: data.link,
       active: Boolean(data.active),
+      partnerName: data.partnerName ? String(data.partnerName) : undefined,
+      categories: Array.isArray(data.categories) ? data.categories.map((value: unknown) => String(value)) : undefined,
       imageUrl: data.imageUrl ?? undefined,
       displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
       expiresAt: data.expiresAt ? toIsoString(data.expiresAt) : null,
@@ -531,6 +534,8 @@ export async function updatePartnerOffer(
     description: offer.description,
     link: offer.link,
     active: Boolean(offer.active),
+    partnerName: offer.partnerName ? String(offer.partnerName) : undefined,
+    categories: Array.isArray(offer.categories) ? offer.categories.map((value: unknown) => String(value)) : undefined,
     imageUrl: offer.imageUrl ?? undefined,
     displayOrder: typeof offer.displayOrder === 'number' ? offer.displayOrder : 0,
     expiresAt: offer.expiresAt ? toIsoString(offer.expiresAt) : null,
@@ -905,3 +910,14 @@ export async function updateUserAdminProfile(
 
   return next;
 }
+
+
+export const getHomepageContent = getHomepageContentFromCms;
+export const getServicePageBySlug = getServicePageBySlugFromCms;
+export const getPublishedServicePages = getPublishedServicePagesFromCms;
+export const getServicesLandingContent = getServicesLandingContentFromCms;
+export const getMembershipPageContent = getMembershipPageContentFromCms;
+export const getFAQsByCategory = getFAQsByCategoryFromCms;
+export const getKnowledgeLandingContent = getKnowledgeLandingContentFromCms;
+export const getDocuShareSectionContent = getDocuShareSectionContentFromCms;
+export const getPageContentBySlug = getPageContentBySlugFromCms;
