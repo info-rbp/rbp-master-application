@@ -172,5 +172,35 @@
     "width": 1200,
     "height": 600,
     "hint": "artificial intelligence"
+  },
+  "docushareTemplates": {
+    "src": "https://picsum.photos/seed/dstemp/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "legal document"
+  },
+  "docushareGuides": {
+    "src": "https://picsum.photos/seed/dsguide/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "instruction manual"
+  },
+  "docushareSuites": {
+    "src": "https://picsum.photos/seed/dssuite/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "document bundle"
+  },
+  "docushareProcesses": {
+    "src": "https://picsum.photos/seed/dsproc/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "business workflow"
+  },
+  "docushareCustomisation": {
+    "src": "https://picsum.photos/seed/dscustom/600/400",
+    "width": 600,
+    "height": 400,
+    "hint": "tailored solution"
   }
 }

@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,18 @@ const navLinks = [
         label: (partnerCategories as any)[key].name,
     }))
   },
-  { href: '/docushare', label: 'DocuShare' },
+  { 
+    label: 'DocuShare',
+    href: '/docushare',
+    subLinks: [
+        { href: '/docushare', label: 'DocuShare Home' },
+        { href: '/docushare/templates', label: 'Templates' },
+        { href: '/docushare/companion-guides', label: 'Companion Guides' },
+        { href: '/docushare/documentation-suites', label: 'Documentation Suites' },
+        { href: '/docushare/end-to-end-processes', label: 'End-to-End Processes' },
+        { href: '/docushare/customisation-service', label: 'Customisation Service' },
+    ]
+  },
   { href: '/membership', label: 'Membership' },
   { href: '/knowledge-center', label: 'Knowledge Center' },
   { href: '/contact', label: 'Contact Us' },
