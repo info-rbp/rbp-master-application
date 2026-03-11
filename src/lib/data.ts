@@ -12,6 +12,7 @@ import type {
 import { logAuditEvent, saveContentRevision } from './audit';
 import { safeLogAnalyticsEvent } from './analytics';
 import { canPublishKnowledgeArticle, type KnowledgeContentType } from './knowledge-center';
+import { filterAndSortUsers, validateAdminRole } from './user-admin';
 
 const toIsoString = (value: unknown): string => {
   if (!value) return new Date().toISOString();
@@ -676,52 +677,191 @@ export async function getPublishedPastProjects(): Promise<PastProject[]> {
   return sortByDisplayOrderThenCreatedAt(projects.filter((project) => project.active));
 }
 
+const ADMIN_EDITABLE_USER_FIELDS = new Set(['name', 'phone', 'company']);
+
+function mapUserProfile(uid: string, data: Record<string, unknown>): UserProfile {
+  return {
+    uid,
+    name: String(data.name ?? ''),
+    email: String(data.email ?? ''),
+    company: data.company ? String(data.company) : null,
+    phone: data.phone ? String(data.phone) : null,
+    role: String(data.role ?? 'member'),
+    membershipTier: data.membershipTier ? String(data.membershipTier) : null,
+    membershipStatus: String(data.membershipStatus ?? 'pending'),
+    emailVerified: Boolean(data.emailVerified),
+    lastLoginAt: data.lastLoginAt ? toIsoString(data.lastLoginAt) : null,
+    accountStatus: data.accountStatus === 'suspended' ? 'suspended' : 'active',
+    accessExpiry: data.accessExpiry ? toIsoString(data.accessExpiry) : null,
+    squareCustomerId: data.squareCustomerId ? String(data.squareCustomerId) : null,
+    squareSubscriptionId: data.squareSubscriptionId ? String(data.squareSubscriptionId) : null,
+    lastPaymentStatus: data.lastPaymentStatus ? String(data.lastPaymentStatus) : null,
+    lastPaymentAt: data.lastPaymentAt ? toIsoString(data.lastPaymentAt) : null,
+    createdAt: toIsoString(data.createdAt),
+    updatedAt: toIsoString(data.updatedAt),
+  };
+}
+
 export async function getUsersForAdmin(): Promise<UserProfile[]> {
   const snapshot = await firestore.collection('users').orderBy('createdAt', 'desc').get();
-  return snapshot.docs.map((d) => {
-    const data = d.data();
-    return {
-      uid: d.id,
-      name: data.name ?? '',
-      email: data.email ?? '',
-      company: data.company ?? null,
-      phone: data.phone ?? null,
-      role: data.role ?? 'member',
-      membershipTier: data.membershipTier ?? null,
-      membershipStatus: data.membershipStatus ?? 'pending',
-      emailVerified: Boolean(data.emailVerified),
-      lastLoginAt: data.lastLoginAt ? toIsoString(data.lastLoginAt) : null,
-      accountStatus: data.accountStatus === 'suspended' ? 'suspended' : 'active',
-      createdAt: toIsoString(data.createdAt),
-      updatedAt: toIsoString(data.updatedAt),
-    };
-  });
+  return snapshot.docs.map((doc) => mapUserProfile(doc.id, doc.data()));
+}
+
+export async function getUsers(filters: import('./definitions').UserAdminListFilters = {}): Promise<import('./definitions').UserAdminListResult> {
+  const page = Math.max(1, Number(filters.page ?? 1));
+  const pageSize = Math.min(100, Math.max(1, Number(filters.pageSize ?? 25)));
+  const users = await getUsersForAdmin();
+  const sorted = filterAndSortUsers(users, filters);
+
+  const total = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = (page - 1) * pageSize;
+  return {
+    items: sorted.slice(start, start + pageSize),
+    total,
+    page,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function getUserById(uid: string): Promise<UserProfile | null> {
+  const snapshot = await firestore.doc(`users/${uid}`).get();
+  if (!snapshot.exists) return null;
+  return mapUserProfile(snapshot.id, snapshot.data() ?? {});
+}
+
+export async function getUserAdminActivity(uid: string): Promise<import('./definitions').UserAdminActivity> {
+  const [analyticsSnap, auditSnap, membershipHistorySnap, notificationsSnap] = await Promise.all([
+    firestore.collection('analytics_events').where('userId', '==', uid).orderBy('createdAt', 'desc').limit(10).get(),
+    firestore.collection('audit_logs').where('targetId', '==', uid).orderBy('createdAt', 'desc').limit(10).get(),
+    firestore.collection('membership_history').where('memberId', '==', uid).orderBy('changedAt', 'desc').limit(10).get(),
+    firestore.collection('notifications').where('userId', '==', uid).orderBy('createdAt', 'desc').limit(10).get(),
+  ]);
+
+  return {
+    analyticsEvents: analyticsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data(), createdAt: toIsoString(doc.data().createdAt) } as import('./definitions').AnalyticsEventRecord)),
+    auditEvents: auditSnap.docs.map((doc) => ({ id: doc.id, ...doc.data(), createdAt: toIsoString(doc.data().createdAt) } as import('./definitions').AuditLogRecord)),
+    membershipHistory: membershipHistorySnap.docs.map((doc) => ({ id: doc.id, ...doc.data(), changedAt: toIsoString(doc.data().changedAt) } as import('./definitions').MembershipHistoryItem)),
+    notifications: notificationsSnap.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        userId: data.userId,
+        audienceRole: data.audienceRole,
+        audienceType: data.audienceType ?? 'direct',
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        actionUrl: data.actionUrl,
+        severity: data.severity ?? 'info',
+        read: Boolean(data.read),
+        readAt: data.readAt ? toIsoString(data.readAt) : undefined,
+        metadata: data.metadata ?? {},
+        createdAt: toIsoString(data.createdAt),
+      };
+    }),
+  };
+}
+
+export async function updateUserAdminFields(
+  uid: string,
+  data: Partial<Pick<UserProfile, 'name' | 'phone' | 'company'>>,
+  actorUserId = 'system-admin',
+): Promise<UserProfile | null> {
+  const cleanUpdates: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (ADMIN_EDITABLE_USER_FIELDS.has(key) && typeof value === 'string') {
+      cleanUpdates[key] = value.trim();
+    }
+  }
+
+  const ref = firestore.doc(`users/${uid}`);
+  const before = await ref.get();
+  if (!before.exists) return null;
+
+  await ref.update({ ...cleanUpdates, updatedAt: new Date() });
+  const after = await ref.get();
+  if (!after.exists) return null;
+
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'user_profile_admin_edit', targetId: uid, targetType: 'user', before: before.data() ?? null, after: after.data() ?? null });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userId: actorUserId, userRole: 'admin', targetId: uid, targetType: 'user' });
+
+  return mapUserProfile(after.id, after.data() ?? {});
+}
+
+export async function updateUserRole(uid: string, role: string, actorUserId = 'system-admin'): Promise<UserProfile | null> {
+  const nextRole = role.trim().toLowerCase();
+  if (!validateAdminRole(nextRole)) {
+    throw new Error(`Invalid role: ${role}`);
+  }
+
+  const ref = firestore.doc(`users/${uid}`);
+  const before = await ref.get();
+  if (!before.exists) return null;
+
+  await ref.update({ role: nextRole, updatedAt: new Date() });
+
+  const adminRoleRef = firestore.doc(`roles_admin/${uid}`);
+  if (nextRole === 'admin') {
+    await adminRoleRef.set({ role: 'admin', updatedAt: new Date() }, { merge: true });
+  } else {
+    const adminRoleSnap = await adminRoleRef.get();
+    if (adminRoleSnap.exists) await adminRoleRef.delete();
+  }
+
+  const after = await ref.get();
+  if (!after.exists) return null;
+
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'user_profile_admin_edit', targetId: uid, targetType: 'user', before: before.data() ?? null, after: after.data() ?? null, metadata: { change: 'role' } });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userId: actorUserId, userRole: 'admin', targetId: uid, targetType: 'user' });
+  return mapUserProfile(after.id, after.data() ?? {});
+}
+
+export async function updateUserAccountStatus(
+  uid: string,
+  accountStatus: UserProfile['accountStatus'],
+  actorUserId = 'system-admin',
+): Promise<UserProfile | null> {
+  const nextStatus = accountStatus === 'suspended' ? 'suspended' : 'active';
+  const ref = firestore.doc(`users/${uid}`);
+  const before = await ref.get();
+  if (!before.exists) return null;
+
+  await ref.update({ accountStatus: nextStatus, updatedAt: new Date() });
+  const after = await ref.get();
+  if (!after.exists) return null;
+
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'user_profile_admin_edit', targetId: uid, targetType: 'user', before: before.data() ?? null, after: after.data() ?? null, metadata: { change: 'account_status' } });
+  await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userId: actorUserId, userRole: 'admin', targetId: uid, targetType: 'user' });
+  return mapUserProfile(after.id, after.data() ?? {});
 }
 
 export async function updateUserAdminProfile(
   uid: string,
   data: Partial<Pick<UserProfile, 'name' | 'role' | 'membershipTier' | 'membershipStatus' | 'accountStatus'>>,
 ): Promise<UserProfile | null> {
-  const ref = firestore.doc(`users/${uid}`);
-  await ref.update({ ...data, updatedAt: new Date() });
-  const snap = await ref.get();
-  if (!snap.exists) return null;
-  const user = snap.data();
-  if (!user) return null;
+  let next = await getUserById(uid);
+  if (data.name) {
+    next = await updateUserAdminFields(uid, { name: data.name });
+  }
+  if (!next) return null;
 
-  return {
-    uid: snap.id,
-    name: user.name ?? '',
-    email: user.email ?? '',
-    company: user.company ?? null,
-    phone: user.phone ?? null,
-    role: user.role ?? 'member',
-    membershipTier: user.membershipTier ?? null,
-    membershipStatus: user.membershipStatus ?? 'pending',
-    emailVerified: Boolean(user.emailVerified),
-    lastLoginAt: user.lastLoginAt ? toIsoString(user.lastLoginAt) : null,
-    accountStatus: user.accountStatus === 'suspended' ? 'suspended' : 'active',
-    createdAt: toIsoString(user.createdAt),
-    updatedAt: toIsoString(user.updatedAt),
-  };
+  if (data.role) {
+    next = await updateUserRole(uid, data.role);
+    if (!next) return null;
+  }
+
+  if (data.accountStatus) {
+    next = await updateUserAccountStatus(uid, data.accountStatus);
+    if (!next) return null;
+  }
+
+  if (data.membershipTier || data.membershipStatus) {
+    const ref = firestore.doc(`users/${uid}`);
+    await ref.update({ membershipTier: data.membershipTier ?? next.membershipTier ?? null, membershipStatus: data.membershipStatus ?? next.membershipStatus ?? 'pending', updatedAt: new Date() });
+    next = await getUserById(uid);
+  }
+
+  return next;
 }
