@@ -7,6 +7,7 @@ import type {
   PartnerOffer,
   PastProject,
   Testimonial,
+  UserProfile,
 } from './definitions';
 import { logAuditEvent, saveContentRevision } from './audit';
 import { safeLogAnalyticsEvent } from './analytics';
@@ -36,6 +37,7 @@ export async function getDocumentSuites(): Promise<DocumentSuite[]> {
       id: d.id,
       name: data.name,
       description: data.description,
+      contentType: data.contentType,
     } as Omit<DocumentSuite, 'documents'>;
   });
 
@@ -83,6 +85,7 @@ export async function getSuites(): Promise<Omit<DocumentSuite, 'documents'>[]> {
       id: d.id,
       name: data.name,
       description: data.description,
+      contentType: data.contentType,
     };
   });
 }
@@ -188,6 +191,7 @@ export async function updateSuite(
     id: updatedDocSnap.id,
     name: docData.name,
     description: docData.description,
+    contentType: docData.contentType,
   };
 }
 
@@ -275,71 +279,24 @@ export async function deleteMembershipPlan(id: string): Promise<boolean> {
   return true;
 }
 
-export type KnowledgeArticleFilters = {
-  type?: KnowledgeContentType;
-  published?: boolean;
-  featured?: boolean;
-  search?: string;
-  tags?: string[];
-  sortBy?: 'updatedAt' | 'createdAt' | 'publishedAt';
-  sortDirection?: 'asc' | 'desc';
-};
-
-const normalizeKnowledgeArticle = (
-  id: string,
-  data: FirebaseFirestore.DocumentData,
-): KnowledgeArticle => ({
-  id,
-  title: data.title,
-  slug: data.slug,
-  excerpt: data.excerpt ?? '',
-  content: data.content ?? '',
-  type: (data.type ?? 'article') as KnowledgeContentType,
-  tags: Array.isArray(data.tags) ? data.tags : [],
-  authorId: data.authorId,
-  authorName: data.authorName,
-  published: Boolean(data.published),
-  featured: Boolean(data.featured),
-  imageUrl: data.imageUrl,
-  seoTitle: data.seoTitle,
-  seoDescription: data.seoDescription,
-  externalLink: data.externalLink,
-  ctaLabel: data.ctaLabel,
-  createdAt: toIsoString(data.createdAt),
-  updatedAt: toIsoString(data.updatedAt),
-  publishedAt: data.publishedAt ? toIsoString(data.publishedAt) : undefined,
-});
-
-const buildKnowledgeQuery = (filters?: KnowledgeArticleFilters) => {
-  let query: FirebaseFirestore.Query = firestore.collection('knowledge_articles');
-
-  if (filters?.type) query = query.where('type', '==', filters.type);
-  if (typeof filters?.published === 'boolean') query = query.where('published', '==', filters.published);
-  if (typeof filters?.featured === 'boolean') query = query.where('featured', '==', filters.featured);
-
-  const sortBy = filters?.sortBy ?? 'updatedAt';
-  const sortDirection = filters?.sortDirection ?? 'desc';
-  return query.orderBy(sortBy, sortDirection);
-};
-
-export async function getKnowledgeArticles(filters?: KnowledgeArticleFilters): Promise<KnowledgeArticle[]> {
-  const snapshot = await buildKnowledgeQuery(filters).get();
-  const normalized = snapshot.docs.map((d) => normalizeKnowledgeArticle(d.id, d.data()));
-
-  return normalized.filter((item) => {
-    if (filters?.search) {
-      const term = filters.search.toLowerCase();
-      if (!item.title.toLowerCase().includes(term) && !item.slug.toLowerCase().includes(term)) {
-        return false;
-      }
-    }
-
-    if (filters?.tags?.length) {
-      const current = new Set(item.tags ?? []);
-      if (!filters.tags.some((tag) => current.has(tag))) return false;
-    }
-
-    return true;
+export async function getKnowledgeArticles(): Promise<KnowledgeArticle[]> {
+  const snapshot = await firestore.collection('knowledge_articles').orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      title: data.title,
+      slug: data.slug,
+      excerpt: data.excerpt,
+      content: data.content,
+      category: data.category,
+      contentType: data.contentType,
+      tags: data.tags,
+      authorId: data.authorId,
+      published: Boolean(data.published),
+      createdAt: toIsoString(data.createdAt),
+      updatedAt: toIsoString(data.updatedAt),
+    };
   });
 }
 
@@ -442,15 +399,20 @@ export async function updateKnowledgeArticle(
 
   await saveContentRevision({ contentType: 'knowledge_article', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
   await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'knowledge_article' });
-  return normalizeKnowledgeArticle(snapshot.id, article);
-}
-
-export async function publishKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
-  return updateKnowledgeArticle(id, { published: true });
-}
-
-export async function unpublishKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
-  return updateKnowledgeArticle(id, { published: false });
+  return {
+    id: snapshot.id,
+    title: article.title,
+    slug: article.slug,
+    excerpt: article.excerpt,
+    content: article.content,
+    category: article.category,
+    contentType: article.contentType,
+    tags: article.tags,
+    authorId: article.authorId,
+    published: Boolean(article.published),
+    createdAt: toIsoString(article.createdAt),
+    updatedAt: toIsoString(article.updatedAt),
+  };
 }
 
 export async function deleteKnowledgeArticle(id: string): Promise<boolean> {
@@ -472,6 +434,8 @@ export async function getPartnerOffers(): Promise<PartnerOffer[]> {
       description: data.description,
       link: data.link,
       active: Boolean(data.active),
+      displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
+      expiresAt: data.expiresAt ? toIsoString(data.expiresAt) : null,
       createdAt: toIsoString(data.createdAt),
       updatedAt: toIsoString(data.updatedAt),
     };
@@ -510,6 +474,8 @@ export async function updatePartnerOffer(
     description: offer.description,
     link: offer.link,
     active: Boolean(offer.active),
+    displayOrder: typeof offer.displayOrder === 'number' ? offer.displayOrder : 0,
+    expiresAt: offer.expiresAt ? toIsoString(offer.expiresAt) : null,
     createdAt: toIsoString(offer.createdAt),
     updatedAt: toIsoString(offer.updatedAt),
   };
@@ -533,6 +499,8 @@ export async function getTestimonials(): Promise<Testimonial[]> {
       content: data.content,
       role: data.role,
       company: data.company,
+      active: Boolean(data.active ?? true),
+      displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
       createdAt: toIsoString(data.createdAt),
       updatedAt: toIsoString(data.updatedAt),
     };
@@ -575,6 +543,8 @@ export async function updateTestimonial(
     content: testimonial.content,
     role: testimonial.role,
     company: testimonial.company,
+    active: Boolean(testimonial.active ?? true),
+    displayOrder: typeof testimonial.displayOrder === 'number' ? testimonial.displayOrder : 0,
     createdAt: toIsoString(testimonial.createdAt),
     updatedAt: toIsoString(testimonial.updatedAt),
   };
@@ -597,6 +567,8 @@ export async function getPastProjects(): Promise<PastProject[]> {
       name: data.name,
       description: data.description,
       link: data.link,
+      active: Boolean(data.active ?? true),
+      displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
       createdAt: toIsoString(data.createdAt),
       updatedAt: toIsoString(data.updatedAt),
     };
@@ -638,6 +610,8 @@ export async function updatePastProject(
     name: project.name,
     description: project.description,
     link: project.link,
+    active: Boolean(project.active ?? true),
+    displayOrder: typeof project.displayOrder === 'number' ? project.displayOrder : 0,
     createdAt: toIsoString(project.createdAt),
     updatedAt: toIsoString(project.updatedAt),
   };
@@ -649,4 +623,55 @@ export async function deletePastProject(id: string): Promise<boolean> {
   await ref.delete();
   await saveContentRevision({ contentType: 'past_project', contentId: id, editorUserId: 'system-admin', previousContent: before.data() ?? null, currentContent: null });
   return true;
+}
+
+
+export async function getUsersForAdmin(): Promise<UserProfile[]> {
+  const snapshot = await firestore.collection('users').orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    return {
+      uid: d.id,
+      name: data.name ?? '',
+      email: data.email ?? '',
+      company: data.company ?? null,
+      phone: data.phone ?? null,
+      role: data.role ?? 'member',
+      membershipTier: data.membershipTier ?? null,
+      membershipStatus: data.membershipStatus ?? 'pending',
+      emailVerified: Boolean(data.emailVerified),
+      lastLoginAt: data.lastLoginAt ? toIsoString(data.lastLoginAt) : null,
+      accountStatus: data.accountStatus === 'suspended' ? 'suspended' : 'active',
+      createdAt: toIsoString(data.createdAt),
+      updatedAt: toIsoString(data.updatedAt),
+    };
+  });
+}
+
+export async function updateUserAdminProfile(
+  uid: string,
+  data: Partial<Pick<UserProfile, 'name' | 'role' | 'membershipTier' | 'membershipStatus' | 'accountStatus'>>,
+): Promise<UserProfile | null> {
+  const ref = firestore.doc(`users/${uid}`);
+  await ref.update({ ...data, updatedAt: new Date() });
+  const snap = await ref.get();
+  if (!snap.exists) return null;
+  const user = snap.data();
+  if (!user) return null;
+
+  return {
+    uid: snap.id,
+    name: user.name ?? '',
+    email: user.email ?? '',
+    company: user.company ?? null,
+    phone: user.phone ?? null,
+    role: user.role ?? 'member',
+    membershipTier: user.membershipTier ?? null,
+    membershipStatus: user.membershipStatus ?? 'pending',
+    emailVerified: Boolean(user.emailVerified),
+    lastLoginAt: user.lastLoginAt ? toIsoString(user.lastLoginAt) : null,
+    accountStatus: user.accountStatus === 'suspended' ? 'suspended' : 'active',
+    createdAt: toIsoString(user.createdAt),
+    updatedAt: toIsoString(user.updatedAt),
+  };
 }
