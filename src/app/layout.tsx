@@ -5,15 +5,12 @@ import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import MarketingHeader from '@/components/marketing-header';
 import MarketingFooter from '@/components/marketing-footer';
-import { usePathname } from 'next/navigation';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const isPartnerPage = pathname.startsWith('/partner-offers');
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -26,9 +23,6 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased", "bg-background")}>
         <FirebaseClientProvider>
-          {isPartnerPage ? (
-            children
-          ) : (
             <div className="flex flex-col min-h-screen">
               <MarketingHeader />
               <main className="flex-1">
@@ -36,7 +30,6 @@ export default function RootLayout({
               </main>
               <MarketingFooter />
             </div>
-          )}
         </FirebaseClientProvider>
         <Toaster />
       </body>
