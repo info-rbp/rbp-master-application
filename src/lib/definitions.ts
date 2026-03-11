@@ -127,8 +127,8 @@ export type UserProfile = {
   uid: string;
   name: string;
   email: string;
-  company?: string;
-  phone?: string;
+  company?: string | null;
+  phone?: string | null;
   role: string;
   membershipTier?: string | null;
   membershipStatus?: string;
@@ -137,6 +137,47 @@ export type UserProfile = {
   accountStatus?: 'active' | 'suspended';
   createdAt: string;
   updatedAt: string;
+  accessExpiry?: string | null;
+  squareCustomerId?: string | null;
+  squareSubscriptionId?: string | null;
+  lastPaymentStatus?: string | null;
+  lastPaymentAt?: string | null;
+};
+
+export type UserAdminListFilters = {
+  query?: string;
+  role?: string;
+  membershipStatus?: string;
+  membershipTier?: string;
+  verification?: 'all' | 'verified' | 'unverified';
+  accountStatus?: 'all' | 'active' | 'suspended';
+  sortBy?: 'createdAt' | 'lastLoginAt';
+  sortDir?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+};
+
+export type UserAdminListResult = {
+  items: UserProfile[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type UserAdminNotification = {
+  id: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+};
+
+export type UserAdminActivity = {
+  analyticsEvents: AnalyticsEventRecord[];
+  auditEvents: AuditLogRecord[];
+  membershipHistory: MembershipHistoryItem[];
+  notifications: UserAdminNotification[];
 };
 
 export type Entitlement = {

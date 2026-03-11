@@ -1,14 +1,14 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import type { KnowledgeArticle, PartnerOffer, PastProject, Testimonial, UserProfile } from '@/lib/definitions';
-import { removeKnowledgeArticle, removePartnerOffer, removePastProject, removeTestimonial, saveKnowledgeArticle, savePartnerOffer, savePastProject, saveTestimonial, saveUserAdminChanges } from '../content-actions';
+import type { KnowledgeArticle, PartnerOffer, PastProject, Testimonial } from '@/lib/definitions';
+import { removeKnowledgeArticle, removePartnerOffer, removePastProject, removeTestimonial, saveKnowledgeArticle, savePartnerOffer, savePastProject, saveTestimonial } from '../content-actions';
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleString() : '—');
 
@@ -84,7 +84,7 @@ export function TestimonialsManager({ initial }: { initial: Testimonial[] }) {
     setSubmitting(true);
     const saved = await saveTestimonial({ id: editing?.id, clientName, content, company: String(formData.get('company') || ''), role: String(formData.get('role') || ''), imageUrl: String(formData.get('imageUrl') || ''), displayOrder: Number(formData.get('displayOrder') ?? 0), active: formData.get('active') === 'on' });
     setSubmitting(false);
-    if (!saved) return toast({ title: 'Save failed', variant: 'destructive' });
+    if (!saved) { toast({ title: 'Save failed', variant: 'destructive' }); return; }
     setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null); toast({ title: 'Saved' });
   }
 
@@ -109,7 +109,7 @@ export function PastProjectsManager({ initial }: { initial: PastProject[] }) {
     setSubmitting(true);
     const saved = await savePastProject({ id: editing?.id, name, description, link: String(formData.get('link') || ''), imageUrl: String(formData.get('imageUrl') || ''), displayOrder: Number(formData.get('displayOrder') ?? 0), active: formData.get('active') === 'on' });
     setSubmitting(false);
-    if (!saved) return toast({ title: 'Save failed', variant: 'destructive' });
+    if (!saved) { toast({ title: 'Save failed', variant: 'destructive' }); return; }
     setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null); toast({ title: 'Saved' });
   }
 
@@ -126,11 +126,4 @@ export function KnowledgeManager({ initial, type }: { initial: KnowledgeArticle[
     setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null);
   }
   return <div className="space-y-4"><div className="flex justify-between"><h3 className="text-xl font-semibold capitalize">{type}</h3><Button onClick={() => { setEditing(null); setOpen(true); }}>Create</Button></div><div className="space-y-2">{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.title}</p><p className="text-sm text-muted-foreground">/{item.slug}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="destructive" onClick={async () => { await removeKnowledgeArticle(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); }}>Delete</Button></div></CardContent></Card>)}</div><Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit entry' : 'Create entry'}</DialogTitle></DialogHeader><form action={submit} className="space-y-2"><Input name="title" defaultValue={editing?.title} required /><Input name="slug" defaultValue={editing?.slug} required /><Input name="excerpt" defaultValue={editing?.excerpt} placeholder="Summary" /><Textarea name="content" defaultValue={editing?.content} required className="min-h-40" /><Input name="category" defaultValue={editing?.category} /><Input name="tags" defaultValue={editing?.tags?.join(',')} placeholder="tag1, tag2" /><label className="flex items-center gap-2"><input type="checkbox" name="published" defaultChecked={editing?.published ?? false}/>Published</label><Button type="submit">Save</Button></form></DialogContent></Dialog></div>;
-}
-
-export function UsersAdminManager({ initial }: { initial: UserProfile[] }) {
-  const [users, setUsers] = useState(initial);
-  const [query, setQuery] = useState('');
-  const filtered = useMemo(() => users.filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase())), [users, query]);
-  return <Card><CardHeader><CardTitle>Users administration</CardTitle><Input placeholder="Search by name or email" value={query} onChange={(e) => setQuery(e.target.value)} /></CardHeader><CardContent className="space-y-2">{filtered.map((u) => <div key={u.uid} className="border rounded p-3"><div className="font-medium">{u.name} <span className="text-xs text-muted-foreground">{u.email}</span></div><form action={async (fd: FormData) => { const updated = await saveUserAdminChanges(u.uid, { role: String(fd.get('role')), membershipTier: String(fd.get('tier')), membershipStatus: String(fd.get('status')), accountStatus: String(fd.get('accountStatus')) as UserProfile['accountStatus'] }); if (updated) setUsers((prev) => prev.map((x) => x.uid === u.uid ? updated : x)); }} className="mt-2 grid md:grid-cols-4 gap-2"><Input name="role" defaultValue={u.role} /><Input name="tier" defaultValue={u.membershipTier ?? ''} /><Input name="status" defaultValue={u.membershipStatus ?? ''} /><Input name="accountStatus" defaultValue={u.accountStatus ?? 'active'} /><Button type="submit" className="md:col-span-4">Save</Button></form></div>)}</CardContent></Card>;
 }

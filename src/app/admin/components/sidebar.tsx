@@ -207,11 +207,11 @@ export default function AdminSidebar() {
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith('/admin/users')}
-              tooltip="Users & Roles"
+              tooltip="Users"
             >
               <Link href="/admin/users">
                 <Users />
-                <span>Users & Roles</span>
+                <span>Users</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
