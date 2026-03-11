@@ -32,7 +32,11 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (email === 'info@remotebusinesspartner.com.au' && password === 'Foxtrot19!') {
+        // Bypass Firebase for these specific credentials for development
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
        toast({
         title: 'Login Successful',
         description: 'Redirecting to dashboard...',
