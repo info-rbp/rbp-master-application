@@ -26,6 +26,7 @@ import {
   Users,
   ChevronRight,
   Briefcase,
+  Workflow,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -117,15 +118,30 @@ export default function AdminSidebar() {
           </SidebarMenuItem>
 
           <SidebarMenuItem>
-            <CollapsibleSidebarItem icon={Folder} title="DocuShare" pathPrefix="/admin/docu">
-                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/suites')} tooltip="Suites" variant="ghost">
-                        <Link href="/admin/suites"><Folder /><span>Suites</span></Link>
+            <CollapsibleSidebarItem icon={Folder} title="DocuShare" pathPrefix="/admin/docushare">
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/templates')} tooltip="Templates" variant="ghost">
+                        <Link href="/admin/docushare/templates"><FileText /><span>Templates</span></Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/documents')} tooltip="Documents" variant="ghost">
-                        <Link href="/admin/documents"><FileText /><span>Documents</span></Link>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/companion-guides')} tooltip="Companion Guides" variant="ghost">
+                        <Link href="/admin/docushare/companion-guides"><BookOpen /><span>Companion Guides</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/documentation-suites')} tooltip="Documentation Suites" variant="ghost">
+                        <Link href="/admin/docushare/documentation-suites"><Folder /><span>Documentation Suites</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/end-to-end-processes')} tooltip="End-to-End Processes" variant="ghost">
+                        <Link href="/admin/docushare/end-to-end-processes"><Workflow /><span>End-to-End Processes</span></Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/customisation-service')} tooltip="Customisation Service" variant="ghost">
+                        <Link href="/admin/docushare/customisation-service"><Wrench /><span>Customisation Service</span></Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </CollapsibleSidebarItem>
