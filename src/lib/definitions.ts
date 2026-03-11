@@ -72,9 +72,17 @@ export type KnowledgeArticle = {
   contentType?: 'article' | 'guide' | 'tool' | 'knowledge-base';
   tags?: string[];
   authorId?: string;
+  authorName?: string;
   published: boolean;
+  featured?: boolean;
+  imageUrl?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  externalLink?: string;
+  ctaLabel?: string;
   createdAt: string;
   updatedAt: string;
+  publishedAt?: string;
 };
 
 export type PartnerOffer = {
