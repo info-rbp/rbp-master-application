@@ -15,8 +15,21 @@ import {
 import { categories as partnerCategories } from '@/app/partner-offers/data';
 
 const navLinks = [
-  { href: '/services', label: 'Services' },
-  { href: '/past-projects', label: 'Past Projects' },
+   {
+    label: 'Services',
+    href: '/services',
+    subLinks: [
+      { href: '/services', label: 'All Services' },
+      { href: '/services/operations', label: 'Operations Advisory' },
+      { href: '/services/financial', label: 'Financial Advisory' },
+      { href: '/services/sales-marketing', label: 'Sales & Marketing Advisory' },
+      { href: '/services/hr', label: 'Human Resources Advisory' },
+      { href: '/services/management', label: 'Management Advisory' },
+      { href: '/services/change-management', label: 'Change Management Advisory' },
+      { href: '/services/ai', label: 'AI Advisory' },
+      { href: '/services/past-projects', label: 'Past Projects' },
+    ]
+  },
   {
     label: 'Partner Offers',
     href: '/partner-offers',
@@ -48,7 +61,7 @@ export default function MarketingHeader() {
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           {navLinks.map((link) =>
             link.subLinks ? (
-              <DropdownMenu key={link.label}>
+               <DropdownMenu key={link.label}>
                 <DropdownMenuTrigger
                   className={cn(
                     'flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground',
@@ -59,9 +72,6 @@ export default function MarketingHeader() {
                   <ChevronDown className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                   <DropdownMenuItem asChild>
-                    <Link href="/partner-offers">Offers Home</Link>
-                  </DropdownMenuItem>
                   {link.subLinks.map((subLink) => (
                     <DropdownMenuItem key={subLink.href} asChild>
                       <Link href={subLink.href}>{subLink.label}</Link>

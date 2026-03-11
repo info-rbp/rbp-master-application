@@ -130,5 +130,47 @@
     "width": 600,
     "height": 400,
     "hint": "data analytics"
+  },
+  "operationsHero": {
+    "src": "https://picsum.photos/seed/ophero/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "operations process"
+  },
+  "financialHero": {
+    "src": "https://picsum.photos/seed/finhero/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "financial chart"
+  },
+  "salesMarketingHero": {
+    "src": "https://picsum.photos/seed/smhero/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "marketing campaign"
+  },
+  "hrHero": {
+    "src": "https://picsum.photos/seed/hrhero/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "team meeting"
+  },
+  "managementHero": {
+    "src": "https://picsum.photos/seed/mnghero/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "leadership"
+  },
+  "changeManagementHero": {
+    "src": "https://picsum.photos/seed/cmhero/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "organizational change"
+  },
+  "aiHero": {
+    "src": "https://picsum.photos/seed/aihero/1200/600",
+    "width": 1200,
+    "height": 600,
+    "hint": "artificial intelligence"
   }
 }
