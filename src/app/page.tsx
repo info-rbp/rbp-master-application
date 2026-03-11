@@ -16,7 +16,7 @@ export default function LandingPage() {
           <div className="mr-4 flex items-center">
             <Link href="/" className="flex items-center gap-2">
               <Logo className="h-8 w-8" />
-              <span className="font-bold">DocShare</span>
+              <span className="font-bold">Remote Business Partner</span>
             </Link>
           </div>
           <nav className="hidden md:flex items-center gap-4 text-sm font-medium">
@@ -50,19 +50,19 @@ export default function LandingPage() {
           <div className="container mx-auto px-4 md:px-6 text-center">
             <div className="max-w-3xl mx-auto">
               <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
-                Your Business Document Powerhouse
+                Streamline Your Operations, Unleash Your Growth
               </h1>
               <p className="mt-6 text-lg text-muted-foreground md:text-xl">
-                A comprehensive platform of documents, templates, and resources for startups, entrepreneurs, and small business owners to access anytime.
+                We provide startups, entrepreneurs, and small business owners with the essential documents and resources needed to thrive. Focus on your business, we'll handle the paperwork.
               </p>
               <div className="mt-8 flex justify-center gap-4">
                 <Button asChild size="lg">
-                  <Link href="/portal">Explore Documents</Link>
+                  <Link href="/portal">Explore Our Document Hub</Link>
                 </Button>
               </div>
             </div>
           </div>
-           <div className="absolute inset-0 -z-10 h-full w-full bg-white [background:radial-gradient(125%_125%_at_50%_10%,#fff_40%,#63e_100%)] dark:[background:radial-gradient(125%_125%_at_50%_10%,#000_40%,#63e_100%)]"
+           <div className="absolute inset-0 -z-10 h-full w-full bg-white [background:radial-gradient(125%_125%_at_50%_10%,#fff_40%,#3b82f6_100%)] dark:[background:radial-gradient(125%_125%_at_50%_10%,#0a143a_40%,#3b82f6_100%)]"
             style={{opacity: 0.15}}
            ></div>
         </section>
@@ -77,10 +77,10 @@ export default function LandingPage() {
                     Key Features
                   </div>
                   <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-                    Everything you need to succeed.
+                    Everything You Need, All in One Place.
                   </h2>
                   <p className="max-w-[600px] text-muted-foreground md:text-lg/relaxed lg:text-base/relaxed xl:text-lg/relaxed">
-                    Our platform is built from the ground up to provide you with the tools and resources for every stage of your business journey.
+                    From legal templates to financial models, our comprehensive library is designed to support your business at every stage of growth.
                   </p>
                 </div>
                 <ul className="grid gap-6">
@@ -131,10 +131,10 @@ export default function LandingPage() {
                   Testimonials
                 </div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
-                  Loved by Entrepreneurs
+                  Trusted by Businesses Worldwide
                 </h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Hear what our users are saying about their experience with DocShare.
+                  See how Remote Business Partner is helping businesses like yours succeed.
                 </p>
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function LandingPage() {
               <Card>
                 <CardContent className="p-6">
                   <p className="text-muted-foreground">
-                    “DocShare has been a game-changer for our startup. Access to reliable templates saved us countless hours and legal fees.”
+                    “Remote Business Partner has been a game-changer for our startup. Access to reliable templates saved us countless hours and legal fees.”
                   </p>
                   <div className="mt-4 flex items-center gap-4">
                     <Avatar>
@@ -159,7 +159,7 @@ export default function LandingPage() {
               <Card>
                 <CardContent className="p-6">
                   <p className="text-muted-foreground">
-                    “As a solo entrepreneur, I wear many hats. DocShare is like having a legal and HR department in my back pocket.”
+                    “As a solo entrepreneur, I wear many hats. Remote Business Partner is like having a legal and HR department in my back pocket.”
                   </p>
                    <div className="mt-4 flex items-center gap-4">
                     <Avatar>
@@ -199,10 +199,10 @@ export default function LandingPage() {
             <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
                 <div className="space-y-3">
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
-                    Ready to Streamline Your Business?
+                    Ready to Elevate Your Business?
                 </h2>
                 <p className="mx-auto max-w-[600px] text-primary-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                    Dive into our comprehensive document library and give your business the professional edge it deserves.
+                    Sign up today to gain instant access to our complete library of documents and resources.
                 </p>
                 </div>
                 <div className="mx-auto w-full max-w-sm space-y-2">
@@ -225,7 +225,7 @@ export default function LandingPage() {
           </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <p className="text-center">
-                &copy; {new Date().getFullYear()} DocShare. All Rights Reserved.
+                &copy; {new Date().getFullYear()} Remote Business Partner. All Rights Reserved.
               </p>
               <Link href="/admin/login" className="hover:underline">Admin Login</Link>
             </div>

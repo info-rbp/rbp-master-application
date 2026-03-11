@@ -78,8 +78,8 @@ export default function PortalClientView({
             <div className="flex items-center gap-4">
                 <Logo />
                 <div>
-                    <h1 className="text-3xl font-bold font-headline" style={{ color: 'hsl(274, 49%, 30%)' }}>
-                    DocShare Portal
+                    <h1 className="text-3xl font-bold font-headline" style={{ color: 'hsl(var(--foreground))' }}>
+                    Document Hub
                     </h1>
                     <p className="text-muted-foreground mt-1">
                     Your central hub for all documentation and templates.
@@ -127,7 +127,7 @@ export default function PortalClientView({
       <footer className="w-full py-6 mt-16 border-t">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center text-sm text-muted-foreground">
           <p>
-            &copy; {new Date().getFullYear()} DocShare Portal. All rights reserved.
+            &copy; {new Date().getFullYear()} Remote Business Partner. All rights reserved.
           </p>
           <Button variant="link" asChild>
             <Link href="/admin/login">Admin Login</Link>

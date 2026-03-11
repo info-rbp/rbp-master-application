@@ -41,7 +41,7 @@ export default function AdminSidebar() {
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <Logo className="w-8 h-8" />
-          <span className="text-lg font-semibold">DocShare</span>
+          <span className="text-lg font-semibold">RBP</span>
         </div>
       </SidebarHeader>
       <SidebarContent>

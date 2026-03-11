@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils';
-import { Layers } from 'lucide-react';
 
 export default function Logo({ className }: { className?: string }) {
   return (
@@ -9,8 +8,8 @@ export default function Logo({ className }: { className?: string }) {
         className
       )}
     >
-      <Layers className="h-6 w-6" />
-      <span className="sr-only">DocShare Portal</span>
+      <span className="text-xl font-bold tracking-tighter">RBP</span>
+      <span className="sr-only">Remote Business Partner</span>
     </div>
   );
 }
