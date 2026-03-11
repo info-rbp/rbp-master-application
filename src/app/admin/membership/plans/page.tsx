@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import type { MembershipPlan } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
@@ -10,15 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
-const initialForm = {
-  name: '',
-  description: '',
-  amount: '',
-  currency: 'usd',
-  interval: 'month',
-  active: true,
-  stripePriceId: '',
-};
+const initialForm = { name: '', description: '', amount: '', currency: 'usd', interval: 'month', active: true, stripePriceId: '' };
 
 export default function AdminMembershipPlansPage() {
   const firestore = useFirestore();
@@ -32,62 +24,44 @@ export default function AdminMembershipPlansPage() {
     setLoading(true);
     try {
       const snapshot = await getDocs(query(collection(firestore, 'membership_plans'), orderBy('amount', 'asc')));
-      setPlans(
-        snapshot.docs.map((d) => {
-          const data = d.data();
-          return {
-            id: d.id,
-            name: data.name,
-            description: data.description,
-            amount: Number(data.amount),
-            currency: data.currency,
-            interval: data.interval,
-            active: Boolean(data.active),
-            stripePriceId: data.stripePriceId,
-          };
-        }),
-      );
+      setPlans(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MembershipPlan, 'id'>) })));
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to load plans',
-        description: error instanceof Error ? error.message : 'Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Failed to load plans', description: error instanceof Error ? error.message : 'Please try again.' });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    void loadPlans();
-  }, []);
+  useEffect(() => { void loadPlans(); }, []);
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!form.name.trim() || Number(form.amount) <= 0) {
+      toast({ variant: 'destructive', title: 'Validation failed', description: 'Name and positive amount are required.' });
+      return;
+    }
+
     setSaving(true);
     try {
       await addDoc(collection(firestore, 'membership_plans'), {
-        name: form.name.trim(),
-        description: form.description.trim(),
-        amount: Number(form.amount),
-        currency: form.currency.trim().toLowerCase(),
-        interval: form.interval.trim().toLowerCase(),
-        active: form.active,
-        stripePriceId: form.stripePriceId.trim() || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        name: form.name.trim(), description: form.description.trim(), amount: Number(form.amount), currency: form.currency.trim().toLowerCase(), interval: form.interval.trim().toLowerCase(), active: form.active, stripePriceId: form.stripePriceId.trim() || null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       });
-      toast({ title: 'Plan created', description: 'Membership plan added successfully.' });
+      toast({ title: 'Plan created' });
       setForm(initialForm);
       await loadPlans();
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to create plan',
-        description: error instanceof Error ? error.message : 'Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Failed to create plan', description: error instanceof Error ? error.message : 'Please try again.' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const savePlan = async (plan: MembershipPlan) => {
+    try {
+      await updateDoc(doc(firestore, 'membership_plans', plan.id), { ...plan, updatedAt: new Date().toISOString() });
+      toast({ title: 'Plan updated' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Failed to update plan', description: error instanceof Error ? error.message : 'Please try again.' });
     }
   };
 
@@ -97,87 +71,15 @@ export default function AdminMembershipPlansPage() {
       toast({ title: 'Plan deleted' });
       await loadPlans();
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to delete plan',
-        description: error instanceof Error ? error.message : 'Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Failed to delete plan', description: error instanceof Error ? error.message : 'Please try again.' });
     }
   };
 
   return (
     <div className="space-y-6 p-4 md:p-8">
       <h1 className="text-3xl font-bold tracking-tight">Membership Plans</h1>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Create plan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreate}>
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
-              <Input id="amount" type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <Input id="currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="interval">Interval</Label>
-              <Input id="interval" value={form.interval} onChange={(e) => setForm({ ...form, interval: e.target.value })} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="stripePriceId">Stripe Price ID</Label>
-              <Input id="stripePriceId" value={form.stripePriceId} onChange={(e) => setForm({ ...form, stripePriceId: e.target.value })} />
-            </div>
-            <div className="flex items-center gap-2 md:col-span-2">
-              <input
-                id="active"
-                type="checkbox"
-                checked={form.active}
-                onChange={(e) => setForm({ ...form, active: e.target.checked })}
-              />
-              <Label htmlFor="active">Active</Label>
-            </div>
-            <div className="md:col-span-2">
-              <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Create plan'}</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Existing plans</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {loading ? (
-            <p className="text-muted-foreground">Loading plans...</p>
-          ) : plans.length === 0 ? (
-            <p className="text-muted-foreground">No plans found.</p>
-          ) : (
-            plans.map((plan) => (
-              <div key={plan.id} className="flex items-center justify-between rounded border p-3">
-                <div>
-                  <p className="font-medium">{plan.name}</p>
-                  <p className="text-sm text-muted-foreground">{plan.currency.toUpperCase()} {plan.amount} / {plan.interval}</p>
-                  <p className="text-xs text-muted-foreground">{plan.active ? 'Active' : 'Inactive'}</p>
-                </div>
-                <Button variant="destructive" onClick={() => handleDelete(plan.id)}>Delete</Button>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+      <Card><CardHeader><CardTitle>Create plan</CardTitle></CardHeader><CardContent><form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreate}><div className="space-y-2"><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div><div className="space-y-2"><Label>Description</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required /></div><div className="space-y-2"><Label>Amount</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></div><div className="space-y-2"><Label>Currency</Label><Input value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} required /></div><div className="space-y-2"><Label>Interval</Label><Input value={form.interval} onChange={(e) => setForm({ ...form, interval: e.target.value })} required /></div><div className="space-y-2"><Label>Stripe Price ID</Label><Input value={form.stripePriceId} onChange={(e) => setForm({ ...form, stripePriceId: e.target.value })} /></div><div className="flex items-center gap-2 md:col-span-2"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /><Label>Active</Label></div><div className="md:col-span-2"><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Create plan'}</Button></div></form></CardContent></Card>
+      <Card><CardHeader><CardTitle>Existing plans</CardTitle></CardHeader><CardContent className="space-y-3">{loading ? <p className="text-muted-foreground">Loading plans...</p> : plans.length === 0 ? <p className="text-muted-foreground">No plans found.</p> : plans.map((plan, index) => (<div key={plan.id} className="grid gap-2 rounded border p-3 md:grid-cols-8"><Input value={plan.name} onChange={(e) => setPlans((prev) => prev.map((p, i) => i === index ? { ...p, name: e.target.value } : p))} /><Input value={plan.description} onChange={(e) => setPlans((prev) => prev.map((p, i) => i === index ? { ...p, description: e.target.value } : p))} /><Input value={plan.amount} type="number" onChange={(e) => setPlans((prev) => prev.map((p, i) => i === index ? { ...p, amount: Number(e.target.value) } : p))} /><Input value={plan.currency} onChange={(e) => setPlans((prev) => prev.map((p, i) => i === index ? { ...p, currency: e.target.value } : p))} /><Input value={plan.interval} onChange={(e) => setPlans((prev) => prev.map((p, i) => i === index ? { ...p, interval: e.target.value } : p))} /><Input value={plan.stripePriceId || ''} onChange={(e) => setPlans((prev) => prev.map((p, i) => i === index ? { ...p, stripePriceId: e.target.value } : p))} /><div className="flex items-center gap-2 text-sm"><input type="checkbox" checked={plan.active} onChange={(e) => setPlans((prev) => prev.map((p, i) => i === index ? { ...p, active: e.target.checked } : p))} />Active</div><div className="flex gap-2"><Button size="sm" onClick={() => savePlan(plan)}>Save</Button><Button size="sm" variant="destructive" onClick={() => handleDelete(plan.id)}>Delete</Button></div></div>))}</CardContent></Card>
     </div>
   );
 }

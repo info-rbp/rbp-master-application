@@ -137,3 +137,67 @@ export type AuditLogRecord = {
   metadata?: Record<string, unknown>;
   createdAt: string;
 };
+
+
+export type MemberCRMRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  membershipTier: string;
+  membershipStatus: string;
+  joinDate: string;
+  accessExpiry?: string | null;
+  lastLogin?: string | null;
+  overrideEnabled: boolean;
+};
+
+export type MemberDetail = MemberCRMRow & {
+  phone?: string | null;
+  company?: string | null;
+  subscriptionPlanId?: string | null;
+};
+
+export type MemberOverride = {
+  id: string;
+  memberId: string;
+  enabled: boolean;
+  reason: string;
+  startDate: string;
+  endDate?: string | null;
+  changedBy: string;
+  changedAt: string;
+};
+
+export type MemberNote = {
+  id: string;
+  memberId: string;
+  authorUserId: string;
+  authorName?: string | null;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MembershipHistoryItem = {
+  id: string;
+  memberId: string;
+  oldTier?: string | null;
+  newTier?: string | null;
+  oldStatus?: string | null;
+  newStatus?: string | null;
+  reason?: string | null;
+  changedBy: string;
+  changedAt: string;
+};
+
+export type MemberCRMMetricSummary = {
+  totalMembers: number;
+  activeMembers: number;
+  pendingMembers: number;
+  lapsedMembers: number;
+  suspendedMembers: number;
+  membersOnOverride: number;
+  recentSignups: number;
+  recentStatusChanges: number;
+};

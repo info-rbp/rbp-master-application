@@ -21,11 +21,15 @@ service cloud.firestore {
       return request.resource.data.documentationSuiteId == resource.data.documentationSuiteId;
     }
 
+    function hasOnlyAllowedSelfProfileFields() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(['name', 'company', 'phone', 'updatedAt', 'lastLoginAt']);
+    }
+
     match /users/{userId} {
       allow get: if isOwnUser(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwnUser(userId);
-      allow update: if isOwnUser(userId) || isAdmin();
+      allow update: if isAdmin() || (isOwnUser(userId) && hasOnlyAllowedSelfProfileFields());
       allow delete: if false;
     }
 
@@ -50,6 +54,22 @@ service cloud.firestore {
     match /membership_plans/{planId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
+    }
+
+    match /membership_history/{historyId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /member_notes/{noteId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /member_overrides/{overrideId} {
+      allow read, create, update: if isAdmin();
+      allow delete: if false;
     }
 
     match /knowledge_articles/{articleId} {
@@ -90,19 +110,12 @@ service cloud.firestore {
     }
 
     match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin();
+      allow read, create: if isAdmin();
       allow update, delete: if false;
     }
 
     match /content_revisions/{revisionId} {
       allow read, create: if isAdmin();
-      allow update, delete: if false;
-    }
-
-    match /membership_history/{historyId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isAdmin();
       allow update, delete: if false;
     }
 
