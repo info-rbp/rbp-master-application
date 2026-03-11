@@ -27,6 +27,10 @@ import {
   ChevronRight,
   Briefcase,
   Workflow,
+  Bell,
+  Megaphone,
+  LineChart,
+  ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -251,6 +255,42 @@ export default function AdminSidebar() {
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </CollapsibleSidebarItem>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/analytics')} tooltip="Analytics">
+              <Link href="/admin/analytics">
+                <LineChart />
+                <span>Analytics</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/announcements')} tooltip="Announcements">
+              <Link href="/admin/announcements">
+                <Megaphone />
+                <span>Announcements</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/notifications')} tooltip="Notifications">
+              <Link href="/admin/notifications">
+                <Bell />
+                <span>Notifications</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/audit-logs')} tooltip="Audit Logs">
+              <Link href="/admin/audit-logs">
+                <ShieldCheck />
+                <span>Audit Logs</span>
+              </Link>
+            </SidebarMenuButton>
           </SidebarMenuItem>
 
         </SidebarMenu>

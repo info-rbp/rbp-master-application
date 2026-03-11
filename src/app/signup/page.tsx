@@ -57,6 +57,7 @@ export default function SignupPage() {
           updatedAt: now,
         });
       }
+      await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventType: 'new_signup', userId: user?.uid, role: 'member' }) });
       toast({
         title: 'Account Created',
         description: 'Please check your email to verify your account before logging in.',
