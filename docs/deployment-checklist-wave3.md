@@ -5,7 +5,7 @@
 3. Deploy Firestore rules (`firestore.rules`) and required indexes.
 4. Verify `roles_admin` documents exist for all admin operators.
 5. Configure email provider (`EMAIL_PROVIDER_API_KEY`, `EMAIL_FROM_ADDRESS`, `ADMIN_ALERT_EMAIL`).
-6. Validate Stripe secrets/webhooks are configured (`STRIPE_SECRET_KEY`).
+6. Validate Square secrets/webhooks are configured (`SQUARE_ACCESS_TOKEN`).
 7. Deploy app and run smoke checks:
    - public page
    - login flows

@@ -32,7 +32,9 @@ export default function MembershipSubscribePage() {
             currency: data.currency,
             interval: data.interval,
             active: Boolean(data.active),
-            stripePriceId: data.stripePriceId,
+            squareSubscriptionPlanVariationId: data.squareSubscriptionPlanVariationId ?? null,
+            squareSubscriptionPlanId: data.squareSubscriptionPlanId ?? null,
+            squareLocationId: data.squareLocationId ?? null,
           } as MembershipPlan;
         });
         setPlans(loadedPlans);
@@ -55,7 +57,7 @@ export default function MembershipSubscribePage() {
     try {
       if (!user) throw new Error('Please log in to start checkout.');
       const token = await user.getIdToken();
-      const response = await fetch('/api/create-checkout-session', {
+      const response = await fetch('/api/square/create-subscription-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ planId }),
@@ -63,7 +65,7 @@ export default function MembershipSubscribePage() {
 
       const payload = (await response.json()) as { error?: string; url?: string };
       if (!response.ok || !payload.url) {
-        throw new Error(payload.error || 'Could not start checkout session.');
+        throw new Error(payload.error || 'Could not start Square checkout.');
       }
 
       window.location.assign(payload.url);
@@ -81,7 +83,7 @@ export default function MembershipSubscribePage() {
   return (
     <div className="container mx-auto px-4 py-10">
       <h1 className="text-3xl font-bold tracking-tight mb-2">Choose your membership</h1>
-      <p className="text-muted-foreground mb-8">Select an active plan and continue to secure checkout.</p>
+      <p className="text-muted-foreground mb-8">Select an active plan and continue to secure Square checkout.</p>
 
       {loading ? (
         <p className="text-muted-foreground">Loading plans...</p>

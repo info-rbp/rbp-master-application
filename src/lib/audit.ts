@@ -16,7 +16,8 @@ export type AuditActionType =
   | 'announcement_delete'
   | 'notification_send_failure'
   | 'user_profile_admin_edit'
-  | 'settings_change';
+  | 'settings_change'
+  | 'billing_webhook_processed';
 
 export type AuditEvent = {
   actorUserId: string;
