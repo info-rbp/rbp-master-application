@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
-import { useAuth } from '@/firebase';
+import { useAuth } from '@/firebase/provider';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');

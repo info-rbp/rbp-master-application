@@ -16,8 +16,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { useAuth } from '@/firebase/provider';
+import { useFirestore } from '@/firebase/provider';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -26,30 +28,40 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
+  const firestore = useFirestore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      if (email === 'info@remotebusinesspartner.com.au' && password === 'Foxtrot19!') {
-        // Bypass Firebase for these specific credentials for development
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
+      const credentials = await signInWithEmailAndPassword(auth, email, password);
+      const roleDoc = await getDoc(doc(firestore, 'roles_admin', credentials.user.uid));
+
+      if (!roleDoc.exists()) {
+        await signOut(auth);
+        toast({
+          variant: 'destructive',
+          title: 'Access denied',
+          description: 'Your account does not have admin access.',
+        });
+        setIsLoading(false);
+        return;
       }
-       toast({
+
+      toast({
         title: 'Login Successful',
         description: 'Redirecting to dashboard...',
       });
       router.push('/admin');
-    } catch (error: any) {
-       toast({
+    } catch (error: unknown) {
+      toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: error.message || 'Invalid email or password.',
+        description: error instanceof Error ? error.message : 'Invalid email or password.',
       });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -83,12 +95,6 @@ export default function AdminLoginPage() {
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
-                  <Link
-                    href="#"
-                    className="ml-auto inline-block text-sm underline"
-                  >
-                    Forgot your password?
-                  </Link>
                 </div>
                 <Input
                   id="password"
