@@ -9,7 +9,7 @@ import type {
   Testimonial,
 } from './definitions';
 import { logAuditEvent, saveContentRevision } from './audit';
-import { trackEvent } from './analytics';
+import { safeLogAnalyticsEvent } from './analytics';
 
 const toIsoString = (value: unknown): string => {
   if (!value) return new Date().toISOString();
@@ -298,7 +298,7 @@ export async function createKnowledgeArticle(
     updatedAt: now,
   });
   await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'knowledge_article' });
-  await trackEvent({ eventType: 'admin_content_published', role: 'admin', resourceId: docRef.id, resourceType: 'knowledge_article' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'knowledge_article' });
   return { id: docRef.id, ...article, createdAt: now.toISOString(), updatedAt: now.toISOString() };
 }
 
@@ -365,7 +365,7 @@ export async function createPartnerOffer(
     createdAt: now,
     updatedAt: now,
   });
-  await trackEvent({ eventType: 'admin_content_published', role: 'admin', resourceId: docRef.id, resourceType: 'partner_offer' });
+  await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'partner_offer' });
   return { id: docRef.id, ...offer, createdAt: now.toISOString(), updatedAt: now.toISOString() };
 }
 

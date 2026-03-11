@@ -6,8 +6,8 @@ export default async function AdminAnalyticsPage() {
   const [summary, usage, checkoutStart, checkoutComplete] = await Promise.all([
     getAdminSummaryMetrics(),
     getResourceUsageMetrics(),
-    firestore.collection('analytics_events').where('eventType', '==', 'membership_checkout_started').get(),
-    firestore.collection('analytics_events').where('eventType', '==', 'membership_checkout_completed').get(),
+    firestore.collection('analytics_events').where('eventType', '==', 'checkout_started').get(),
+    firestore.collection('analytics_events').where('eventType', '==', 'checkout_completed').get(),
   ]);
 
   const conversionRate = computeConversionRate(checkoutStart.size, checkoutComplete.size);

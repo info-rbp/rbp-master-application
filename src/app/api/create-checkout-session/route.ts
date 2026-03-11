@@ -1,12 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { firestore } from '@/firebase/server';
-import { trackEvent } from '@/lib/analytics';
+import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { getRequestAuthContext } from '@/lib/server-auth';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await getRequestAuthContext(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const body = (await request.json()) as { planId?: string; userId?: string };
+    const body = (await request.json()) as { planId?: string };
     const planId = body.planId?.trim();
-    const userId = body.userId?.trim();
 
     if (!planId) {
       return NextResponse.json({ error: 'planId is required.' }, { status: 400 });
@@ -22,18 +27,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Selected plan is not configured for Stripe checkout.' }, { status: 400 });
     }
 
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return NextResponse.json({ error: 'STRIPE_SECRET_KEY is not configured.' }, { status: 500 });
-    }
-
-    if (!process.env.NEXT_PUBLIC_APP_URL) {
-      return NextResponse.json({ error: 'NEXT_PUBLIC_APP_URL is not configured.' }, { status: 500 });
+    if (!process.env.STRIPE_SECRET_KEY || !process.env.NEXT_PUBLIC_APP_URL) {
+      return NextResponse.json({ error: 'Stripe environment is not configured.' }, { status: 500 });
     }
 
     const { default: Stripe } = await import('stripe');
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-    await trackEvent({ eventType: 'membership_checkout_started', userId, role: 'member', metadata: { planId } });
+    await safeLogAnalyticsEvent({
+      eventType: 'checkout_started',
+      userId: auth.userId,
+      userRole: auth.role,
+      targetId: planId,
+      targetType: 'membership_plan',
+    });
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -41,9 +48,16 @@ export async function POST(request: Request) {
       line_items: [{ price: plan.stripePriceId as string, quantity: 1 }],
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/portal?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/membership/subscribe`,
-      metadata: {
-        planId,
-      },
+      metadata: { planId, userId: auth.userId },
+    });
+
+    await safeLogAnalyticsEvent({
+      eventType: 'checkout_session_created',
+      userId: auth.userId,
+      userRole: auth.role,
+      targetId: session.id,
+      targetType: 'stripe_checkout_session',
+      metadata: { planId },
     });
 
     if (!session.url) {
@@ -53,9 +67,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: session.url }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Failed to create checkout session.',
-      },
+      { error: error instanceof Error ? error.message : 'Failed to create checkout session.' },
       { status: 500 },
     );
   }
