@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestAuthContext } from '@/lib/server-auth';
-import { listMembersForAdmin } from '@/lib/admin-membership-crm';
+import { getMembershipCRMOverview } from '@/lib/admin-membership-crm';
 
 export async function GET(request: NextRequest) {
   const auth = await getRequestAuthContext(request);
@@ -9,13 +9,16 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const members = await listMembersForAdmin({
+  const payload = await getMembershipCRMOverview({
     search: searchParams.get('search') ?? '',
     status: searchParams.get('status') ?? 'all',
     tier: searchParams.get('tier') ?? 'all',
     role: searchParams.get('role') ?? 'all',
     sortBy: (searchParams.get('sortBy') as 'joinDate' | 'lastLogin' | null) ?? 'joinDate',
+    sortDir: (searchParams.get('sortDir') as 'asc' | 'desc' | null) ?? 'desc',
+    page: Number(searchParams.get('page') ?? 1),
+    pageSize: Number(searchParams.get('pageSize') ?? 20),
   });
 
-  return NextResponse.json({ data: members });
+  return NextResponse.json({ data: payload });
 }
