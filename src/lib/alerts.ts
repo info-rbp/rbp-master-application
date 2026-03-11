@@ -1,5 +1,5 @@
 import { createNotification } from './notifications';
-import { sendTemplatedEmail } from './email';
+import { sendTemplatedEmail, type EmailSendResult } from './email';
 import { safeLogAnalyticsEvent } from './analytics';
 
 type MembershipAlertType =
@@ -7,7 +7,26 @@ type MembershipAlertType =
   | 'membership_expired'
   | 'payment_failed'
   | 'subscription_canceled'
+  | 'subscription_reactivated'
   | 'membership_override';
+
+async function alertOnEmailFailure(result: EmailSendResult, context: { triggerSource: string; userId?: string }) {
+  if (result.ok) return;
+  await createNotification({
+    audienceRole: 'admin',
+    audienceType: 'role',
+    type: 'failed_email_send',
+    title: 'Email delivery failed',
+    message: `${context.triggerSource}: ${result.reason}`,
+    actionUrl: '/admin/notifications',
+    severity: 'error',
+    metadata: {
+      triggerSource: context.triggerSource,
+      userId: context.userId,
+      emailLogId: result.logId,
+    },
+  });
+}
 
 export async function triggerMembershipAlert(input: {
   type: MembershipAlertType;
@@ -31,9 +50,13 @@ export async function triggerMembershipAlert(input: {
     metadata: { reason: input.reason },
   });
 
-  await sendTemplatedEmail({
+  const result = await sendTemplatedEmail({
     recipient: input.email,
     templateKey: input.type,
+    triggerSource: 'membership_lifecycle',
+    relatedUserId: input.userId,
+    relatedEntityId: input.userId,
+    relatedEntityType: 'user',
     context: {
       membershipEndDate: input.membershipEndDate,
       reason: input.reason,
@@ -41,12 +64,17 @@ export async function triggerMembershipAlert(input: {
     },
   });
 
+  await alertOnEmailFailure(result, {
+    triggerSource: `membership_lifecycle:${input.type}`,
+    userId: input.userId,
+  });
+
   await safeLogAnalyticsEvent({
     eventType: 'membership_status_changed',
     userId: input.userId,
     userRole: 'member',
     targetType: 'membership',
-    metadata: { alertType: input.type },
+    metadata: { alertType: input.type, emailStatus: result.status },
   });
 }
 

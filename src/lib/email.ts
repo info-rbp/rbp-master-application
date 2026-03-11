@@ -1,91 +1,218 @@
 import { firestore } from '@/firebase/server';
-import { renderEmailTemplate, type EmailTemplateContext, type EmailTemplateKey } from './email-templates';
+import {
+  renderEmailTemplate,
+  type EmailTemplateContext,
+  type EmailTemplateKey,
+} from './email-templates';
 
-export type EmailAttempt = {
+export type EmailLogStatus = 'queued' | 'sent' | 'failed' | 'skipped';
+
+type EmailProvider = 'resend';
+
+export type EmailSendInput = {
+  recipient: string;
+  subject: string;
+  html: string;
+  text?: string;
+  templateKey?: EmailTemplateKey;
+  triggerSource: string;
+  relatedUserId?: string;
+  relatedEntityId?: string;
+  relatedEntityType?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type EmailAttemptLog = {
+  recipient: string;
+  subject: string;
+  templateKey: EmailTemplateKey | 'raw';
+  provider: EmailProvider;
+  status: EmailLogStatus;
+  reason?: string;
+  triggerSource: string;
+  relatedUserId?: string;
+  relatedEntityId?: string;
+  relatedEntityType?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type EmailSendResult =
+  | { ok: true; status: 'sent'; provider: EmailProvider; logId: string }
+  | { ok: false; status: 'failed' | 'skipped'; provider: EmailProvider; reason: string; logId: string };
+
+export type TemplatedEmailInput = {
   recipient: string;
   templateKey: EmailTemplateKey;
   context?: EmailTemplateContext;
+  triggerSource: string;
+  relatedUserId?: string;
+  relatedEntityId?: string;
+  relatedEntityType?: string;
+  metadata?: Record<string, unknown>;
 };
 
-type EmailLogStatus = 'sent' | 'failed' | 'skipped';
+export type EmailServiceDependencies = {
+  addLog: (entry: Record<string, unknown>) => Promise<string>;
+  providerRequest: typeof fetch;
+  env: NodeJS.ProcessEnv;
+};
 
-async function logEmailAttempt(input: {
-  status: EmailLogStatus;
-  recipient: string;
-  subject: string;
-  templateKey: EmailTemplateKey;
-  error?: string;
-}) {
-  await firestore.collection('email_logs').add({
-    ...input,
-    sentAt: new Date(),
-  });
+function sanitizeMetadata(metadata?: Record<string, unknown>) {
+  if (!metadata) return undefined;
+  return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined));
 }
 
-async function sendWithResend(recipient: string, subject: string, html: string) {
-  const apiKey = process.env.EMAIL_PROVIDER_API_KEY;
-  const fromEmail = process.env.EMAIL_FROM_ADDRESS;
-
-  if (!apiKey || !fromEmail) {
-    throw new Error('Missing EMAIL_PROVIDER_API_KEY or EMAIL_FROM_ADDRESS');
+export function validateEmailProviderConfig(env: NodeJS.ProcessEnv) {
+  const apiKey = env.EMAIL_PROVIDER_API_KEY?.trim();
+  const fromAddress = env.EMAIL_FROM_ADDRESS?.trim();
+  if (!apiKey || !fromAddress) {
+    return {
+      valid: false as const,
+      reason: 'Missing EMAIL_PROVIDER_API_KEY or EMAIL_FROM_ADDRESS',
+    };
   }
 
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+  return {
+    valid: true as const,
+    config: {
+      apiKey,
+      fromAddress,
     },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: recipient,
-      subject,
-      html,
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Email provider rejected request (${response.status}): ${body}`);
-  }
+  };
 }
 
-export async function sendTemplatedEmail({ recipient, templateKey, context }: EmailAttempt) {
-  const template = renderEmailTemplate(templateKey, context);
+export function createEmailService(deps: EmailServiceDependencies) {
+  const provider: EmailProvider = 'resend';
 
-  try {
-    if (!process.env.EMAIL_PROVIDER_API_KEY || !process.env.EMAIL_FROM_ADDRESS) {
-      await logEmailAttempt({
-        status: 'skipped',
-        recipient,
-        subject: template.subject,
+  async function logEmailAttempt(input: EmailAttemptLog) {
+    return deps.addLog({
+      ...input,
+      metadata: sanitizeMetadata(input.metadata),
+      createdAt: new Date(),
+      sentAt: input.status === 'sent' ? new Date() : null,
+      errorMessage: input.reason ?? null,
+    });
+  }
+
+  async function sendEmail(input: EmailSendInput): Promise<EmailSendResult> {
+    const config = validateEmailProviderConfig(deps.env);
+    const templateKey = input.templateKey ?? 'raw';
+
+    if (!config.valid) {
+      const logId = await logEmailAttempt({
+        recipient: input.recipient,
+        subject: input.subject,
         templateKey,
-        error: 'Missing email provider configuration',
+        provider,
+        status: 'skipped',
+        reason: config.reason,
+        triggerSource: input.triggerSource,
+        relatedUserId: input.relatedUserId,
+        relatedEntityId: input.relatedEntityId,
+        relatedEntityType: input.relatedEntityType,
+        metadata: input.metadata,
       });
-      return { ok: false, reason: 'missing_configuration' as const };
+
+      return { ok: false, status: 'skipped', reason: config.reason, provider, logId };
     }
 
-    await sendWithResend(recipient, template.subject, template.html);
+    try {
+      const response = await deps.providerRequest('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.config.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: config.config.fromAddress,
+          to: input.recipient,
+          subject: input.subject,
+          html: input.html,
+          text: input.text,
+        }),
+      });
 
-    await logEmailAttempt({
-      status: 'sent',
-      recipient,
-      subject: template.subject,
-      templateKey,
-    });
+      if (!response.ok) {
+        const body = await response.text();
+        const reason = `Provider rejected request (${response.status})${body ? `: ${body.slice(0, 200)}` : ''}`;
+        const logId = await logEmailAttempt({
+          recipient: input.recipient,
+          subject: input.subject,
+          templateKey,
+          provider,
+          status: 'failed',
+          reason,
+          triggerSource: input.triggerSource,
+          relatedUserId: input.relatedUserId,
+          relatedEntityId: input.relatedEntityId,
+          relatedEntityType: input.relatedEntityType,
+          metadata: input.metadata,
+        });
+        return { ok: false, status: 'failed', reason, provider, logId };
+      }
 
-    return { ok: true as const };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+      const logId = await logEmailAttempt({
+        recipient: input.recipient,
+        subject: input.subject,
+        templateKey,
+        provider,
+        status: 'sent',
+        triggerSource: input.triggerSource,
+        relatedUserId: input.relatedUserId,
+        relatedEntityId: input.relatedEntityId,
+        relatedEntityType: input.relatedEntityType,
+        metadata: input.metadata,
+      });
 
-    await logEmailAttempt({
-      status: 'failed',
-      recipient,
-      subject: template.subject,
-      templateKey,
-      error: message,
-    });
-
-    return { ok: false as const, reason: message };
+      return { ok: true, status: 'sent', provider, logId };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Unknown provider error';
+      const logId = await logEmailAttempt({
+        recipient: input.recipient,
+        subject: input.subject,
+        templateKey,
+        provider,
+        status: 'failed',
+        reason,
+        triggerSource: input.triggerSource,
+        relatedUserId: input.relatedUserId,
+        relatedEntityId: input.relatedEntityId,
+        relatedEntityType: input.relatedEntityType,
+        metadata: input.metadata,
+      });
+      return { ok: false, status: 'failed', reason, provider, logId };
+    }
   }
+
+  async function sendTemplatedEmail(input: TemplatedEmailInput): Promise<EmailSendResult> {
+    const rendered = renderEmailTemplate(input.templateKey, input.context);
+
+    return sendEmail({
+      recipient: input.recipient,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+      templateKey: input.templateKey,
+      triggerSource: input.triggerSource,
+      relatedUserId: input.relatedUserId,
+      relatedEntityId: input.relatedEntityId,
+      relatedEntityType: input.relatedEntityType,
+      metadata: input.metadata,
+    });
+  }
+
+  return { sendEmail, sendTemplatedEmail, logEmailAttempt };
 }
+
+const emailService = createEmailService({
+  addLog: async (entry) => {
+    const ref = await firestore.collection('email_logs').add(entry);
+    return ref.id;
+  },
+  providerRequest: fetch,
+  env: process.env,
+});
+
+export const sendEmail = emailService.sendEmail;
+export const sendTemplatedEmail = emailService.sendTemplatedEmail;
+export const logEmailAttempt = emailService.logEmailAttempt;

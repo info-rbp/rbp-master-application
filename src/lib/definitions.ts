@@ -105,12 +105,19 @@ export type Entitlement = {
 
 export type EmailLog = {
   id: string;
-  status: 'sent' | 'failed' | 'skipped';
+  status: 'queued' | 'sent' | 'failed' | 'skipped';
   recipient: string;
   subject: string;
   templateKey: string;
-  sentAt: string;
-  error?: string;
+  provider: string;
+  triggerSource: string;
+  relatedUserId?: string;
+  relatedEntityId?: string;
+  relatedEntityType?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  sentAt?: string | null;
+  errorMessage?: string | null;
 };
 
 export type AnalyticsEventRecord = {
