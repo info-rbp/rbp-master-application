@@ -26,10 +26,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isOwnUser(userId) || isAdmin();
-      allow list: if isAdmin();
+      allow get: if isOwnUser(userId);
+      allow list: if false;
       allow create: if isOwnUser(userId);
-      allow update: if isAdmin() || (isOwnUser(userId) && hasOnlyAllowedSelfProfileFields());
+      allow update: if isOwnUser(userId) && hasOnlyAllowedSelfProfileFields();
       allow delete: if false;
     }
 
@@ -57,19 +57,16 @@ service cloud.firestore {
     }
 
     match /membership_history/{historyId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
-      allow create: if isAdmin();
-      allow update, delete: if false;
+      allow read: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.memberId == request.auth.uid));
+      allow create, update, delete: if false;
     }
 
     match /member_notes/{noteId} {
-      allow read, create: if isAdmin();
-      allow update, delete: if false;
+      allow read, create, update, delete: if false;
     }
 
     match /member_overrides/{overrideId} {
-      allow read, create, update: if isAdmin();
-      allow delete: if false;
+      allow read, create, update, delete: if false;
     }
 
 
