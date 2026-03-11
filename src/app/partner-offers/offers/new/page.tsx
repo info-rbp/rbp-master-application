@@ -1,9 +1,11 @@
 import OfferCard from '../../components/offer-card';
-import { offers, categories, OfferCategory } from '../../data';
+import { categories, OfferCategory, toOfferView } from '../../data';
+import { getPartnerOffers } from '@/lib/data';
 
-export default function OffersCategoryPage() {
+export default async function OffersCategoryPage() {
   const category: OfferCategory = 'new';
   const categoryInfo = categories[category];
+  const offers = (await getPartnerOffers()).filter((o) => o.active).map(toOfferView);
   const categoryOffers = offers.filter(o => o.categories.includes(category));
 
   return (
