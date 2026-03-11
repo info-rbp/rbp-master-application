@@ -37,7 +37,6 @@ export default function MarketingFooter() {
           <div className="md:col-span-2">
             <h4 className="font-semibold">Company</h4>
             <ul className="mt-4 space-y-2 text-sm">
-              <li><Link href="/about" className="text-muted-foreground hover:text-foreground">About Us</Link></li>
               <li><Link href="/past-projects" className="text-muted-foreground hover:text-foreground">Case Studies</Link></li>
               <li><Link href="/contact" className="text-muted-foreground hover:text-foreground">Contact</Link></li>
             </ul>
@@ -48,6 +47,7 @@ export default function MarketingFooter() {
               <li><Link href="/services" className="text-muted-foreground hover:text-foreground">Advisory on Demand</Link></li>
               <li><Link href="/docushare" className="text-muted-foreground hover:text-foreground">DocuShare Portal</Link></li>
               <li><Link href="/partner-offers" className="text-muted-foreground hover:text-foreground">Partner Offers</Link></li>
+              <li><Link href="/membership" className="text-muted-foreground hover:text-foreground">Membership</Link></li>
             </ul>
           </div>
            <div className="md:col-span-2">

@@ -12,6 +12,7 @@ const navLinks = [
   { href: '/past-projects', label: 'Past Projects' },
   { href: '/partner-offers', label: 'Partner Offers' },
   { href: '/docushare', label: 'DocuShare' },
+  { href: '/membership', label: 'Membership' },
   { href: '/contact', label: 'Contact Us' },
 ];
 
