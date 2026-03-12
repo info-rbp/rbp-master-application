@@ -6,6 +6,7 @@ import {
   markNotificationRead,
 } from '@/lib/notifications';
 import { getRequestAuthContext } from '@/lib/server-auth';
+import { readJsonBody } from '@/lib/http';
 
 export async function GET(request: NextRequest) {
   const auth = await getRequestAuthContext(request);
@@ -24,7 +25,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = (await request.json()) as { mode?: 'single' | 'all'; notificationId?: string };
+  const parsed = await readJsonBody<{ mode?: 'single' | 'all'; notificationId?: string }>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const body = parsed.data;
 
   if (body.mode === 'single' && body.notificationId) {
     const notifications = await listNotificationsForActor({ userId: auth.userId, role: auth.role });

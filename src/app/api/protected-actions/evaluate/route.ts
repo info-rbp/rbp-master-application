@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { evaluateProtectedAction, type ProtectedActionInput } from '@/lib/protected-actions';
 import { getRequestAuthContext } from '@/lib/server-auth';
+import { readJsonBody } from '@/lib/http';
 
 export async function POST(request: NextRequest) {
-  const payload = (await request.json().catch(() => ({}))) as Partial<ProtectedActionInput>;
+  const parsed = await readJsonBody<Partial<ProtectedActionInput>>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const payload = parsed.data;
   if (!payload.actionType) {
     return NextResponse.json({ error: 'Missing actionType' }, { status: 400 });
   }

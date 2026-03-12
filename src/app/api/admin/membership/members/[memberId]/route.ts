@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { getMemberDetailForAdmin, updateMemberMembershipState } from '@/lib/admin-membership-crm';
 import { MEMBERSHIP_TIERS, type MembershipStatus } from '@/lib/definitions';
+import { readJsonBody } from '@/lib/http';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ memberId: string }> }) {
   const auth = await getRequestAuthContext(request);
@@ -22,7 +23,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
   }
 
   const { memberId } = await context.params;
-  const payload = await request.json();
+  const parsed = await readJsonBody<Record<string, unknown>>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const payload = parsed.data;
   const membershipTier = String(payload.membershipTier ?? '').trim();
   const membershipStatus = String(payload.membershipStatus ?? '').trim().toLowerCase();
 

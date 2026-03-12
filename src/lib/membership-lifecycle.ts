@@ -1,7 +1,7 @@
 import { firestore } from '@/firebase/server';
 import type { BillingCycle, MembershipPlanCode, MembershipStatus, MembershipTier } from './definitions';
 import { resolvePlanCodeToBillingCycle, resolvePlanCodeToTier } from './entitlements';
-import { safeLogAnalyticsEvent } from './analytics';
+import { safeLogAnalyticsEvent } from './analytics-server';
 import { logAuditEvent, logMembershipHistory } from './audit';
 import { triggerAdminAlert, triggerMembershipAlert } from './alerts';
 

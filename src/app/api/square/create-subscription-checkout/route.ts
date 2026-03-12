@@ -7,6 +7,7 @@ import { getRequestAuthContext } from '@/lib/server-auth';
 import { createSquareSubscriptionPaymentLink, resolveSquareLocationId } from '@/lib/square';
 import { validatePlanForSquareCheckout } from '@/lib/subscriptions';
 import { MEMBERSHIP_PLAN_DEFINITIONS } from '@/lib/entitlements';
+import { readJsonBody } from '@/lib/http';
 import type { MembershipPlan } from '@/lib/definitions';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +15,12 @@ export async function POST(request: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const body = (await request.json()) as { planId?: string };
+    const parsed = await readJsonBody<{ planId?: string }>(request);
+    if (!parsed.ok) {
+      return parsed.response;
+    }
+
+    const body = parsed.data;
     const planId = body.planId?.trim();
     if (!planId) return NextResponse.json({ error: 'planId is required.' }, { status: 400 });
 

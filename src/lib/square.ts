@@ -91,10 +91,23 @@ export function verifySquareWebhookSignature(input: {
 }) {
   const signatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
   if (!signatureKey || !input.signature) return false;
-  const hmac = crypto.createHmac('sha256', signatureKey);
-  hmac.update(input.notificationUrl + input.body);
-  const digest = hmac.digest('base64');
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(input.signature));
+
+  try {
+    const hmac = crypto.createHmac('sha256', signatureKey);
+    hmac.update(input.notificationUrl + input.body);
+    const digest = hmac.digest('base64');
+
+    const expected = Buffer.from(digest, 'utf8');
+    const provided = Buffer.from(input.signature, 'utf8');
+
+    if (expected.length !== provided.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(expected, provided);
+  } catch {
+    return false;
+  }
 }
 
 export function resolveSquareLocationId(planLocationId?: string | null) {

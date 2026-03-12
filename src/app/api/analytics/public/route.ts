@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ANALYTICS_EVENTS, type AnalyticsEventType } from '@/lib/analytics-events';
 import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
+import { readJsonBody } from '@/lib/http';
 
 const ALLOWED_PUBLIC_EVENTS: AnalyticsEventType[] = [
   ANALYTICS_EVENTS.SIGNUP_STARTED,
@@ -13,7 +14,12 @@ const ALLOWED_PUBLIC_EVENTS: AnalyticsEventType[] = [
 ];
 
 export async function POST(request: NextRequest) {
-  const body = (await request.json().catch(() => ({}))) as { eventType?: AnalyticsEventType; targetId?: string; targetType?: string; metadata?: Record<string, unknown>; sessionId?: string };
+  const parsed = await readJsonBody<{ eventType?: AnalyticsEventType; targetId?: string; targetType?: string; metadata?: Record<string, unknown>; sessionId?: string }>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const body = parsed.data;
   if (!body?.eventType || !ALLOWED_PUBLIC_EVENTS.includes(body.eventType)) {
     return NextResponse.json({ error: 'Invalid eventType' }, { status: 400 });
   }
