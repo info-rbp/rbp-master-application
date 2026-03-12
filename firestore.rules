@@ -40,11 +40,11 @@ service cloud.firestore {
     }
 
     match /documentation_suites/{documentationSuiteId} {
-      allow get, list: if true;
+      allow get, list: if resource.data.status == 'published' || isAdmin();
       allow create, update, delete: if isAdmin();
 
       match /documents/{documentId} {
-        allow get, list: if true;
+        allow get, list: if resource.data.status == 'published' || isAdmin();
         allow create: if isAdmin() && hasValidDocumentDataOnCreate(documentationSuiteId);
         allow update: if isAdmin() && isDocumentDataImmutable();
         allow delete: if isAdmin();

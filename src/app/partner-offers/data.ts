@@ -40,7 +40,7 @@ export function toOfferView(offer: PartnerOffer, index = 0, total = 1): Offer {
     partner: offer.partnerName ?? offer.title,
     title: offer.title,
     description: offer.description,
-    href: offer.link,
+    href: `/partner-offers/${offer.slug ?? offer.id}`,
     categories: getOfferCategories(index, total, offer.categories),
   };
 }
