@@ -19,7 +19,6 @@ import { triggerAdminAlert } from '@/lib/alerts';
 import { sendTemplatedEmail } from '@/lib/email';
 import { safeLogAnalyticsEvent } from '@/lib/analytics';
 import { createNotification } from '@/lib/notifications';
-import { getDocushareSegment } from '@/lib/content-objects';
 
 async function notifyMembersOfNewResource(doc: Omit<Document, 'id' | 'createdAt'> & { id: string }) {
   if (process.env.EMAIL_RESOURCE_PUBLISH_ENABLED !== 'true') {
@@ -78,7 +77,6 @@ export async function addDocument(data: Omit<Document, 'id' | 'createdAt'>) {
 
   revalidatePath('/admin/documents');
   revalidatePath('/docushare');
-  if (newDoc.slug) revalidatePath(`/docushare/resources/${newDoc.slug}`);
   return newDoc;
 }
 
@@ -86,7 +84,6 @@ export async function updateDocument(id: string, data: Partial<Document>) {
   const updatedDoc = await dbUpdateDocument(id, data);
   revalidatePath('/admin/documents');
   revalidatePath('/docushare');
-  if (updatedDoc?.slug) revalidatePath(`/docushare/resources/${updatedDoc.slug}`);
   return updatedDoc;
 }
 
@@ -111,7 +108,6 @@ export async function addSuite(data: Omit<DocumentSuite, 'id' | 'documents'>) {
   const newSuite = await dbAddSuite(data);
   revalidatePath('/admin/suites');
   revalidatePath('/docushare');
-  if (newSuite.slug) revalidatePath(`/docushare/${getDocushareSegment(newSuite.contentType)}/${newSuite.slug}`);
   return newSuite;
 }
 
@@ -119,7 +115,6 @@ export async function updateSuite(id: string, data: Partial<Omit<DocumentSuite, 
   const updatedSuite = await dbUpdateSuite(id, data);
   revalidatePath('/admin/suites');
   revalidatePath('/docushare');
-  if (updatedSuite?.slug) revalidatePath(`/docushare/${getDocushareSegment(updatedSuite.contentType)}/${updatedSuite.slug}`);
   return updatedSuite;
 }
 

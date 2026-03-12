@@ -89,6 +89,37 @@ export default function MemberProfilePage() {
           reason,
         }),
       });
+
+      const historyItem = buildMembershipHistoryItem({
+        memberId: member.id,
+        oldTier: before.tier,
+        newTier: tierDraft,
+        oldStatus: before.status,
+        newStatus: statusDraft,
+        reason,
+        changedBy: actor,
+      });
+      await addDoc(collection(firestore, 'membership_history'), historyItem);
+      await addDoc(collection(firestore, 'audit_logs'), {
+        actorUserId: auth.currentUser?.uid || 'unknown', actorRole: 'admin', actionType: 'membership_status_change', targetId: member.id, targetType: 'user', before, after: { tier: tierDraft, status: statusDraft }, metadata: { reason }, createdAt: new Date(),
+      });
+
+      const token = await auth.currentUser?.getIdToken();
+      if (token) {
+        await fetch('/api/lifecycle/membership-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            userId: member.id,
+            previousStatus: before.status,
+            newStatus: statusDraft,
+            membershipEndDate: expiryDraft || null,
+            reason,
+          }),
+        });
+      }
+
+      await load();
       setReason('');
       await load();
       toast({ title: 'Membership updated' });
