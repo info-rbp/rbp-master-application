@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTemplateForContentType } from '@/lib/detail-templates';
 import type { RenderableContentObject } from '@/lib/content-objects';
+import { ProtectedActionCTA } from '@/components/public/protected-action-cta';
+import { getDefaultActionLabel, mapActionTypeFromContentAction } from '@/lib/protected-actions';
 
 function AccessCta({ content }: { content: RenderableContentObject }) {
   const access = content.accessBehavior;
