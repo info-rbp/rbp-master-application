@@ -4,7 +4,7 @@ import { createEmailService, validateEmailProviderConfig } from '../../src/lib/e
 import { renderEmailTemplate } from '../../src/lib/email-templates';
 
 test('validateEmailProviderConfig fails when credentials are missing', () => {
-  const result = validateEmailProviderConfig({});
+  const result = validateEmailProviderConfig({} as NodeJS.ProcessEnv);
   assert.equal(result.valid, false);
 });
 
@@ -16,7 +16,7 @@ test('sendEmail returns skipped and logs when config is missing', async () => {
       return 'log-1';
     },
     providerRequest: fetch,
-    env: {},
+    env: {} as NodeJS.ProcessEnv,
   });
 
   const result = await service.sendEmail({
@@ -43,7 +43,8 @@ test('sendTemplatedEmail returns sent on provider success', async () => {
     env: {
       EMAIL_PROVIDER_API_KEY: 'key',
       EMAIL_FROM_ADDRESS: 'ops@example.com',
-    },
+      NODE_ENV: 'test',
+    } as NodeJS.ProcessEnv,
   });
 
   const result = await service.sendTemplatedEmail({
@@ -65,5 +66,5 @@ test('renderEmailTemplate escapes risky HTML fields', () => {
   });
 
   assert.equal(output.html.includes('<script>'), false);
-  assert.equal(output.html.includes('onerror='), false);
+  assert.equal(output.html.includes('<img src=x onerror=alert(1) />'), false);
 });

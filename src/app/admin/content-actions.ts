@@ -16,10 +16,12 @@ import {
   updateTestimonial,
 } from '@/lib/data';
 import type { KnowledgeArticle, PartnerOffer, PastProject, Testimonial } from '@/lib/definitions';
+import { requireAdminServerContext } from '@/lib/server-auth';
 
 export async function savePartnerOffer(input: Partial<PartnerOffer> & Pick<PartnerOffer, 'title' | 'description' | 'link'>) {
+  const auth = await requireAdminServerContext();
   if (input.id) {
-    return updatePartnerOffer(input.id, input);
+    return updatePartnerOffer(input.id, input, auth.userId);
   }
   return createPartnerOffer({
     title: input.title,
@@ -29,15 +31,17 @@ export async function savePartnerOffer(input: Partial<PartnerOffer> & Pick<Partn
     imageUrl: input.imageUrl,
     displayOrder: input.displayOrder ?? 0,
     expiresAt: input.expiresAt ?? null,
-  });
+  }, auth.userId);
 }
 
 export async function removePartnerOffer(id: string) {
-  await deletePartnerOffer(id);
+  const auth = await requireAdminServerContext();
+  await deletePartnerOffer(id, auth.userId);
 }
 
 export async function saveTestimonial(input: Partial<Testimonial> & Pick<Testimonial, 'clientName' | 'content'>) {
-  if (input.id) return updateTestimonial(input.id, input);
+  const auth = await requireAdminServerContext();
+  if (input.id) return updateTestimonial(input.id, input, auth.userId);
   return createTestimonial({
     clientName: input.clientName,
     content: input.content,
@@ -46,15 +50,17 @@ export async function saveTestimonial(input: Partial<Testimonial> & Pick<Testimo
     active: input.active ?? true,
     imageUrl: input.imageUrl,
     displayOrder: input.displayOrder ?? 0,
-  });
+  }, auth.userId);
 }
 
 export async function removeTestimonial(id: string) {
-  await deleteTestimonial(id);
+  const auth = await requireAdminServerContext();
+  await deleteTestimonial(id, auth.userId);
 }
 
 export async function savePastProject(input: Partial<PastProject> & Pick<PastProject, 'name' | 'description'>) {
-  if (input.id) return updatePastProject(input.id, input);
+  const auth = await requireAdminServerContext();
+  if (input.id) return updatePastProject(input.id, input, auth.userId);
   return createPastProject({
     name: input.name,
     description: input.description,
@@ -62,15 +68,17 @@ export async function savePastProject(input: Partial<PastProject> & Pick<PastPro
     active: input.active ?? true,
     imageUrl: input.imageUrl,
     displayOrder: input.displayOrder ?? 0,
-  });
+  }, auth.userId);
 }
 
 export async function removePastProject(id: string) {
-  await deletePastProject(id);
+  const auth = await requireAdminServerContext();
+  await deletePastProject(id, auth.userId);
 }
 
 export async function saveKnowledgeArticle(input: Partial<KnowledgeArticle> & Pick<KnowledgeArticle, 'title' | 'slug' | 'content'>) {
-  if (input.id) return updateKnowledgeArticle(input.id, input);
+  const auth = await requireAdminServerContext();
+  if (input.id) return updateKnowledgeArticle(input.id, input, auth.userId);
   return createKnowledgeArticle({
     title: input.title,
     slug: input.slug,
@@ -81,14 +89,16 @@ export async function saveKnowledgeArticle(input: Partial<KnowledgeArticle> & Pi
     tags: input.tags,
     authorId: input.authorId,
     published: input.published ?? false,
-  });
+  }, auth.userId);
 }
 
 export async function removeKnowledgeArticle(id: string) {
-  await deleteKnowledgeArticle(id);
+  const auth = await requireAdminServerContext();
+  await deleteKnowledgeArticle(id, auth.userId);
 }
 
 
 export async function revalidateAdminPath(path: string) {
+  await requireAdminServerContext();
   revalidatePath(path);
 }

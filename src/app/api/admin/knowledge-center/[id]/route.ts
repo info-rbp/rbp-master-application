@@ -5,13 +5,16 @@ import {
   unpublishKnowledgeArticle,
   updateKnowledgeArticle,
 } from '@/lib/data';
-import { getRequestAuthContext } from '@/lib/server-auth';
+import { AuthorizationError, requireAdminRequestContext } from '@/lib/server-auth';
 import { normalizeKnowledgeSlug, parseTagInput } from '@/lib/knowledge-center';
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let auth;
+  try {
+    auth = await requireAdminRequestContext(request);
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const { id } = await context.params;
@@ -31,35 +34,41 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     externalLink: payload.externalLink !== undefined ? String(payload.externalLink ?? '').trim() : undefined,
     ctaLabel: payload.ctaLabel !== undefined ? String(payload.ctaLabel ?? '').trim() : undefined,
     authorName: payload.authorName !== undefined ? String(payload.authorName ?? '').trim() : undefined,
-  });
+  }, auth.userId);
 
   if (!article) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ data: article });
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let auth;
+  try {
+    auth = await requireAdminRequestContext(request);
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const { id } = await context.params;
   const payload = await request.json();
   const article = payload.action === 'publish'
-    ? await publishKnowledgeArticle(id)
-    : await unpublishKnowledgeArticle(id);
+    ? await publishKnowledgeArticle(id, auth.userId)
+    : await unpublishKnowledgeArticle(id, auth.userId);
 
   if (!article) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ data: article });
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let auth;
+  try {
+    auth = await requireAdminRequestContext(request);
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const { id } = await context.params;
-  await deleteKnowledgeArticle(id);
+  await deleteKnowledgeArticle(id, auth.userId);
   return NextResponse.json({ ok: true });
 }
