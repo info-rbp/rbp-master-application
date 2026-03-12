@@ -16,7 +16,8 @@ export type AuditActionType =
   | 'announcement_delete'
   | 'notification_send_failure'
   | 'user_profile_admin_edit'
-  | 'settings_change';
+  | 'settings_change'
+  | 'billing_webhook_processed';
 
 export type AuditEvent = {
   actorUserId: string;
@@ -57,6 +58,7 @@ export async function logMembershipHistory(input: {
   newStatus?: string;
   reason?: string;
   changedBy: string;
+  source?: 'admin' | 'manual' | 'provider_sync' | 'system';
 }) {
   await firestore.collection('membership_history').add({
     ...input,

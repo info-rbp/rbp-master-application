@@ -50,6 +50,7 @@ export default function AdminLoginPage() {
       }
 
       const token = await credentials.user.getIdToken();
+      await fetch('/api/auth/session', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, credentials: 'include' });
       await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ eventType: 'admin_login' }) });
       toast({
         title: 'Login Successful',

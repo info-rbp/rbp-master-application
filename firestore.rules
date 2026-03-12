@@ -29,22 +29,22 @@ service cloud.firestore {
       allow get: if isOwnUser(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwnUser(userId);
-      allow update: if isAdmin() || (isOwnUser(userId) && hasOnlyAllowedSelfProfileFields());
+      allow update: if (isOwnUser(userId) && hasOnlyAllowedSelfProfileFields()) || isAdmin();
       allow delete: if false;
     }
 
     match /roles_admin/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isOwnUser(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     match /documentation_suites/{documentationSuiteId} {
-      allow get, list: if true;
+      allow get, list: if resource.data.status == 'published' || isAdmin();
       allow create, update, delete: if isAdmin();
 
       match /documents/{documentId} {
-        allow get, list: if true;
+        allow get, list: if resource.data.status == 'published' || isAdmin();
         allow create: if isAdmin() && hasValidDocumentDataOnCreate(documentationSuiteId);
         allow update: if isAdmin() && isDocumentDataImmutable();
         allow delete: if isAdmin();
@@ -57,44 +57,92 @@ service cloud.firestore {
     }
 
     match /membership_history/{historyId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
-      allow create: if isAdmin();
-      allow update, delete: if false;
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
     }
 
     match /member_notes/{noteId} {
-      allow read, create: if isAdmin();
-      allow update, delete: if false;
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
     }
 
     match /member_overrides/{overrideId} {
-      allow read, create, update: if isAdmin();
-      allow delete: if false;
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+
+
+    match /membership_access_grants/{grantId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /subscriptions/{subscriptionId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /billing_history/{eventId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /square_webhook_events/{eventId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+    function isValidKnowledgeType(value) {
+      return value in ['article', 'guide', 'tool', 'knowledge_base'];
     }
 
     match /knowledge_articles/{articleId} {
+      allow get, list: if resource.data.published == true || isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.title is string
+        && request.resource.data.slug is string
+        && request.resource.data.content is string
+        && request.resource.data.published is bool
+        && isValidKnowledgeType(request.resource.data.contentType);
+      allow delete: if isAdmin();
+    }
+
+
+
+    match /site_pages/{pageId} {
+      allow get, list: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /service_pages/{serviceId} {
+      allow get, list: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /faqs/{faqId} {
       allow get, list: if resource.data.published == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /partner_offers/{offerId} {
-      allow get, list: if true;
+      allow get, list: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /testimonials/{testimonialId} {
-      allow get, list: if true;
+      allow get, list: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /past_projects/{projectId} {
-      allow get, list: if true;
+      allow get, list: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
     match /notifications/{notificationId} {
       allow get: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.audienceRole in ['all', 'member']));
-      allow list: if isAdmin() || isSignedIn();
+      allow list: if isAdmin();
       allow create: if isAdmin();
       allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).changedKeys().hasOnly(['read', 'readAt']));
       allow delete: if isAdmin();
@@ -106,7 +154,8 @@ service cloud.firestore {
     }
 
     match /analytics_events/{eventId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
       allow read: if isAdmin();
       allow update, delete: if false;
     }

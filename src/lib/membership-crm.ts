@@ -10,7 +10,11 @@ export function normalizeMemberRow(input: {
   createdAt?: string;
   membershipExpiresAt?: string | null;
   lastLoginAt?: string | null;
+  emailVerified?: boolean;
   overrideEnabled?: boolean;
+  squareSubscriptionStatus?: string | null;
+  squareSubscriptionId?: string | null;
+  squareCustomerId?: string | null;
 }): MemberCRMRow {
   return {
     id: input.id,
@@ -22,7 +26,11 @@ export function normalizeMemberRow(input: {
     joinDate: input.createdAt || new Date(0).toISOString(),
     accessExpiry: input.membershipExpiresAt || null,
     lastLogin: input.lastLoginAt || null,
+    emailVerified: Boolean(input.emailVerified),
     overrideEnabled: Boolean(input.overrideEnabled),
+    squareSubscriptionStatus: input.squareSubscriptionStatus ?? null,
+    squareSubscriptionId: input.squareSubscriptionId ?? null,
+    squareCustomerId: input.squareCustomerId ?? null,
   };
 }
 
@@ -34,6 +42,7 @@ export function buildMembershipHistoryItem(params: {
   newStatus?: string | null;
   reason?: string;
   changedBy: string;
+  source?: 'admin' | 'manual' | 'provider_sync' | 'system';
 }): Omit<MembershipHistoryItem, 'id'> {
   return {
     memberId: params.memberId,
@@ -44,6 +53,7 @@ export function buildMembershipHistoryItem(params: {
     reason: params.reason?.trim() || null,
     changedBy: params.changedBy,
     changedAt: new Date().toISOString(),
+    source: params.source ?? 'admin',
   };
 }
 

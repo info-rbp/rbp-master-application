@@ -1,8 +1,16 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { buildAuthRedirectPath, sanitizeReturnPath } from '@/lib/return-path';
 
-export default function VerifyEmailPage() {
+export default async function VerifyEmailPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
+  const params = await searchParams;
+  const returnTo = sanitizeReturnPath(params.returnTo);
+
   return (
     <div className="container mx-auto flex min-h-[70vh] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-xl">
@@ -14,7 +22,7 @@ export default function VerifyEmailPage() {
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link href="/login">Back to login</Link>
+            <Link href={buildAuthRedirectPath('/login', returnTo)}>Back to login</Link>
           </Button>
         </CardContent>
       </Card>

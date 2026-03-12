@@ -13,10 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Logo from '@/components/logo';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { resolvePostAuthPath } from '@/lib/return-path';
 import { useAuth } from '@/firebase/provider';
 
 export default function LoginPage() {
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const auth = useAuth();
 
@@ -46,12 +48,14 @@ export default function LoginPage() {
         return;
       }
       const token = await credentials.user.getIdToken();
+      await fetch('/api/auth/session', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, credentials: 'include' });
       await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ eventType: 'login_success' }) });
+      const destination = resolvePostAuthPath(searchParams.get('returnTo'));
       toast({
         title: 'Login Successful',
-        description: 'Redirecting to portal...',
+        description: 'Redirecting...',
       });
-      router.push('/portal');
+      router.push(destination);
     } catch (error: any) {
       
       toast({
