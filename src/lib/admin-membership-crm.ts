@@ -1,6 +1,6 @@
 import { firestore } from '@/firebase/server';
 import { logAuditEvent, logMembershipHistory } from '@/lib/audit';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import type {
   MemberCRMOverview,
   MemberCRMRow,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ANALYTICS_EVENTS, AnalyticsEventType, safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS, type AnalyticsEventType } from '@/lib/analytics-events';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 
 const ALLOWED_PUBLIC_EVENTS: AnalyticsEventType[] = [
   ANALYTICS_EVENTS.SIGNUP_STARTED,

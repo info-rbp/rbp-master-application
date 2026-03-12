@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTemplateForContentType } from '@/lib/detail-templates';
 import { getRelatedResourcesForContent } from '@/lib/discovery';
 import type { RenderableContentObject } from '@/lib/content-objects';
-import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 
 function AccessCta({ content }: { content: RenderableContentObject }) {
   const access = content.accessBehavior;

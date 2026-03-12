@@ -1,5 +1,6 @@
 import { getKnowledgeArticleBySlug, getMembershipAccessGrantsForUser, getPartnerOfferBySlug, getSuiteBySlug, getUserById } from '@/lib/data';
-import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import type { ContentActionType, MembershipTier } from '@/lib/definitions';
 import { canAccessContent, canSubmitCustomisationRequest, CONTENT_ACCESS_DEFAULTS, getCustomisationRequestAllowance, getEffectiveMembershipTier } from '@/lib/entitlements';
 import type { AuthContext } from '@/lib/server-auth';
