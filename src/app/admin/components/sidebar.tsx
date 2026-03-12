@@ -8,29 +8,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
-import {
-  LayoutDashboard,
-  LogOut,
-  ChevronDown,
-  Folder,
-  FileText,
-  Gift,
-  BookOpen,
-  Newspaper,
-  GraduationCap,
-  Wrench,
-  Database,
-  LayoutList,
-  Star,
-  Users,
-  ChevronRight,
-  Briefcase,
-  Workflow,
-  Bell,
-  Megaphone,
-  LineChart,
-  ShieldCheck,
-} from 'lucide-react';
+import { LogOut, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -46,16 +24,22 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import React from 'react';
+import { ADMIN_NAV_SECTIONS, ADMIN_TOP_LEVEL_LINKS, type AdminNavItem } from './admin-navigation';
+
+const isItemActive = (pathname: string, item: AdminNavItem) => {
+  if (pathname === item.href) return true;
+  return (item.matchPrefixes ?? []).some((prefix) => pathname.startsWith(prefix));
+};
 
 const CollapsibleSidebarItem = ({
-  icon,
   title,
   pathPrefix,
+  icon,
   children,
 }: {
-  icon: React.ElementType;
   title: string;
   pathPrefix: string;
+  icon: React.ElementType;
   children: React.ReactNode;
 }) => {
   const pathname = usePathname();
@@ -68,26 +52,21 @@ const CollapsibleSidebarItem = ({
         <SidebarMenuButton
           variant="outline"
           className="w-full justify-between"
-          isActive={pathname.startsWith(pathPrefix) && !isOpen}
+          isActive={pathname.startsWith(pathPrefix)}
         >
           <div className="flex items-center gap-2">
             <Icon />
             <span>{title}</span>
           </div>
-          <ChevronDown
-            className={cn('h-4 w-4 transform transition-transform', isOpen && 'rotate-180')}
-          />
+          <ChevronDown className={cn('h-4 w-4 transform transition-transform', isOpen && 'rotate-180')} />
         </SidebarMenuButton>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <SidebarMenu className="ml-7 mt-1 border-l border-border pl-2 py-1 space-y-1">
-            {children}
-        </SidebarMenu>
+        <SidebarMenu className="ml-7 mt-1 border-l border-border py-1 pl-2 space-y-1">{children}</SidebarMenu>
       </CollapsibleContent>
     </Collapsible>
   );
 };
-
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -107,166 +86,43 @@ export default function AdminSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname === '/admin'}
-              tooltip="Dashboard"
-            >
-              <Link href="/admin">
-                <LayoutDashboard />
-                <span>Dashboard</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {ADMIN_TOP_LEVEL_LINKS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton asChild isActive={isItemActive(pathname, item)} tooltip={item.title}>
+                  <Link href={item.href}>
+                    {Icon ? <Icon /> : null}
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
 
-          <SidebarMenuItem>
-            <CollapsibleSidebarItem icon={Folder} title="DocuShare" pathPrefix="/admin/docushare">
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/templates')} tooltip="Templates" variant="outline">
-                        <Link href="/admin/docushare/templates"><FileText /><span>Templates</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/companion-guides')} tooltip="Companion Guides" variant="outline">
-                        <Link href="/admin/docushare/companion-guides"><BookOpen /><span>Companion Guides</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/documentation-suites')} tooltip="Documentation Suites" variant="outline">
-                        <Link href="/admin/docushare/documentation-suites"><Folder /><span>Documentation Suites</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/end-to-end-processes')} tooltip="End-to-End Processes" variant="outline">
-                        <Link href="/admin/docushare/end-to-end-processes"><Workflow /><span>End-to-End Processes</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/docushare/customisation-service')} tooltip="Customisation Service" variant="outline">
-                        <Link href="/admin/docushare/customisation-service"><Wrench /><span>Customisation Service</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </CollapsibleSidebarItem>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname.startsWith('/admin/partner-offers')}
-              tooltip="Partner Offers"
-            >
-              <Link href="/admin/partner-offers">
-                <Gift />
-                <span>Partner Offers</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          
-          <SidebarMenuItem>
-            <CollapsibleSidebarItem icon={BookOpen} title="Knowledge Center" pathPrefix="/admin/knowledge-center">
-                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/knowledge-center/articles')} tooltip="Articles" variant="outline">
-                        <Link href="/admin/knowledge-center/articles"><Newspaper /><span>Articles</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/knowledge-center/guides')} tooltip="Guides" variant="outline">
-                        <Link href="/admin/knowledge-center/guides"><GraduationCap /><span>Guides</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/knowledge-center/tools')} tooltip="Tools" variant="outline">
-                        <Link href="/admin/knowledge-center/tools"><Wrench /><span>Tools</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/knowledge-center/knowledge-base')} tooltip="Knowledge Base" variant="outline">
-                        <Link href="/admin/knowledge-center/knowledge-base"><Database /><span>Knowledge Base</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </CollapsibleSidebarItem>
-          </SidebarMenuItem>
-
-           <SidebarMenuItem>
-            <CollapsibleSidebarItem icon={LayoutList} title="Site Content" pathPrefix="/admin/site-content">
-                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/site-content/past-projects')} tooltip="Past Projects" variant="outline">
-                        <Link href="/admin/site-content/past-projects"><Briefcase /><span>Past Projects</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/site-content/testimonials')} tooltip="Testimonials" variant="outline">
-                        <Link href="/admin/site-content/testimonials"><Star /><span>Testimonials</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </CollapsibleSidebarItem>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname.startsWith('/admin/users')}
-              tooltip="Users"
-            >
-              <Link href="/admin/users">
-                <Users />
-                <span>Users</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <CollapsibleSidebarItem icon={Star} title="Membership" pathPrefix="/admin/membership">
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/member-administration')} tooltip="Membership CRM" variant="outline">
-                        <Link href="/admin/membership/member-administration"><Users /><span>Membership CRM</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/membership/plans')} tooltip="Membership Plans" variant="outline">
-                        <Link href="/admin/membership/plans"><Gift /><span>Plans</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </CollapsibleSidebarItem>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/analytics')} tooltip="Analytics">
-              <Link href="/admin/analytics">
-                <LineChart />
-                <span>Analytics</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/announcements')} tooltip="Announcements">
-              <Link href="/admin/announcements">
-                <Megaphone />
-                <span>Announcements</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/notifications')} tooltip="Notifications">
-              <Link href="/admin/notifications">
-                <Bell />
-                <span>Notifications</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/audit-logs')} tooltip="Audit Logs">
-              <Link href="/admin/audit-logs">
-                <ShieldCheck />
-                <span>Audit Logs</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
+          {ADMIN_NAV_SECTIONS.map((section) => (
+            <SidebarMenuItem key={section.title}>
+              <CollapsibleSidebarItem
+                icon={section.icon}
+                title={section.title}
+                pathPrefix={section.pathPrefix ?? section.items[0]?.href ?? '/admin'}
+              >
+                {section.items.map((item) => {
+                  const ItemIcon = item.icon;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={isItemActive(pathname, item)} tooltip={item.title} variant="outline">
+                        <Link href={item.href}>
+                          {ItemIcon ? <ItemIcon /> : null}
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </CollapsibleSidebarItem>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
@@ -280,9 +136,7 @@ export default function AdminSidebar() {
                 </Avatar>
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-medium">Admin User</span>
-                  <span className="text-xs text-muted-foreground">
-                    admin@docshare.com
-                  </span>
+                  <span className="text-xs text-muted-foreground">admin@docshare.com</span>
                 </div>
               </div>
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -292,9 +146,7 @@ export default function AdminSidebar() {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">Admin</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  admin@docshare.com
-                </p>
+                <p className="text-xs leading-none text-muted-foreground">admin@docshare.com</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
