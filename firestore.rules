@@ -185,6 +185,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+
+    match /admin_promotions/{promotionId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /announcements/{announcementId} {
       allow get, list: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
