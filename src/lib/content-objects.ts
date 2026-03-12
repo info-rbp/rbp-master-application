@@ -56,6 +56,65 @@ export type RenderableContentObject = {
   createdAt?: string;
   updatedAt?: string;
   publishedAt?: string;
+  templateFields?: Partial<Record<
+    | 'templateDetails'
+    | 'whatsIncluded'
+    | 'companionResources'
+    | 'relatedTemplates'
+    | 'implementationNotes'
+    | 'implementationSteps'
+    | 'guidePurpose'
+    | 'guideSections'
+    | 'relatedTemplatesSummary'
+    | 'relatedResourcesSummary'
+    | 'relatedResources'
+    | 'suiteContentsSummary'
+    | 'suiteContents'
+    | 'documentStructure'
+    | 'documentStructureItems'
+    | 'implementationOrderSummary'
+    | 'implementationOrder'
+    | 'processOverview'
+    | 'processStages'
+    | 'rolesAndOwnershipSummary'
+    | 'rolesAndOwnership'
+    | 'includedAssetsSummary'
+    | 'includedAssets'
+    | 'toolOverview'
+    | 'toolComponents'
+    | 'howItWorks'
+    | 'howItWorksSteps'
+    | 'whenToUseSummary'
+    | 'whenToUse'
+    | 'offerDetails'
+    | 'offerHighlights'
+    | 'partnerOverview'
+    | 'partnerServices'
+    | 'claimInstructions'
+    | 'claimChecklist'
+    | 'termsAndConditions'
+    | 'termsHighlights'
+    | 'articleSummary'
+    | 'keyTakeaways'
+    | 'embeddedResourcesSummary'
+    | 'embeddedResources'
+    | 'guideSummary'
+    | 'downloadableResourcesSummary'
+    | 'downloadableResources'
+    | 'exampleApplication'
+    | 'exampleSteps'
+    | 'serviceOverview'
+    | 'problemsSolved'
+    | 'serviceInclusionsSummary'
+    | 'serviceInclusions'
+    | 'membershipDiscountMessage'
+    | 'discountHighlights'
+    | 'discoveryCallBooking'
+    | 'bookingSteps'
+    | 'resourceOverview'
+    | 'resourceHighlights',
+    string | string[]
+  >>;
 };
 
 export function normalizeSlug(value: string): string {
@@ -173,6 +232,37 @@ export function toRenderableDocushareSuite(suite: DocumentSuite): RenderableCont
     createdAt: suite.createdAt,
     updatedAt: suite.updatedAt,
     publishedAt: suite.publishedAt,
+    templateFields: {
+      templateDetails: suite.templateDetails,
+      whatsIncluded: suite.whatsIncluded,
+      companionResources: suite.companionResources,
+      relatedTemplates: suite.relatedTemplates,
+      implementationNotes: suite.implementationNotes,
+      implementationSteps: suite.implementationSteps,
+      guidePurpose: suite.guidePurpose,
+      guideSections: suite.guideSections,
+      relatedTemplatesSummary: suite.relatedTemplatesSummary,
+      relatedResourcesSummary: suite.relatedResourcesSummary,
+      relatedResources: suite.relatedResources,
+      suiteContentsSummary: suite.suiteContentsSummary,
+      suiteContents: suite.suiteContents,
+      documentStructure: suite.documentStructure,
+      documentStructureItems: suite.documentStructureItems,
+      implementationOrderSummary: suite.implementationOrderSummary,
+      implementationOrder: suite.implementationOrder,
+      processOverview: suite.processOverview,
+      processStages: suite.processStages,
+      rolesAndOwnershipSummary: suite.rolesAndOwnershipSummary,
+      rolesAndOwnership: suite.rolesAndOwnership,
+      includedAssetsSummary: suite.includedAssetsSummary,
+      includedAssets: suite.includedAssets,
+      toolOverview: suite.toolOverview,
+      toolComponents: suite.toolComponents,
+      howItWorks: suite.howItWorks,
+      howItWorksSteps: suite.howItWorksSteps,
+      whenToUseSummary: suite.whenToUseSummary,
+      whenToUse: suite.whenToUse,
+    },
   };
 }
 
@@ -208,6 +298,10 @@ export function toRenderableDocument(document: Document, suite?: DocumentSuite):
     status: document.status ?? 'published',
     createdAt: document.createdAt,
     updatedAt: document.createdAt,
+    templateFields: {
+      resourceOverview: document.summary ?? document.description,
+      resourceHighlights: document.tags,
+    },
   };
 }
 
@@ -243,6 +337,16 @@ export function toRenderablePartnerOffer(offer: PartnerOffer): RenderableContent
     createdAt: offer.createdAt,
     updatedAt: offer.updatedAt,
     publishedAt: offer.publishedAt,
+    templateFields: {
+      offerDetails: offer.offerDetails ?? offer.description,
+      offerHighlights: [offer.offerValue, offer.expiresAt ? `Valid until ${offer.expiresAt}` : undefined].filter(Boolean) as string[],
+      partnerOverview: offer.partnerOverview,
+      partnerServices: offer.partnerServices,
+      claimInstructions: offer.claimInstructions,
+      claimChecklist: [offer.redemptionCode ? `Activation code: ${offer.redemptionCode}` : undefined].filter(Boolean) as string[],
+      termsAndConditions: offer.termsAndConditions,
+      termsHighlights: offer.categories,
+    },
   };
 }
 
@@ -291,6 +395,24 @@ export function toRenderableKnowledgeArticle(article: KnowledgeArticle): Rendera
     createdAt: article.createdAt,
     updatedAt: article.updatedAt,
     publishedAt: article.publishedAt,
+    templateFields: {
+      articleSummary: article.summary ?? article.excerpt,
+      keyTakeaways: article.keyTakeaways,
+      embeddedResourcesSummary: article.embeddedResourcesSummary,
+      embeddedResources: article.embeddedResources,
+      guideSummary: article.summary,
+      guideSections: article.guideSections,
+      downloadableResourcesSummary: article.downloadableResourcesSummary,
+      downloadableResources: article.downloadableResources,
+      toolOverview: article.summary,
+      toolComponents: article.toolComponents,
+      howItWorks: article.howItWorks,
+      howItWorksSteps: article.howItWorksSteps,
+      exampleApplication: article.exampleApplication,
+      exampleSteps: article.exampleSteps,
+      relatedResourcesSummary: article.relatedResourcesSummary,
+      relatedResources: article.relatedResources,
+    },
   };
 }
 
@@ -319,5 +441,15 @@ export function toRenderableServicePage(service: ManagedServicePage): Renderable
     actionLabel: service.ctaLabel,
     actionTarget: service.ctaHref,
     status: service.published ? 'published' : 'draft',
+    templateFields: {
+      serviceOverview: service.overview ?? service.shortDescription,
+      problemsSolved: service.problemsSolved,
+      serviceInclusionsSummary: service.inclusionsSummary,
+      serviceInclusions: service.serviceInclusions,
+      membershipDiscountMessage: service.membershipDiscountMessage,
+      discountHighlights: service.benefits?.map((item) => item.title),
+      discoveryCallBooking: service.discoveryCallBooking,
+      bookingSteps: [service.ctaHref ? 'Use the discovery call CTA to start.' : undefined].filter(Boolean) as string[],
+    },
   };
 }

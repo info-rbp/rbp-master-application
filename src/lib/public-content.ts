@@ -45,6 +45,13 @@ export type ManagedServicePage = {
   heroImageUrl?: string;
   features: PublicContentItem[];
   benefits: PublicContentItem[];
+  overview?: string;
+  problemsSolved?: string[];
+  inclusionsSummary?: string;
+  serviceInclusions?: string[];
+  membershipDiscountMessage?: string;
+  discoveryCallBooking?: string;
+  relatedContent?: Array<{ id: string; contentType: string; label?: string; path?: string }>;
   ctaLabel?: string;
   ctaHref?: string;
   displayOrder: number;
@@ -149,6 +156,13 @@ export async function getServicePageBySlug(slug: string): Promise<ManagedService
     heroImageUrl: data.heroImageUrl ? String(data.heroImageUrl) : undefined,
     features: mapItems(data.features),
     benefits: mapItems(data.benefits),
+    overview: data.overview ? String(data.overview) : undefined,
+    problemsSolved: Array.isArray(data.problemsSolved) ? data.problemsSolved.map((item: unknown) => String(item)) : [],
+    inclusionsSummary: data.inclusionsSummary ? String(data.inclusionsSummary) : undefined,
+    serviceInclusions: Array.isArray(data.serviceInclusions) ? data.serviceInclusions.map((item: unknown) => String(item)) : [],
+    membershipDiscountMessage: data.membershipDiscountMessage ? String(data.membershipDiscountMessage) : undefined,
+    discoveryCallBooking: data.discoveryCallBooking ? String(data.discoveryCallBooking) : undefined,
+    relatedContent: Array.isArray(data.relatedContent) ? data.relatedContent as Array<{ id: string; contentType: string; label?: string; path?: string }> : [],
     ctaLabel: data.ctaLabel ? String(data.ctaLabel) : undefined,
     ctaHref: data.ctaHref ? String(data.ctaHref) : undefined,
     displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
