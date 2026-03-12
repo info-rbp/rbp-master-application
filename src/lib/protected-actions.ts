@@ -1,5 +1,5 @@
 import { getKnowledgeArticleBySlug, getMembershipAccessGrantsForUser, getPartnerOfferBySlug, getSuiteBySlug, getUserById } from '@/lib/data';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
 import type { ContentActionType, MembershipTier } from '@/lib/definitions';
 import { canAccessContent, canSubmitCustomisationRequest, CONTENT_ACCESS_DEFAULTS, getCustomisationRequestAllowance, getEffectiveMembershipTier } from '@/lib/entitlements';
 import type { AuthContext } from '@/lib/server-auth';
@@ -72,8 +72,17 @@ function toResult(input: Omit<ProtectedActionResult, 'allowed'> & { allowed?: bo
 
 export async function evaluateProtectedAction(input: ProtectedActionInput, auth: AuthContext | null): Promise<ProtectedActionResult> {
   const user = await resolveUserTier(auth);
+  await safeLogAnalyticsEvent({
+    eventType: ANALYTICS_EVENTS.LOCKED_CTA_CLICKED,
+    userId: user.userId,
+    userRole: user.userId ? 'member' : undefined,
+    targetId: input.slug,
+    targetType: input.actionType,
+    metadata: { returnTo: input.returnTo ?? null },
+  });
 
   if (!user.isAuthenticated) {
+    await safeLogAnalyticsEvent({ eventType: ANALYTICS_EVENTS.LOGIN_REQUIRED_PROMPT_SHOWN, targetId: input.slug, targetType: input.actionType, metadata: { returnTo: input.returnTo ?? null } });
     return toResult({
       decision: 'requiresLogin',
       requiresLogin: true,
@@ -110,21 +119,29 @@ export async function evaluateProtectedAction(input: ProtectedActionInput, auth:
         return toResult({ decision: 'requiresLogin', requiresLogin: true, requiresMembership: access.requiresMembership, requiredTier: access.requiredTier, currentTier: access.currentTier, reason: access.reason });
       }
       if (access.reason === 'insufficient_tier') {
+        await safeLogAnalyticsEvent({ eventType: ANALYTICS_EVENTS.UPGRADE_REQUIRED_PROMPT_SHOWN, userId: user.userId, userRole: 'member', targetId: input.slug, targetType: input.actionType, metadata: { requiredTier: access.requiredTier } });
         return toResult({ decision: 'requiresUpgrade', requiresLogin: false, requiresMembership: true, requiredTier: access.requiredTier, currentTier: access.currentTier, reason: access.reason });
       }
+      await safeLogAnalyticsEvent({ eventType: ANALYTICS_EVENTS.MEMBERSHIP_REQUIRED_PROMPT_SHOWN, userId: user.userId, userRole: 'member', targetId: input.slug, targetType: input.actionType, metadata: { requiredTier: access.requiredTier } });
       return toResult({ decision: 'requiresMembership', requiresLogin: false, requiresMembership: true, requiredTier: access.requiredTier, currentTier: access.currentTier, reason: access.reason });
     }
 
     const secureDeliveryUrl = suite && input.slug ? `/api/protected-actions/deliver?slug=${encodeURIComponent(input.slug)}` : undefined;
     const decision = access.isLimitedAccess ? 'limitedAccess' : 'allowed';
     await safeLogAnalyticsEvent({
-      eventType: 'resource_downloaded',
+      eventType: ANALYTICS_EVENTS.RESOURCE_DOWNLOADED,
       userId: user.userId,
       userRole: 'member',
       targetId: input.slug,
       targetType: input.actionType,
       metadata: { decision, tier: user.currentTier, returnTo: input.returnTo },
     });
+    if (input.actionType === 'access_suite') {
+      await safeLogAnalyticsEvent({ eventType: ANALYTICS_EVENTS.SUITE_ACCESS_SUCCEEDED, userId: user.userId, userRole: 'member', targetId: input.slug, targetType: 'suite' });
+    }
+    if (input.actionType === 'launch_tool') {
+      await safeLogAnalyticsEvent({ eventType: ANALYTICS_EVENTS.TOOL_LAUNCHED, userId: user.userId, userRole: 'member', targetId: input.slug, targetType: 'tool' });
+    }
 
     return toResult({
       decision,
@@ -157,6 +174,8 @@ export async function evaluateProtectedAction(input: ProtectedActionInput, auth:
         reason: access.reason,
       });
     }
+
+    await safeLogAnalyticsEvent({ eventType: ANALYTICS_EVENTS.OFFER_REDEEMED, userId: user.userId, userRole: 'member', targetId: input.slug, targetType: 'partner_offer' });
 
     return toResult({
       decision: 'allowed',

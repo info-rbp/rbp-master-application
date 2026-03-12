@@ -1,9 +1,14 @@
+import { buildSeoMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import OfferCard from './components/offer-card';
 import { categories, toOfferView } from './data';
 import { getActivePartnerOffers } from '@/lib/data';
+
+export const metadata = buildSeoMetadata({ title: 'Partner Marketplace', description: 'Browse active partner offers and compare membership value.', path: '/partner-offers' });
+
+export const revalidate = 300;
 
 export default async function PartnerOffersPage() {
   try {

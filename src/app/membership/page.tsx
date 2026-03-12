@@ -1,3 +1,4 @@
+import { buildSeoMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,10 @@ const fallbackCards = [
   { title: 'Premium Membership', description: 'Bespoke support and expert access for established teams.', href: '/membership/premium' },
   { title: 'FAQ', description: 'Find answers to common membership questions.', href: '/membership/faq' },
 ];
+
+export const metadata = buildSeoMetadata({ title: 'Membership Plans', description: 'Compare membership tiers, benefits, and upgrade paths.', path: '/membership' });
+
+export const revalidate = 300;
 
 export default async function MembershipPage() {
   const [content, offers, services] = await Promise.all([getMembershipPageContent(), getActivePartnerOffers(), getPublishedServicePages()]);

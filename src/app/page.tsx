@@ -1,8 +1,13 @@
+import { buildSeoMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PublicCatalogueCard } from '@/components/public/public-catalogue-card';
 import { getActivePartnerOffers, getHomepageContent, getKnowledgeArticles, getPublishedServicePages, getPublishedTestimonials } from '@/lib/data';
+
+export const metadata = buildSeoMetadata({ title: 'Home', description: 'Browse services, DocuShare resources, partner offers, and knowledge content for growing businesses.', path: '/' });
+
+export const revalidate = 300;
 
 export default async function HomePage() {
   const [content, testimonials, offers, knowledge, services] = await Promise.all([

@@ -9,6 +9,7 @@ const modules = [
   { title: 'Analytics', href: '/admin/analytics', description: 'Operational metrics and platform analytics.' },
   { title: 'Audit Logs', href: '/admin/audit-logs', description: 'Administrative audit history and key operational events.' },
   { title: 'Email / Automation Logs', href: '/admin/system/email-automation-logs', description: 'Outbound email and automation processing logs.' },
+  { title: 'Launch readiness', href: '/admin/system/launch-readiness', description: 'Content completeness, env validation, and go-live preflight status.' },
 ];
 
 export default function AdminSystemPage() {
