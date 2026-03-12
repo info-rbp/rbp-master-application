@@ -6,7 +6,7 @@ import {
   canBookStrategicCheckup,
   getCustomisationRequestAllowance,
 } from './entitlements';
-import { safeLogAnalyticsEvent } from './analytics';
+import { safeLogAnalyticsEvent } from './analytics-server';
 import { logAuditEvent } from './audit';
 import { grantStandardTrialFromServicePurchase } from './promotions';
 

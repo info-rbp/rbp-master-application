@@ -1,7 +1,7 @@
 import { firestore } from '@/firebase/server';
 import type { MembershipPlanCode, MembershipTier } from './definitions';
 import { getHigherMembershipTier } from './entitlements';
-import { safeLogAnalyticsEvent } from './analytics';
+import { safeLogAnalyticsEvent } from './analytics-server';
 import { logAuditEvent } from './audit';
 import { triggerMembershipAlert } from './alerts';
 

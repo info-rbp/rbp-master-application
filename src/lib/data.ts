@@ -12,7 +12,7 @@ import type {
 } from './definitions';
 import { MEMBERSHIP_TIERS } from './definitions';
 import { logAuditEvent, saveContentRevision } from './audit';
-import { safeLogAnalyticsEvent } from './analytics';
+import { safeLogAnalyticsEvent } from './analytics-server';
 import { canPublishKnowledgeArticle, normalizeKnowledgeSlug, type KnowledgeContentType } from './knowledge-center';
 import { getAccessMetadataForDocuShareSection, resolvePlanCodeToBillingCycle, resolvePlanCodeToTier } from './entitlements';
 import { filterAndSortUsers, validateAdminRole } from './user-admin';

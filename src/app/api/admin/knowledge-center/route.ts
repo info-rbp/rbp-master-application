@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createKnowledgeArticle, getKnowledgeArticlesWithFilters } from '@/lib/data';
 import { AuthorizationError, requireAdminRequestContext } from '@/lib/server-auth';
 import { isKnowledgeContentType, normalizeKnowledgeSlug, parseTagInput } from '@/lib/knowledge-center';
+import { readJsonBody } from '@/lib/http';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +41,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
-  const payload = await request.json();
+  const parsed = await readJsonBody<Record<string, unknown>>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const payload = parsed.data;
   if (!isKnowledgeContentType(payload.type)) {
     return NextResponse.json({ error: 'Invalid content type' }, { status: 400 });
   }

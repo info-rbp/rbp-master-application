@@ -6,7 +6,7 @@ const STATIC_PUBLIC_PATHS = ['/', '/docushare', '/knowledge-center', '/partner-o
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl();
-  const items = await getPublicDiscoveryItems();
+  const items = await getPublicDiscoveryItems().catch(() => []);
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_PUBLIC_PATHS.map((path) => ({
     url: `${baseUrl}${path}`,

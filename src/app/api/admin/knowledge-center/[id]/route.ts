@@ -7,6 +7,7 @@ import {
 } from '@/lib/data';
 import { AuthorizationError, requireAdminRequestContext } from '@/lib/server-auth';
 import { normalizeKnowledgeSlug, parseTagInput } from '@/lib/knowledge-center';
+import { readJsonBody } from '@/lib/http';
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   let auth;
@@ -18,7 +19,12 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
   }
 
   const { id } = await context.params;
-  const payload = await request.json();
+  const parsed = await readJsonBody<Record<string, unknown>>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const payload = parsed.data;
 
   const article = await updateKnowledgeArticle(id, {
     title: payload.title !== undefined ? String(payload.title ?? '').trim() : undefined,
@@ -50,7 +56,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const { id } = await context.params;
-  const payload = await request.json();
+  const parsed = await readJsonBody<Record<string, unknown>>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const payload = parsed.data;
   const article = payload.action === 'publish'
     ? await publishKnowledgeArticle(id, auth.userId)
     : await unpublishKnowledgeArticle(id, auth.userId);

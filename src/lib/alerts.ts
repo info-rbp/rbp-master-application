@@ -1,6 +1,6 @@
 import { createNotification } from './notifications';
 import { sendTemplatedEmail, type EmailSendResult } from './email';
-import { safeLogAnalyticsEvent } from './analytics';
+import { safeLogAnalyticsEvent } from './analytics-server';
 
 type MembershipAlertType =
   | 'membership_expiring'

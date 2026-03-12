@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ANALYTICS_EVENTS, buildAnalyticsEventRecord } from '@/lib/analytics';
+import { ANALYTICS_EVENTS, buildAnalyticsEventRecord } from '@/lib/analytics-events';
 import { buildSeoMetadata } from '@/lib/seo';
 import robots from '@/app/robots';
 import { validateRequiredEnv } from '@/lib/launch-readiness';

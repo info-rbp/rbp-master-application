@@ -1,5 +1,5 @@
 import { firestore } from '@/firebase/server';
-import { ANALYTICS_EVENTS } from './analytics';
+import { ANALYTICS_EVENTS } from './analytics-events';
 
 export async function getAdminSummaryMetrics() {
   const [users, enquiries, downloads, offers, unreadAdmin] = await Promise.all([

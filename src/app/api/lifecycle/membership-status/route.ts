@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { firestore } from '@/firebase/server';
 import { triggerAdminAlert, triggerMembershipAlert } from '@/lib/alerts';
+import { readJsonBody } from '@/lib/http';
 
 type Payload = {
   userId?: string;
@@ -17,7 +18,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const body = (await request.json()) as Payload;
+  const parsed = await readJsonBody<Payload>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const body = parsed.data;
   const userId = body.userId?.trim();
   const newStatus = body.newStatus?.trim().toLowerCase();
   const previousStatus = body.previousStatus?.trim().toLowerCase();

@@ -59,3 +59,16 @@ test('verifySquareWebhookSignature validates expected signature', () => {
     true,
   );
 });
+
+test('verifySquareWebhookSignature returns false for mismatched signature length', () => {
+  process.env.SQUARE_WEBHOOK_SIGNATURE_KEY = 'abc123';
+
+  assert.equal(
+    verifySquareWebhookSignature({
+      body: JSON.stringify({ id: 'evt_1' }),
+      signature: 'short',
+      notificationUrl: 'https://example.com/api/square/webhooks',
+    }),
+    false,
+  );
+});

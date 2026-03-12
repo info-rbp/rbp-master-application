@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthContext } from '@/lib/server-auth';
 import { getMemberOverview } from '@/lib/member-dashboard';
 import { createCustomisationWorkflow, listMemberWorkflows } from '@/lib/service-workflows';
+import { readJsonBody } from '@/lib/http';
 
 export async function GET() {
   const auth = await getServerAuthContext();
@@ -13,7 +14,12 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const auth = await getServerAuthContext();
   if (!auth) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
-  const body = await request.json();
+  const parsed = await readJsonBody<Record<string, unknown>>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const body = parsed.data;
   if (!body.requestDescription || typeof body.requestDescription !== 'string') {
     return NextResponse.json({ ok: false, error: 'requestDescription is required' }, { status: 400 });
   }

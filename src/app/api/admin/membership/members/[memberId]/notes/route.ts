@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addMemberNote, listMemberNotes } from '@/lib/admin-membership-crm';
 import { getRequestAuthContext } from '@/lib/server-auth';
+import { readJsonBody } from '@/lib/http';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ memberId: string }> }) {
   const auth = await getRequestAuthContext(request);
@@ -19,7 +20,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ me
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const payload = await request.json();
+  const parsed = await readJsonBody<Record<string, unknown>>(request);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  const payload = parsed.data;
   const note = String(payload.note ?? '').trim();
   if (!note) {
     return NextResponse.json({ error: 'note is required' }, { status: 400 });

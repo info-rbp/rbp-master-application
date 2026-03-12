@@ -1,7 +1,7 @@
 import { firestore } from '@/firebase/server';
 import type { BillingCycle, MembershipPlanCode, MembershipStatus, MembershipTier } from './definitions';
 import { getCustomisationRequestAllowance, getEffectiveMembershipTier, getServiceDiscountPercent } from './entitlements';
-import { safeLogAnalyticsEvent } from './analytics';
+import { safeLogAnalyticsEvent } from './analytics-server';
 import { expirePromotionalGrants } from './promotions';
 import { getUserById, getMembershipAccessGrantsForUser } from './data';
 import {
