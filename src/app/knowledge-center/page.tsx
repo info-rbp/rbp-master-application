@@ -1,3 +1,4 @@
+import { buildSeoMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PublicCatalogueCard } from '@/components/public/public-catalogue-card';
@@ -9,6 +10,10 @@ const fallbackCategories = [
   { title: 'Tools & Templates', description: 'Downloadable templates and practical tools.', href: '/knowledge-center/tools' },
   { title: 'Knowledge Base', description: 'Searchable definitions and FAQ content.', href: '/knowledge-center/knowledge' },
 ];
+
+export const metadata = buildSeoMetadata({ title: 'Knowledge Center', description: 'Read practical articles, guides, tools, and a knowledge base for operators.', path: '/knowledge-center' });
+
+export const revalidate = 300;
 
 export default async function KnowledgeCenterPage() {
   const [content, featuredItems] = await Promise.all([

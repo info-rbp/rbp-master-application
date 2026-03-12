@@ -1,7 +1,12 @@
+import { buildSeoMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getPublishedServicePages, getServicesLandingContent } from '@/lib/data';
 import { PublicCatalogueCard } from '@/components/public/public-catalogue-card';
+
+export const metadata = buildSeoMetadata({ title: 'Services', description: 'Browse advisory services for finance, operations, HR, and growth support.', path: '/services' });
+
+export const revalidate = 300;
 
 export default async function ServicesPage() {
   const [pageContent, services] = await Promise.all([getServicesLandingContent(), getPublishedServicePages()]);

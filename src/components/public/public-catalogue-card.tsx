@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -32,9 +33,8 @@ export function PublicCatalogueCard({
   return (
     <Card className="flex h-full flex-col">
       {imageUrl ? (
-        <div className="h-40 w-full overflow-hidden rounded-t-lg bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
+        <div className="relative h-40 w-full overflow-hidden rounded-t-lg bg-muted">
+          <Image src={imageUrl} alt={title} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
         </div>
       ) : null}
       <CardHeader className="space-y-3">
@@ -62,7 +62,7 @@ export function PublicCatalogueCard({
       </CardContent>
       <CardFooter>
         <Button asChild variant="outline" className="w-full">
-          <Link href={href}>
+          <Link href={href} aria-label={`${ctaLabel}: ${title}`}>
             {ctaLabel} <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

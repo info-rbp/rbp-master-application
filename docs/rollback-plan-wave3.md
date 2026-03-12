@@ -7,3 +7,5 @@
 5. If announcement issues occur, mark all announcement documents `active=false`.
 6. If analytics write pressure occurs, temporarily disable analytics route writes in API handlers.
 7. Run post-rollback smoke checks (public/member/admin login + portal load).
+
+- Validate launch readiness checks, analytics event ingestion, and Square webhook health after rollback.

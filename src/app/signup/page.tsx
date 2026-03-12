@@ -20,6 +20,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/firebase/provider';
 import { resolvePostAuthPath } from '@/lib/return-path';
+import { ANALYTICS_EVENTS } from '@/lib/analytics';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -33,6 +34,7 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    await fetch('/api/analytics/public', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventType: ANALYTICS_EVENTS.SIGNUP_STARTED, metadata: { returnTo: searchParams.get('returnTo') ?? null } }) });
     try {
       // Create the user in Firebase Auth
       const credentials = await createUserWithEmailAndPassword(auth, email, password);

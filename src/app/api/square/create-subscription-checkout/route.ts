@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { firestore } from '@/firebase/server';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { createSquareSubscriptionPaymentLink, resolveSquareLocationId } from '@/lib/square';
 import { validatePlanForSquareCheckout } from '@/lib/subscriptions';
@@ -51,7 +51,16 @@ export async function POST(request: NextRequest) {
     }
 
     await safeLogAnalyticsEvent({
-      eventType: 'checkout_started',
+      eventType: ANALYTICS_EVENTS.UPGRADE_FLOW_STARTED,
+      userId: auth.userId,
+      userRole: auth.role,
+      targetId: planId,
+      targetType: 'membership_plan',
+      metadata: { provider: 'square' },
+    });
+
+    await safeLogAnalyticsEvent({
+      eventType: ANALYTICS_EVENTS.CHECKOUT_STARTED,
       userId: auth.userId,
       userRole: auth.role,
       targetId: planId,
@@ -73,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     await safeLogAnalyticsEvent({
-      eventType: 'square_payment_link_created',
+      eventType: ANALYTICS_EVENTS.SQUARE_PAYMENT_LINK_CREATED,
       userId: auth.userId,
       userRole: auth.role,
       targetId: paymentLink.id,

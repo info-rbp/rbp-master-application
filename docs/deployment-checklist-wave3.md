@@ -13,3 +13,5 @@
    - notifications endpoints
 8. Validate Firestore collections receive writes:
    - `notifications`, `announcements`, `analytics_events`, `audit_logs`, `content_revisions`, `membership_history`, `email_logs`.
+
+- Review /admin/system/launch-readiness and resolve warnings before release cut.

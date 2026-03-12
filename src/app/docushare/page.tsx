@@ -1,3 +1,4 @@
+import { buildSeoMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,10 @@ const fallbackCategories = [
   { title: 'End-to-End Processes', description: 'Comprehensive workflow documentation.', href: '/docushare/end-to-end-processes' },
   { title: 'Customisation Service', description: 'Tailored documentation support.', href: '/docushare/customisation-service' },
 ];
+
+export const metadata = buildSeoMetadata({ title: 'DocuShare', description: 'Browse templates, guides, suites, and process documentation.', path: '/docushare' });
+
+export const revalidate = 300;
 
 export default async function DocuShareLandingPage() {
   const [content, allSuites] = await Promise.all([getDocuShareSectionContent('landing'), getDocumentSuites()]);

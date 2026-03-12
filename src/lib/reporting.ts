@@ -1,10 +1,11 @@
 import { firestore } from '@/firebase/server';
+import { ANALYTICS_EVENTS } from './analytics';
 
 export async function getAdminSummaryMetrics() {
   const [users, enquiries, downloads, offers, unreadAdmin] = await Promise.all([
     firestore.collection('users').get(),
     firestore.collection('contact_enquiries').get(),
-    firestore.collection('analytics_events').where('eventType', '==', 'resource_downloaded').get(),
+    firestore.collection('analytics_events').where('eventType', '==', ANALYTICS_EVENTS.RESOURCE_DOWNLOADED).get(),
     firestore.collection('partner_offers').where('active', '==', true).get(),
     firestore.collection('notifications').where('audienceRole', '==', 'admin').where('read', '==', false).get(),
   ]);
@@ -31,14 +32,15 @@ export async function getAdminSummaryMetrics() {
 
 export async function getResourceUsageMetrics() {
   const [views, downloads] = await Promise.all([
-    firestore.collection('analytics_events').where('eventType', '==', 'resource_viewed').get(),
-    firestore.collection('analytics_events').where('eventType', '==', 'resource_downloaded').get(),
+    firestore.collection('analytics_events').where('eventType', '==', ANALYTICS_EVENTS.RESOURCE_VIEWED).get(),
+    firestore.collection('analytics_events').where('eventType', '==', ANALYTICS_EVENTS.RESOURCE_DOWNLOADED).get(),
   ]);
 
   const summarize = (snapshot: FirebaseFirestore.QuerySnapshot) => {
     const byResource = new Map<string, number>();
     snapshot.docs.forEach((doc) => {
-      const resourceId = String(doc.data().resourceId ?? 'unknown');
+      const data = doc.data() as { resourceId?: string; targetId?: string; metadata?: { resourceId?: string } };
+      const resourceId = String(data.resourceId ?? data.targetId ?? data.metadata?.resourceId ?? 'unknown');
       byResource.set(resourceId, (byResource.get(resourceId) ?? 0) + 1);
     });
     return [...byResource.entries()].map(([resourceId, count]) => ({ resourceId, count }));

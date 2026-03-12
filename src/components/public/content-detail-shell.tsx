@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTemplateForContentType } from '@/lib/detail-templates';
 import { getRelatedResourcesForContent } from '@/lib/discovery';
 import type { RenderableContentObject } from '@/lib/content-objects';
-import { ProtectedActionCTA } from '@/components/public/protected-action-cta';
-import { getDefaultActionLabel, mapActionTypeFromContentAction } from '@/lib/protected-actions';
+import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
 
 function AccessCta({ content }: { content: RenderableContentObject }) {
   const access = content.accessBehavior;
@@ -103,8 +102,22 @@ function RelatedContent({
   );
 }
 
+
+function eventTypeByContent(contentType: string) {
+  if (contentType === 'service_page') return ANALYTICS_EVENTS.SERVICE_PAGE_VIEWED;
+  if (contentType === 'partner_offer') return ANALYTICS_EVENTS.PUBLIC_OFFER_VIEWED;
+  if (contentType.startsWith('knowledge_center')) return ANALYTICS_EVENTS.ARTICLE_VIEWED;
+  return ANALYTICS_EVENTS.PUBLIC_RESOURCE_VIEWED;
+}
+
 export async function ContentDetailShell({ content }: { content: RenderableContentObject }) {
   const relatedItems = await getRelatedResourcesForContent(content, 6);
+  await safeLogAnalyticsEvent({
+    eventType: eventTypeByContent(content.contentType),
+    targetId: content.sourceId,
+    targetType: content.contentType,
+    metadata: { slug: content.slug, relatedCount: relatedItems.length },
+  });
 
   return (
     <article className="container mx-auto px-4 md:px-6 py-16 max-w-5xl space-y-10">

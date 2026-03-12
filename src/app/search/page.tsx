@@ -1,7 +1,12 @@
+import { buildSeoMetadata } from '@/lib/seo';
 import { PublicCatalogueCard } from '@/components/public/public-catalogue-card';
 import { DiscoveryFilters } from '@/components/public/discovery-filters';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
 import { applyDiscoveryFilters, getDiscoveryFilterOptions, getPublicDiscoveryItems, type DiscoveryFilters as DiscoveryQueryFilters } from '@/lib/discovery';
+
+export const metadata = buildSeoMetadata({ title: 'Search', description: 'Search the public catalogue across resources, offers, services, and knowledge.', path: '/search' });
+
+export const revalidate = 300;
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
@@ -17,9 +22,19 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const filtered = applyDiscoveryFilters(items, values);
   const options = getDiscoveryFilterOptions(items);
 
-  if (values.keyword || values.category !== 'all' || values.tag !== 'all' || values.contentType !== 'all' || values.tier !== 'all') {
+  const hasFilters = values.category !== 'all' || values.tag !== 'all' || values.contentType !== 'all' || values.tier !== 'all';
+
+  if (values.keyword || hasFilters) {
     await safeLogAnalyticsEvent({
-      eventType: 'catalogue_search_performed',
+      eventType: ANALYTICS_EVENTS.CATALOGUE_SEARCH_PERFORMED,
+      targetType: 'public_catalogue',
+      metadata: { ...values, resultCount: filtered.length },
+    });
+  }
+
+  if (hasFilters) {
+    await safeLogAnalyticsEvent({
+      eventType: ANALYTICS_EVENTS.CATALOGUE_FILTER_APPLIED,
       targetType: 'public_catalogue',
       metadata: { ...values, resultCount: filtered.length },
     });

@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { resolvePostAuthPath } from '@/lib/return-path';
+import { ANALYTICS_EVENTS } from '@/lib/analytics';
 import { useAuth } from '@/firebase/provider';
 
 export default function LoginPage() {
@@ -49,8 +50,12 @@ export default function LoginPage() {
       }
       const token = await credentials.user.getIdToken();
       await fetch('/api/auth/session', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, credentials: 'include' });
-      await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ eventType: 'login_success' }) });
+      await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ eventType: ANALYTICS_EVENTS.LOGIN_SUCCESS, metadata: { returnTo: searchParams.get('returnTo') ?? null } }) });
       const destination = resolvePostAuthPath(searchParams.get('returnTo'));
+      if (searchParams.get('returnTo')) {
+        await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ eventType: ANALYTICS_EVENTS.LOGIN_FROM_GATED_COMPLETED, metadata: { returnTo: destination } }) });
+        await fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ eventType: ANALYTICS_EVENTS.RETURN_TO_ORIGIN_AFTER_LOGIN, metadata: { destination } }) });
+      }
       toast({
         title: 'Login Successful',
         description: 'Redirecting...',

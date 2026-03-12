@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { createNotification } from '@/lib/notifications';
 import { triggerAdminAlert } from '@/lib/alerts';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
 import { sendTemplatedEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       actionUrl: '/verify-email',
       severity: 'success',
     }),
-    safeLogAnalyticsEvent({ eventType: 'signup_success', userId: auth.userId, userRole: auth.role }),
+    safeLogAnalyticsEvent({ eventType: ANALYTICS_EVENTS.SIGNUP_SUCCESS, userId: auth.userId, userRole: auth.role }),
     triggerAdminAlert({
       type: 'new_signup',
       title: 'New member signup',
