@@ -43,7 +43,15 @@ export type AnalyticsEventType =
   | 'catalogue_filter_applied'
   | 'catalogue_result_clicked'
   | 'related_resource_clicked'
-  | 'companion_resource_clicked';
+  | 'companion_resource_clicked'
+  | 'member_dashboard_viewed'
+  | 'member_membership_viewed'
+  | 'member_billing_history_viewed'
+  | 'customisation_request_submitted'
+  | 'support_request_submitted'
+  | 'discovery_call_requested'
+  | 'resource_saved'
+  | 'member_recent_activity_clicked';
 
 export type AnalyticsEvent = {
   eventType: AnalyticsEventType;
