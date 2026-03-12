@@ -80,13 +80,50 @@ service cloud.firestore {
     }
 
     match /subscriptions/{subscriptionId} {
-      allow read: if isAdmin();
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
       allow create, update, delete: if false;
     }
 
     match /billing_history/{eventId} {
-      allow read: if isAdmin();
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
       allow create, update, delete: if false;
+    }
+
+    match /customisation_requests/{requestId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /support_requests/{requestId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /discovery_calls/{callId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /user_saved_items/{itemId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+    }
+
+    match /user_recent_activity/{activityId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
     match /square_webhook_events/{eventId} {

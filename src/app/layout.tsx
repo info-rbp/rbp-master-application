@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const showMarketingLayout = !pathname.startsWith('/admin') && !pathname.startsWith('/portal') && !pathname.startsWith('/login') && !pathname.startsWith('/signup');
+  const showMarketingLayout = !pathname.startsWith('/admin') && !pathname.startsWith('/portal') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/login') && !pathname.startsWith('/signup');
 
 
   return (
