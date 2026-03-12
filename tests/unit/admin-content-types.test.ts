@@ -13,7 +13,7 @@ test('toOfferView maps partner offer to public shape', () => {
     updatedAt: new Date().toISOString(),
   });
 
-  assert.equal(mapped.href, '/x');
+  assert.equal(mapped.href, '/partner-offers/1');
   assert.equal(mapped.partner, 'Offer');
   assert.ok(mapped.categories.includes('all'));
 });

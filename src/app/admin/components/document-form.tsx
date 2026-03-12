@@ -33,6 +33,12 @@ const formSchema = z.object({
   type: z.enum(['file', 'drive']),
   suiteId: z.string().nonempty('Please select a suite.'),
   url: z.string().url('Please enter a valid URL.'),
+  slug: z.string().optional(),
+  summary: z.string().optional(),
+  tags: z.string().optional(),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  status: z.enum(['draft', 'published']).default('published'),
 });
 
 type DocumentFormProps = {
@@ -55,6 +61,12 @@ export function DocumentForm({ suites, document, onSubmit, onFinished }: Documen
       type: document?.type ?? 'file',
       suiteId: document?.suiteId ?? '',
       url: document?.url ?? '#',
+      slug: document?.slug ?? '',
+      summary: document?.summary ?? '',
+      tags: document?.tags?.join(', ') ?? '',
+      seoTitle: document?.seoTitle ?? '',
+      seoDescription: document?.seoDescription ?? '',
+      status: document?.status === 'draft' ? 'draft' : 'published',
     },
   });
 
@@ -214,6 +226,8 @@ export function DocumentForm({ suites, document, onSubmit, onFinished }: Documen
           />
         )}
 
+        <FormField control={form.control} name="slug" render={({ field }) => (<FormItem><FormLabel>Slug</FormLabel><FormControl><Input placeholder="auto-generated-if-empty" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="summary" render={({ field }) => (<FormItem><FormLabel>Summary</FormLabel><FormControl><Textarea className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>)} />
         <FormField
           control={form.control}
           name="description"
@@ -247,6 +261,11 @@ export function DocumentForm({ suites, document, onSubmit, onFinished }: Documen
             </FormItem>
           )}
         />
+
+        <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel>Tags</FormLabel><FormControl><Input placeholder="comma,separated" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="seoTitle" render={({ field }) => (<FormItem><FormLabel>SEO title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="seoDescription" render={({ field }) => (<FormItem><FormLabel>SEO description</FormLabel><FormControl><Textarea className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Status</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
 
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onFinished}>Cancel</Button>

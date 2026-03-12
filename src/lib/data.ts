@@ -13,11 +13,12 @@ import type {
 import { MEMBERSHIP_TIERS } from './definitions';
 import { logAuditEvent, saveContentRevision } from './audit';
 import { safeLogAnalyticsEvent } from './analytics';
-import { canPublishKnowledgeArticle, type KnowledgeContentType } from './knowledge-center';
+import { canPublishKnowledgeArticle, normalizeKnowledgeSlug, type KnowledgeContentType } from './knowledge-center';
 import { getAccessMetadataForDocuShareSection, resolvePlanCodeToBillingCycle, resolvePlanCodeToTier } from './entitlements';
 import { filterAndSortUsers, validateAdminRole } from './user-admin';
 import { getPublicPartnerOffers, getPublicPastProjects, getPublicTestimonials } from './content-admin';
 import { getDocuShareSectionContent as getDocuShareSectionContentFromCms, getFAQsByCategory as getFAQsByCategoryFromCms, getHomepageContent as getHomepageContentFromCms, getKnowledgeLandingContent as getKnowledgeLandingContentFromCms, getMembershipPageContent as getMembershipPageContentFromCms, getPageContentBySlug as getPageContentBySlugFromCms, getPublishedServicePages as getPublishedServicePagesFromCms, getServicePageBySlug as getServicePageBySlugFromCms, getServicesLandingContent as getServicesLandingContentFromCms } from './public-content';
+import { ensureUniqueSlug, getDocushareSegment, normalizeSlug } from './content-objects';
 
 const toIsoString = (value: unknown): string => {
   if (!value) return new Date().toISOString();
@@ -36,6 +37,13 @@ const toIsoString = (value: unknown): string => {
 
 const isMembershipTier = (value: unknown): value is import('./definitions').MembershipTier =>
   typeof value === 'string' && MEMBERSHIP_TIERS.includes(value as import('./definitions').MembershipTier);
+
+
+const normalizeTags = (value: unknown): string[] => {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+  return [];
+};
 
 const normalizeMembershipStatus = (value: unknown): import('./definitions').MembershipStatus => {
   const status = String(value ?? 'pending').toLowerCase();
@@ -67,10 +75,21 @@ export async function getDocumentSuites(): Promise<DocumentSuite[]> {
       id: d.id,
       name: data.name,
       description: data.aiGeneratedDescription,
-      url: data.externalUrl || '#',
+      url: data.externalUrl || data.storagePath || '#',
       type: data.sourceType === 'googleDrive' ? 'drive' : 'file',
       createdAt: toIsoString(data.uploadedAt),
       suiteId: data.documentationSuiteId,
+      slug: data.slug ? String(data.slug) : undefined,
+      summary: data.summary ? String(data.summary) : undefined,
+      category: data.category ? String(data.category) : undefined,
+      tags: Array.isArray(data.tags) ? data.tags.map((tag: unknown) => String(tag)) : [],
+      status: (data.status as Document['status'] | undefined) ?? 'published',
+      seoTitle: data.seoTitle ? String(data.seoTitle) : undefined,
+      seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
+      actionType: data.actionType as Document['actionType'] | undefined,
+      actionLabel: data.actionLabel ? String(data.actionLabel) : undefined,
+      actionTarget: data.actionTarget ? String(data.actionTarget) : undefined,
+      previewContent: data.previewContent ? String(data.previewContent) : undefined,
     } as Document;
   });
 
@@ -88,10 +107,21 @@ export async function getAllDocuments(): Promise<Document[]> {
       id: d.id,
       name: data.name,
       description: data.aiGeneratedDescription,
-      url: data.externalUrl || '#',
+      url: data.externalUrl || data.storagePath || '#',
       type: data.sourceType === 'googleDrive' ? 'drive' : 'file',
       createdAt: toIsoString(data.uploadedAt),
       suiteId: data.documentationSuiteId,
+      slug: data.slug ? String(data.slug) : undefined,
+      summary: data.summary ? String(data.summary) : undefined,
+      category: data.category ? String(data.category) : undefined,
+      tags: Array.isArray(data.tags) ? data.tags.map((tag: unknown) => String(tag)) : [],
+      status: (data.status as Document['status'] | undefined) ?? 'published',
+      seoTitle: data.seoTitle ? String(data.seoTitle) : undefined,
+      seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
+      actionType: data.actionType as Document['actionType'] | undefined,
+      actionLabel: data.actionLabel ? String(data.actionLabel) : undefined,
+      actionTarget: data.actionTarget ? String(data.actionTarget) : undefined,
+      previewContent: data.previewContent ? String(data.previewContent) : undefined,
     } as Document;
   });
 }
@@ -105,6 +135,22 @@ export async function getSuites(): Promise<Omit<DocumentSuite, 'documents'>[]> {
       name: data.name,
       description: data.description,
       contentType: data.contentType,
+      slug: data.slug ? String(data.slug) : undefined,
+      summary: data.summary ? String(data.summary) : undefined,
+      category: data.category ? String(data.category) : undefined,
+      tags: Array.isArray(data.tags) ? data.tags.map((tag: unknown) => String(tag)) : [],
+      status: (data.status as DocumentSuite['status'] | undefined) ?? 'published',
+      featured: Boolean(data.featured),
+      heroImageUrl: data.heroImageUrl ? String(data.heroImageUrl) : undefined,
+      previewContent: data.previewContent ? String(data.previewContent) : undefined,
+      seoTitle: data.seoTitle ? String(data.seoTitle) : undefined,
+      seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
+      actionType: data.actionType as DocumentSuite['actionType'] | undefined,
+      actionLabel: data.actionLabel ? String(data.actionLabel) : undefined,
+      actionTarget: data.actionTarget ? String(data.actionTarget) : undefined,
+      publishedAt: data.publishedAt ? toIsoString(data.publishedAt) : undefined,
+      createdAt: toIsoString(data.createdAt),
+      updatedAt: toIsoString(data.updatedAt),
       entitlement: getAccessMetadataForDocuShareSection(data.contentType ?? 'templates'),
     };
   });
@@ -114,9 +160,21 @@ export async function addDocument(docData: Omit<Document, 'id' | 'createdAt'>): 
   const { suiteId, name, description, url, type } = docData;
   const now = new Date();
 
+  const existingSlugs = (await firestore.collectionGroup('documents').get()).docs.map((doc) => String(doc.data().slug ?? ''));
   const newDocData = {
     name,
     aiGeneratedDescription: description,
+    slug: docData.slug ? normalizeSlug(docData.slug) : ensureUniqueSlug(name, existingSlugs),
+    summary: docData.summary ?? description ?? '',
+    category: docData.category ?? '',
+    tags: normalizeTags(docData.tags),
+    status: docData.status ?? 'published',
+    seoTitle: docData.seoTitle ?? name,
+    seoDescription: docData.seoDescription ?? description ?? '',
+    actionType: docData.actionType ?? 'download',
+    actionLabel: docData.actionLabel ?? 'Access resource',
+    actionTarget: docData.actionTarget ?? url,
+    previewContent: docData.previewContent ?? '',
     sourceType: type === 'drive' ? 'googleDrive' : 'upload',
     externalUrl: type === 'drive' ? url : '',
     storagePath: type === 'file' ? url : '',
@@ -146,6 +204,17 @@ export async function updateDocument(id: string, data: Partial<Document>): Promi
   const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
   if (data.name) updateData.name = data.name;
+  if (data.slug) updateData.slug = normalizeSlug(data.slug);
+  if (data.summary !== undefined) updateData.summary = data.summary;
+  if (data.category !== undefined) updateData.category = data.category;
+  if (data.tags !== undefined) updateData.tags = normalizeTags(data.tags);
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.seoTitle !== undefined) updateData.seoTitle = data.seoTitle;
+  if (data.seoDescription !== undefined) updateData.seoDescription = data.seoDescription;
+  if (data.actionType !== undefined) updateData.actionType = data.actionType;
+  if (data.actionLabel !== undefined) updateData.actionLabel = data.actionLabel;
+  if (data.actionTarget !== undefined) updateData.actionTarget = data.actionTarget;
+  if (data.previewContent !== undefined) updateData.previewContent = data.previewContent;
   if (data.description) updateData.aiGeneratedDescription = data.description;
   if (data.url) {
     if (data.type === 'drive') updateData.externalUrl = data.url;
@@ -182,10 +251,20 @@ export async function deleteDocument(id: string, suiteId: string): Promise<boole
 export async function addSuite(
   suite: Omit<DocumentSuite, 'id' | 'documents'>,
 ): Promise<Omit<DocumentSuite, 'documents'>> {
+  const existing = await firestore.collection('documentation_suites').get();
+  const existingSlugs = existing.docs.map((doc) => String(doc.data().slug ?? ''));
+  const slug = suite.slug ? normalizeSlug(suite.slug) : ensureUniqueSlug(suite.name, existingSlugs);
   const newSuiteData = {
     ...suite,
+    slug,
+    summary: suite.summary ?? suite.description,
+    status: suite.status ?? 'published',
+    actionType: suite.actionType ?? 'access',
+    actionLabel: suite.actionLabel ?? 'View suite',
+    actionTarget: suite.actionTarget ?? `/docushare/${getDocushareSegment(suite.contentType)}/${slug}`,
     createdAt: new Date(),
     updatedAt: new Date(),
+    publishedAt: suite.status === 'draft' ? null : new Date(),
   };
   const docRef = await firestore.collection('documentation_suites').add(newSuiteData);
   return {
@@ -199,7 +278,10 @@ export async function updateSuite(
   data: Partial<Omit<DocumentSuite, 'id' | 'documents'>>,
 ): Promise<Omit<DocumentSuite, 'documents'> | null> {
   const suiteRef = firestore.doc(`documentation_suites/${id}`);
-  await suiteRef.update({ ...data, updatedAt: new Date() });
+  const updatePayload: Record<string, unknown> = { ...data, updatedAt: new Date() };
+  if ('slug' in data && typeof (data as { slug?: string }).slug === 'string') updatePayload.slug = normalizeSlug((data as { slug?: string }).slug ?? '');
+  if ('tags' in data) updatePayload.tags = normalizeTags((data as { tags?: unknown }).tags);
+  await suiteRef.update(updatePayload);
 
   const updatedDocSnap = await suiteRef.get();
   if (!updatedDocSnap.exists) return null;
@@ -212,6 +294,22 @@ export async function updateSuite(
     name: docData.name,
     description: docData.description,
     contentType: docData.contentType,
+    slug: docData.slug ? String(docData.slug) : undefined,
+    summary: docData.summary ? String(docData.summary) : undefined,
+    category: docData.category ? String(docData.category) : undefined,
+    tags: Array.isArray(docData.tags) ? docData.tags.map((tag: unknown) => String(tag)) : [],
+    status: (docData.status as DocumentSuite['status'] | undefined) ?? 'published',
+    featured: Boolean(docData.featured),
+    heroImageUrl: docData.heroImageUrl ? String(docData.heroImageUrl) : undefined,
+    previewContent: docData.previewContent ? String(docData.previewContent) : undefined,
+    seoTitle: docData.seoTitle ? String(docData.seoTitle) : undefined,
+    seoDescription: docData.seoDescription ? String(docData.seoDescription) : undefined,
+    actionType: docData.actionType as DocumentSuite['actionType'] | undefined,
+    actionLabel: docData.actionLabel ? String(docData.actionLabel) : undefined,
+    actionTarget: docData.actionTarget ? String(docData.actionTarget) : undefined,
+    publishedAt: docData.publishedAt ? toIsoString(docData.publishedAt) : undefined,
+    createdAt: toIsoString(docData.createdAt),
+    updatedAt: toIsoString(docData.updatedAt),
   };
 }
 
@@ -276,7 +374,9 @@ export async function updateMembershipPlan(
 ): Promise<MembershipPlan | null> {
   const ref = firestore.doc(`membership_plans/${id}`);
   const beforeSnapshot = await ref.get();
-  await ref.update({ ...data, updatedAt: new Date() });
+  const updatePayload: Record<string, unknown> = { ...data, updatedAt: new Date() };
+  if ('slug' in data && typeof (data as { slug?: string }).slug === 'string') updatePayload.slug = normalizeSlug((data as { slug?: string }).slug ?? '');
+  await ref.update(updatePayload);
   const snapshot = await ref.get();
   if (!snapshot.exists) return null;
   const plan = snapshot.data();
@@ -330,6 +430,7 @@ function normalizeKnowledgeArticle(id: string, data: Record<string, unknown>): K
     title: String(data.title ?? ''),
     slug: String(data.slug ?? ''),
     excerpt: data.excerpt ? String(data.excerpt) : undefined,
+    summary: data.summary ? String(data.summary) : undefined,
     content: String(data.content ?? ''),
     category: data.category ? String(data.category) : undefined,
     contentType: (data.contentType ?? data.type ?? 'article') as KnowledgeArticle['contentType'],
@@ -343,6 +444,9 @@ function normalizeKnowledgeArticle(id: string, data: Record<string, unknown>): K
     seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
     externalLink: data.externalLink ? String(data.externalLink) : undefined,
     ctaLabel: data.ctaLabel ? String(data.ctaLabel) : undefined,
+    ctaType: data.ctaType as KnowledgeArticle['ctaType'] | undefined,
+    keyTakeaways: Array.isArray(data.keyTakeaways) ? data.keyTakeaways.map((item: unknown) => String(item)) : [],
+    relatedContent: Array.isArray(data.relatedContent) ? (data.relatedContent as KnowledgeArticle['relatedContent']) : [],
     entitlement: (data.entitlement as import('./definitions').EntitlementAccessFields | undefined) ?? undefined,
     createdAt: toIsoString(data.createdAt),
     updatedAt: toIsoString(data.updatedAt),
@@ -397,7 +501,8 @@ export async function createKnowledgeArticle(
   actorUserId: string,
 ): Promise<KnowledgeArticle> {
   const now = new Date();
-  const isUnique = await isKnowledgeSlugUnique(article.slug);
+  const normalizedSlug = normalizeKnowledgeSlug(article.slug);
+  const isUnique = await isKnowledgeSlugUnique(normalizedSlug);
   if (!isUnique) {
     throw new Error('A knowledge article with this slug already exists.');
   }
@@ -408,6 +513,7 @@ export async function createKnowledgeArticle(
 
   const docRef = await firestore.collection('knowledge_articles').add({
     ...article,
+    slug: normalizedSlug,
     contentType: article.contentType,
     featured: Boolean(article.featured),
     tags: article.tags ?? [],
@@ -419,6 +525,7 @@ export async function createKnowledgeArticle(
   await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'knowledge_article' });
   return normalizeKnowledgeArticle(docRef.id, {
     ...article,
+    slug: normalizedSlug,
     createdAt: now,
     updatedAt: now,
     publishedAt: article.published ? now : null,
@@ -435,7 +542,7 @@ export async function updateKnowledgeArticle(
   if (!beforeSnapshot.exists) return null;
 
   const beforeData = beforeSnapshot.data() ?? {};
-  const nextSlug = data.slug ?? beforeData.slug;
+  const nextSlug = data.slug ? normalizeKnowledgeSlug(data.slug) : beforeData.slug;
   if (!nextSlug) {
     throw new Error('Slug is required.');
   }
@@ -518,11 +625,28 @@ export async function getPartnerOffers(): Promise<PartnerOffer[]> {
       description: data.description,
       link: data.link,
       active: Boolean(data.active),
+      slug: data.slug ? String(data.slug) : undefined,
+      summary: data.summary ? String(data.summary) : undefined,
       partnerName: data.partnerName ? String(data.partnerName) : undefined,
+      partnerOverview: data.partnerOverview ? String(data.partnerOverview) : undefined,
+      partnerServices: Array.isArray(data.partnerServices) ? data.partnerServices.map((item: unknown) => String(item)) : [],
+      whyWeRecommend: data.whyWeRecommend ? String(data.whyWeRecommend) : undefined,
+      offerValue: data.offerValue ? String(data.offerValue) : undefined,
+      offerDetails: data.offerDetails ? String(data.offerDetails) : undefined,
+      claimInstructions: data.claimInstructions ? String(data.claimInstructions) : undefined,
+      termsAndConditions: data.termsAndConditions ? String(data.termsAndConditions) : undefined,
+      redemptionCode: data.redemptionCode ? String(data.redemptionCode) : undefined,
+      seoTitle: data.seoTitle ? String(data.seoTitle) : undefined,
+      seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
       categories: Array.isArray(data.categories) ? data.categories.map((value: unknown) => String(value)) : undefined,
       imageUrl: data.imageUrl ?? undefined,
       displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
       expiresAt: data.expiresAt ? toIsoString(data.expiresAt) : null,
+      relatedOfferIds: Array.isArray(data.relatedOfferIds) ? data.relatedOfferIds.map((item: unknown) => String(item)) : [],
+      actionType: data.actionType as PartnerOffer['actionType'] | undefined,
+      actionLabel: data.actionLabel ? String(data.actionLabel) : undefined,
+      actionTarget: data.actionTarget ? String(data.actionTarget) : undefined,
+      publishedAt: data.publishedAt ? toIsoString(data.publishedAt) : undefined,
       entitlement: (data.entitlement as import('./definitions').EntitlementAccessFields | undefined) ?? undefined,
       createdAt: toIsoString(data.createdAt),
       updatedAt: toIsoString(data.updatedAt),
@@ -535,14 +659,17 @@ export async function createPartnerOffer(
   actorUserId: string,
 ): Promise<PartnerOffer> {
   const now = new Date();
+  const existing = await firestore.collection('partner_offers').get();
+  const slug = offer.slug ? normalizeSlug(offer.slug) : ensureUniqueSlug(offer.title, existing.docs.map((doc) => String(doc.data().slug ?? '')));
   const docRef = await firestore.collection('partner_offers').add({
     ...offer,
+    slug,
     createdAt: now,
     updatedAt: now,
   });
   await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'partner_offer' });
   await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'partner_offer' });
-  return { id: docRef.id, ...offer, createdAt: now.toISOString(), updatedAt: now.toISOString() };
+  return { id: docRef.id, ...offer, slug, createdAt: now.toISOString(), updatedAt: now.toISOString() };
 }
 
 export async function updatePartnerOffer(
@@ -552,7 +679,9 @@ export async function updatePartnerOffer(
 ): Promise<PartnerOffer | null> {
   const ref = firestore.doc(`partner_offers/${id}`);
   const beforeSnapshot = await ref.get();
-  await ref.update({ ...data, updatedAt: new Date() });
+  const updatePayload: Record<string, unknown> = { ...data, updatedAt: new Date() };
+  if ('slug' in data && typeof (data as { slug?: string }).slug === 'string') updatePayload.slug = normalizeSlug((data as { slug?: string }).slug ?? '');
+  await ref.update(updatePayload);
   const snapshot = await ref.get();
   if (!snapshot.exists) return null;
   const offer = snapshot.data();
@@ -634,7 +763,9 @@ export async function updateTestimonial(
 ): Promise<Testimonial | null> {
   const ref = firestore.doc(`testimonials/${id}`);
   const beforeSnapshot = await ref.get();
-  await ref.update({ ...data, updatedAt: new Date() });
+  const updatePayload: Record<string, unknown> = { ...data, updatedAt: new Date() };
+  if ('slug' in data && typeof (data as { slug?: string }).slug === 'string') updatePayload.slug = normalizeSlug((data as { slug?: string }).slug ?? '');
+  await ref.update(updatePayload);
   const snapshot = await ref.get();
   if (!snapshot.exists) return null;
   const testimonial = snapshot.data();
@@ -712,7 +843,9 @@ export async function updatePastProject(
 ): Promise<PastProject | null> {
   const ref = firestore.doc(`past_projects/${id}`);
   const beforeSnapshot = await ref.get();
-  await ref.update({ ...data, updatedAt: new Date() });
+  const updatePayload: Record<string, unknown> = { ...data, updatedAt: new Date() };
+  if ('slug' in data && typeof (data as { slug?: string }).slug === 'string') updatePayload.slug = normalizeSlug((data as { slug?: string }).slug ?? '');
+  await ref.update(updatePayload);
   const snapshot = await ref.get();
   if (!snapshot.exists) return null;
   const project = snapshot.data();
@@ -952,6 +1085,50 @@ export async function updateUserAdminProfile(
 
 
 export const getHomepageContent = getHomepageContentFromCms;
+
+
+export async function getSuiteBySlug(slug: string): Promise<DocumentSuite | null> {
+  const snapshot = await firestore.collection('documentation_suites').where('slug', '==', normalizeSlug(slug)).limit(1).get();
+  if (snapshot.empty) return null;
+  const suiteId = snapshot.docs[0].id;
+  const suites = await getDocumentSuites();
+  return suites.find((suite) => suite.id === suiteId) ?? null;
+}
+
+export async function getDocumentBySlug(slug: string): Promise<Document | null> {
+  const snapshot = await firestore.collectionGroup('documents').where('slug', '==', normalizeSlug(slug)).limit(1).get();
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0];
+  const data = doc.data();
+  return {
+    id: doc.id,
+    name: String(data.name ?? ''),
+    description: String(data.aiGeneratedDescription ?? ''),
+    url: String(data.externalUrl || data.storagePath || '#'),
+    type: data.sourceType === 'googleDrive' ? 'drive' : 'file',
+    createdAt: toIsoString(data.uploadedAt),
+    suiteId: String(data.documentationSuiteId ?? ''),
+    slug: data.slug ? String(data.slug) : undefined,
+    summary: data.summary ? String(data.summary) : undefined,
+    category: data.category ? String(data.category) : undefined,
+    tags: Array.isArray(data.tags) ? data.tags.map((item: unknown) => String(item)) : [],
+    status: (data.status as Document['status'] | undefined) ?? 'published',
+    seoTitle: data.seoTitle ? String(data.seoTitle) : undefined,
+    seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
+    actionType: data.actionType as Document['actionType'] | undefined,
+    actionLabel: data.actionLabel ? String(data.actionLabel) : undefined,
+    actionTarget: data.actionTarget ? String(data.actionTarget) : undefined,
+    previewContent: data.previewContent ? String(data.previewContent) : undefined,
+  };
+}
+
+export async function getPartnerOfferBySlug(slug: string): Promise<PartnerOffer | null> {
+  const snapshot = await firestore.collection('partner_offers').where('slug', '==', normalizeSlug(slug)).limit(1).get();
+  if (snapshot.empty) return null;
+  const offers = await getPartnerOffers();
+  return offers.find((offer) => offer.id === snapshot.docs[0].id) ?? null;
+}
+
 export const getServicePageBySlug = getServicePageBySlugFromCms;
 export const getPublishedServicePages = getPublishedServicePagesFromCms;
 export const getServicesLandingContent = getServicesLandingContentFromCms;

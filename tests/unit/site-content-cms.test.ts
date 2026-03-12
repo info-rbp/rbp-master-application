@@ -30,6 +30,6 @@ test('toOfferView maps partner offer into public card shape', () => {
   );
 
   assert.equal(mapped.partner, 'Founder Stack');
-  assert.equal(mapped.href, '/partner/offer');
+  assert.equal(mapped.href, '/partner-offers/offer-1');
   assert.ok(mapped.categories.includes('all'));
 });

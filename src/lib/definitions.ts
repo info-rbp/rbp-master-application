@@ -47,6 +47,18 @@ export type Document = {
   type: 'file' | 'drive';
   createdAt: string;
   suiteId: string;
+  slug?: string;
+  summary?: string;
+  category?: string;
+  tags?: string[];
+  status?: 'draft' | 'published' | 'archived';
+  seoTitle?: string;
+  seoDescription?: string;
+  previewContent?: string;
+  actionType?: ContentActionType;
+  actionLabel?: string;
+  actionTarget?: string;
+  relatedContent?: RelatedContentReference[];
 };
 
 export type DocumentSuite = {
@@ -56,6 +68,32 @@ export type DocumentSuite = {
   contentType?: 'templates' | 'companion-guides' | 'documentation-suites' | 'end-to-end-processes' | 'customisation-service';
   entitlement?: EntitlementAccessFields;
   documents: Document[];
+  slug?: string;
+  summary?: string;
+  category?: string;
+  tags?: string[];
+  status?: 'draft' | 'published' | 'archived';
+  featured?: boolean;
+  heroImageUrl?: string;
+  previewContent?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  actionType?: ContentActionType;
+  actionLabel?: string;
+  actionTarget?: string;
+  relatedContent?: RelatedContentReference[];
+  publishedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type ContentActionType = 'download' | 'access' | 'launch' | 'redeem' | 'book_call' | 'join' | 'upgrade' | 'external_link';
+
+export type RelatedContentReference = {
+  id: string;
+  contentType: ContentTypeKey | 'knowledge_center_guide' | 'knowledge_center_tool' | 'knowledge_center_knowledge_base' | 'service_page' | 'partner_offer';
+  label?: string;
+  path?: string;
 };
 
 export type MembershipPlan = {
@@ -147,6 +185,10 @@ export type KnowledgeArticle = {
   seoDescription?: string;
   externalLink?: string;
   ctaLabel?: string;
+  ctaType?: ContentActionType;
+  summary?: string;
+  keyTakeaways?: string[];
+  relatedContent?: RelatedContentReference[];
   entitlement?: EntitlementAccessFields;
   createdAt: string;
   updatedAt: string;
@@ -159,11 +201,28 @@ export type PartnerOffer = {
   description: string;
   link: string;
   active: boolean;
+  slug?: string;
+  summary?: string;
   partnerName?: string;
+  partnerOverview?: string;
+  partnerServices?: string[];
+  whyWeRecommend?: string;
+  offerValue?: string;
+  offerDetails?: string;
+  claimInstructions?: string;
+  termsAndConditions?: string;
+  redemptionCode?: string;
+  seoTitle?: string;
+  seoDescription?: string;
   categories?: string[];
   imageUrl?: string;
   displayOrder?: number;
   expiresAt?: string | null;
+  relatedOfferIds?: string[];
+  actionType?: ContentActionType;
+  actionLabel?: string;
+  actionTarget?: string;
+  publishedAt?: string;
   entitlement?: EntitlementAccessFields;
   createdAt: string;
   updatedAt: string;

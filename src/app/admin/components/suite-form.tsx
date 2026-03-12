@@ -18,7 +18,13 @@ import type { DocumentSuite } from '@/lib/definitions';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
+  slug: z.string().optional(),
+  summary: z.string().optional(),
   description: z.string().min(10, 'Description must be at least 10 characters.'),
+  tags: z.string().optional(),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  status: z.enum(['draft', 'published']).default('published'),
 });
 
 type SuiteFormProps = {
@@ -32,7 +38,13 @@ export function SuiteForm({ suite, onSubmit, onFinished }: SuiteFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: suite?.name ?? '',
+      slug: suite?.slug ?? '',
+      summary: suite?.summary ?? '',
       description: suite?.description ?? '',
+      tags: suite?.tags?.join(', ') ?? '',
+      seoTitle: suite?.seoTitle ?? '',
+      seoDescription: suite?.seoDescription ?? '',
+      status: suite?.status === 'draft' ? 'draft' : 'published',
     },
   });
 
@@ -59,6 +71,30 @@ export function SuiteForm({ suite, onSubmit, onFinished }: SuiteFormProps) {
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="slug"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Slug</FormLabel>
+              <FormControl><Input placeholder="auto-generated-if-empty" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="summary"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Summary</FormLabel>
+              <FormControl><Textarea className="resize-none" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="description"
@@ -76,6 +112,12 @@ export function SuiteForm({ suite, onSubmit, onFinished }: SuiteFormProps) {
             </FormItem>
           )}
         />
+
+
+        <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel>Tags</FormLabel><FormControl><Input placeholder="comma,separated" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="seoTitle" render={({ field }) => (<FormItem><FormLabel>SEO title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="seoDescription" render={({ field }) => (<FormItem><FormLabel>SEO description</FormLabel><FormControl><Textarea className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Status</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
 
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onFinished}>Cancel</Button>
