@@ -20,6 +20,7 @@ export default async function PartnerOffersPage() {
             <div className="mt-8 flex justify-center gap-4">
               <Button asChild size="lg"><Link href="/partner-offers/offers/all">Browse all partner offers</Link></Button>
               <Button asChild size="lg" variant="outline"><Link href="/membership">Compare membership tiers</Link></Button>
+              <Button asChild size="lg" variant="ghost"><Link href="/search?contentType=partner_offer">Search all catalogue items</Link></Button>
             </div>
           </div>
         </section>
