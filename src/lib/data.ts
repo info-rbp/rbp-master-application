@@ -972,6 +972,8 @@ function mapUserProfile(uid: string, data: Record<string, unknown>): UserProfile
     role: String(data.role ?? 'member'),
     membershipTier: isMembershipTier(data.membershipTier) ? data.membershipTier : null,
     membershipStatus: normalizeMembershipStatus(data.membershipStatus),
+    membershipPlanCode: data.membershipPlanCode ? String(data.membershipPlanCode) as UserProfile['membershipPlanCode'] : null,
+    billingCycle: data.billingCycle ? String(data.billingCycle) as UserProfile['billingCycle'] : null,
     emailVerified: Boolean(data.emailVerified),
     lastLoginAt: data.lastLoginAt ? toIsoString(data.lastLoginAt) : null,
     accountStatus: data.accountStatus === 'suspended' ? 'suspended' : 'active',
@@ -980,6 +982,8 @@ function mapUserProfile(uid: string, data: Record<string, unknown>): UserProfile
     squareSubscriptionId: data.squareSubscriptionId ? String(data.squareSubscriptionId) : null,
     lastPaymentStatus: data.lastPaymentStatus ? String(data.lastPaymentStatus) : null,
     lastPaymentAt: data.lastPaymentAt ? toIsoString(data.lastPaymentAt) : null,
+    activePromotionGrantEndAt: data.activePromotionGrantEndAt ? toIsoString(data.activePromotionGrantEndAt) : null,
+    activePromotionGrantTier: data.activePromotionGrantTier && isMembershipTier(data.activePromotionGrantTier) ? data.activePromotionGrantTier : null,
     createdAt: toIsoString(data.createdAt),
     updatedAt: toIsoString(data.updatedAt),
   };

@@ -2,6 +2,7 @@ import { firestore } from '@/firebase/server';
 import type { BillingCycle, MembershipPlanCode, MembershipStatus, MembershipTier } from './definitions';
 import { getCustomisationRequestAllowance, getEffectiveMembershipTier, getServiceDiscountPercent } from './entitlements';
 import { safeLogAnalyticsEvent } from './analytics';
+import { expirePromotionalGrants } from './promotions';
 import { getUserById, getMembershipAccessGrantsForUser } from './data';
 import {
   countStandardCustomisationsThisMonth,
@@ -54,6 +55,7 @@ const toIsoString = (value: unknown): string => {
 };
 
 export async function getMemberOverview(memberId: string) {
+  await expirePromotionalGrants();
   const [user, grants, subscriptionSnap, billingSnap, promoSnap] = await Promise.all([
     getUserById(memberId),
     getMembershipAccessGrantsForUser(memberId),
@@ -88,6 +90,7 @@ export async function getMemberOverview(memberId: string) {
           grantEndAt: toIsoString(activeGrant.grantEndAt),
         }
       : null,
+    activePromotionGrantEndAt: user?.activePromotionGrantEndAt ? toIsoString(user.activePromotionGrantEndAt) : null,
     billingHistory: billingSnap.docs.map((doc) => ({ id: doc.id, ...doc.data(), createdAt: toIsoString(doc.data().createdAt) })),
     customisationAllowance: getCustomisationRequestAllowance(tier),
     serviceDiscountPercent: getServiceDiscountPercent(tier),

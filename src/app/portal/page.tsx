@@ -32,6 +32,7 @@ export default async function PortalOverviewPage() {
           <p><strong>Renewal / expiry:</strong> {overview.renewalDate ?? overview.endDate ?? 'Not scheduled'}</p>
           <p><strong>Service discount:</strong> {overview.serviceDiscountPercent}%</p>
           <p><strong>Promotion grant:</strong> {overview.activeGrant ? `${overview.activeGrant.sourceType} until ${overview.activeGrant.grantEndAt}` : 'None'}</p>
+          <p><strong>Promotion expires:</strong> {overview.activePromotionGrantEndAt ?? 'None'}</p>
         </CardContent>
       </Card>
 

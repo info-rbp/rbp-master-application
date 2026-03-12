@@ -15,6 +15,9 @@ export function normalizeMemberRow(input: {
   squareSubscriptionStatus?: string | null;
   squareSubscriptionId?: string | null;
   squareCustomerId?: string | null;
+  membershipPlanCode?: string | null;
+  billingCycle?: string | null;
+  activePromotionGrantEndAt?: string | null;
 }): MemberCRMRow {
   return {
     id: input.id,
@@ -31,6 +34,9 @@ export function normalizeMemberRow(input: {
     squareSubscriptionStatus: input.squareSubscriptionStatus ?? null,
     squareSubscriptionId: input.squareSubscriptionId ?? null,
     squareCustomerId: input.squareCustomerId ?? null,
+    membershipPlanCode: input.membershipPlanCode ?? null,
+    billingCycle: input.billingCycle ?? null,
+    activePromotionGrantEndAt: input.activePromotionGrantEndAt ?? null,
   };
 }
 

@@ -8,6 +8,7 @@ import {
 } from './entitlements';
 import { safeLogAnalyticsEvent } from './analytics';
 import { logAuditEvent } from './audit';
+import { grantStandardTrialFromServicePurchase } from './promotions';
 
 export const WORKFLOW_STATUS = ['submitted', 'under_review', 'assigned', 'in_progress', 'awaiting_member', 'completed', 'cancelled'] as const;
 export type WorkflowStatus = (typeof WORKFLOW_STATUS)[number];
@@ -311,5 +312,18 @@ export async function updateWorkflowByAdmin(input: {
       targetId: input.id,
       metadata: { status: input.status, workflowType: input.workflowType },
     });
+  }
+
+  if (input.status === 'completed' && (input.workflowType === 'implementation_support' || input.workflowType === 'customisation')) {
+    const workflowDoc = await firestore.collection(collectionName).doc(input.id).get();
+    const memberId = String(workflowDoc.data()?.memberId ?? '').trim();
+    if (memberId) {
+      await grantStandardTrialFromServicePurchase({
+        userId: memberId,
+        servicePurchaseId: input.id,
+        actorUserId: input.actorUserId,
+        actorRole: 'admin',
+      });
+    }
   }
 }

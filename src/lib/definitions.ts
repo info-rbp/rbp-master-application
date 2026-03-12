@@ -316,6 +316,8 @@ export type UserProfile = {
   squareSubscriptionId?: string | null;
   lastPaymentStatus?: string | null;
   lastPaymentAt?: string | null;
+  activePromotionGrantEndAt?: string | null;
+  activePromotionGrantTier?: MembershipTier | null;
 };
 
 export type UserAdminListFilters = {
@@ -422,6 +424,9 @@ export type MemberCRMRow = {
   squareSubscriptionStatus?: string | null;
   squareSubscriptionId?: string | null;
   squareCustomerId?: string | null;
+  membershipPlanCode?: MembershipPlanCode | null;
+  billingCycle?: BillingCycle | null;
+  activePromotionGrantEndAt?: string | null;
 };
 
 export type MemberDetail = MemberCRMRow & {
@@ -431,6 +436,9 @@ export type MemberDetail = MemberCRMRow & {
   lastPaymentStatus?: string | null;
   lastPaymentAt?: string | null;
   squareLocationId?: string | null;
+  membershipPlanCode?: MembershipPlanCode | null;
+  billingCycle?: BillingCycle | null;
+  activePromotionGrantEndAt?: string | null;
 };
 
 export type MemberOverride = {
