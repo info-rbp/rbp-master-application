@@ -38,7 +38,12 @@ export type AnalyticsEventType =
   | 'admin_announcement_updated'
   | 'admin_announcement_deleted'
   | 'member_note_created'
-  | 'admin_publish_triggered';
+  | 'admin_publish_triggered'
+  | 'catalogue_search_performed'
+  | 'catalogue_filter_applied'
+  | 'catalogue_result_clicked'
+  | 'related_resource_clicked'
+  | 'companion_resource_clicked';
 
 export type AnalyticsEvent = {
   eventType: AnalyticsEventType;

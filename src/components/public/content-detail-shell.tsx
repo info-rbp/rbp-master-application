@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTemplateForContentType } from '@/lib/detail-templates';
+import { getRelatedResourcesForContent } from '@/lib/discovery';
 import type { RenderableContentObject } from '@/lib/content-objects';
 
 function AccessCta({ content }: { content: RenderableContentObject }) {
@@ -70,22 +71,28 @@ function TemplateSections({ content }: { content: RenderableContentObject }) {
   );
 }
 
-function RelatedContent({ content }: { content: RenderableContentObject }) {
-  if (!content.relatedContent.length) return null;
+function RelatedContent({
+  related,
+}: {
+  related: Array<{ id: string; title: string; path: string; contentType: string; category?: string; accessTier?: string }>;
+}) {
+  if (!related.length) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-2xl font-semibold">Related content</h2>
+      <h2 className="text-2xl font-semibold">Related resources</h2>
       <div className="grid gap-3 md:grid-cols-2">
-        {content.relatedContent.map((item) => (
-          <Card key={`${item.contentType}-${item.id}`}>
+        {related.map((item) => (
+          <Card key={item.id}>
             <CardContent className="p-4 space-y-2">
-              <p className="font-medium">{item.title ?? item.id}</p>
-              <p className="text-xs text-muted-foreground">{item.contentType.replaceAll('_', ' ')}</p>
-              {item.path ? (
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={item.path}>View</Link>
-                </Button>
-              ) : null}
+              <p className="font-medium">{item.title}</p>
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline">{item.contentType.replaceAll('_', ' ')}</Badge>
+                {item.category ? <Badge variant="secondary">{item.category}</Badge> : null}
+                {item.accessTier ? <Badge>Tier: {item.accessTier}</Badge> : null}
+              </div>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={item.path}>View</Link>
+              </Button>
             </CardContent>
           </Card>
         ))}
@@ -94,7 +101,9 @@ function RelatedContent({ content }: { content: RenderableContentObject }) {
   );
 }
 
-export function ContentDetailShell({ content }: { content: RenderableContentObject }) {
+export async function ContentDetailShell({ content }: { content: RenderableContentObject }) {
+  const relatedItems = await getRelatedResourcesForContent(content, 6);
+
   return (
     <article className="container mx-auto px-4 md:px-6 py-16 max-w-5xl space-y-10">
       <header className="space-y-4">
@@ -118,7 +127,7 @@ export function ContentDetailShell({ content }: { content: RenderableContentObje
       <TemplateSections content={content} />
       {content.description ? <SectionBlock title="Overview" body={content.description} /> : null}
       <AccessCta content={content} />
-      <RelatedContent content={content} />
+      <RelatedContent related={relatedItems.map((item) => ({ id: item.id, title: item.title, path: item.path, contentType: item.contentType, category: item.category, accessTier: item.accessTier }))} />
     </article>
   );
 }

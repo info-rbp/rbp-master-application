@@ -23,6 +23,7 @@ export default async function KnowledgeCenterPage() {
         <div className="container mx-auto px-4 md:px-6 text-center">
           <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">{content?.title ?? 'Knowledge Center'}</h1>
           <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground md:text-xl">{content?.description ?? 'Browse published articles, guides, tools, and knowledge entries.'}</p>
+          <div className="mt-6"><Button asChild variant="outline"><Link href="/search">Search full catalogue</Link></Button></div>
         </div>
       </section>
       <section className="py-12"><div className="container mx-auto px-4 md:px-6"><div className="grid gap-8 md:grid-cols-2">{categories.map((category) => <div key={category.title} className="rounded-lg border p-6"><h2 className="text-xl font-semibold">{category.title}</h2><p className="mt-2 text-muted-foreground">{category.description}</p><Button variant="outline" asChild className="mt-4"><Link href={category.href ?? '/knowledge-center'}>Browse {category.title}</Link></Button></div>)}</div></div></section>

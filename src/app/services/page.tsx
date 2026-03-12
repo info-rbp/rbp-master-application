@@ -12,6 +12,7 @@ export default async function ServicesPage() {
         <div className="container mx-auto px-4 md:px-6 text-center">
           <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">{pageContent?.title ?? 'Advisory on Demand'}</h1>
           <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground md:text-xl">{pageContent?.description ?? 'Browse published advisory services and compare where membership can help reduce delivery costs.'}</p>
+          <div className="mt-6"><Button asChild variant="outline"><Link href="/search?contentType=service_page">Search services and related resources</Link></Button></div>
         </div>
       </section>
       <section className="py-16 md:py-24">

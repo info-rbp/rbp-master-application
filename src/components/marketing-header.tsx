@@ -6,7 +6,7 @@ import Logo from '@/components/logo';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, ChevronDown } from 'lucide-react';
+import { Menu, ChevronDown, Search } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,6 +127,11 @@ export default function MarketingHeader() {
           )}
         </nav>
         <div className="flex flex-1 items-center justify-end gap-2">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/search" aria-label="Search catalogue">
+              <Search className="h-4 w-4" />
+            </Link>
+          </Button>
           <Button variant="ghost" asChild>
             <Link href="/login">Login</Link>
           </Button>
