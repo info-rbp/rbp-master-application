@@ -2,9 +2,9 @@ import { ManagedDetailPage } from '@/components/public/managed-detail-page';
 import { getPageContentBySlug } from '@/lib/data';
 
 const fallbackFeatures = [
-  { title: 'Curated resources', description: 'Actionable templates, guides, and playbooks.' },
-  { title: 'Expert insights', description: 'Practical guidance tailored to business stage.' },
-  { title: 'Execution support', description: 'Implementation-focused support where needed.' },
+  { title: 'Tier-aware catalogue access', description: 'See required access tier on resources, offers, and services before joining.' },
+  { title: 'Public previews', description: 'Review summaries, categories, and value metadata across the catalogue.' },
+  { title: 'Upgrade path', description: 'Move up when you need deeper implementation support and expanded access.' },
 ];
 
 export default async function MembershipTierPage() {
@@ -16,11 +16,11 @@ export default async function MembershipTierPage() {
       title={content?.title ?? 'Standard Membership'}
       description={content?.description ?? 'Advanced resources and practical implementation support.'}
       heroImageUrl={content?.heroImageUrl}
-      introTitle={content?.sections?.[0]?.title ?? 'Core Features'}
-      introDescription={content?.sections?.[0]?.description ?? 'Explore what is included in this membership tier.'}
+      introTitle={content?.sections?.[0]?.title ?? 'Included Value'}
+      introDescription={content?.sections?.[0]?.description ?? 'Explore what is included in this tier and what catalogue value is visible publicly.'}
       features={features}
       ctaTitle={content?.sections?.[1]?.title ?? 'Ready to get started?'}
-      ctaDescription={content?.sections?.[1]?.description ?? 'Start your membership and unlock resources immediately.'}
+      ctaDescription={content?.sections?.[1]?.description ?? 'Start your membership and unlock deeper access.'}
       ctaLabel={content?.ctaLabel ?? 'Get Started'}
       ctaHref={content?.ctaHref ?? '/membership/subscribe'}
       price="$49/mo"

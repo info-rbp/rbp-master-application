@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getDocuShareSectionContent } from '@/lib/data';
+import { getDocumentSuites, getDocuShareSectionContent } from '@/lib/data';
+import { filterPublishedDocushareSuites } from '@/lib/public-catalogue';
 
 const fallbackCategories = [
   { title: 'Templates', description: 'Ready-to-use business documents.', href: '/docushare/templates' },
@@ -13,7 +13,9 @@ const fallbackCategories = [
 ];
 
 export default async function DocuShareLandingPage() {
-  const content = await getDocuShareSectionContent('landing');
+  const [content, allSuites] = await Promise.all([getDocuShareSectionContent('landing'), getDocumentSuites()]);
+  const suites = filterPublishedDocushareSuites(allSuites);
+  const countByType = (type: string) => suites.filter((suite) => suite.contentType === type).length;
   const categories = content?.sections?.[0]?.items?.length ? content.sections[0].items : fallbackCategories;
 
   return (
@@ -21,12 +23,12 @@ export default async function DocuShareLandingPage() {
       <section className="relative w-full py-20 md:py-32 lg:py-40 bg-muted/40">
         <div className="container mx-auto px-4 md:px-6 text-center">
           <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">{content?.title ?? 'DocuShare Portal'}</h1>
-          <p className="mt-6 text-lg text-muted-foreground md:text-xl max-w-3xl mx-auto">{content?.description ?? 'Streamline operations with practical documents, guides, and process suites.'}</p>
-          <div className="mt-8"><Button asChild size="lg"><Link href={content?.ctaHref ?? '/portal'}>{content?.ctaLabel ?? 'Access the Document Hub'}</Link></Button></div>
+          <p className="mt-6 text-lg text-muted-foreground md:text-xl max-w-3xl mx-auto">{content?.description ?? 'Browse published templates, guides, suites, and processes in one resource catalogue.'}</p>
+          <div className="mt-8"><Button asChild size="lg"><Link href={content?.ctaHref ?? '/docushare/templates'}>{content?.ctaLabel ?? 'Browse the library'}</Link></Button></div>
         </div>
       </section>
       <section className="w-full py-16 md:py-24">
-        <div className="container mx-auto px-4 md:px-6"><div className="grid gap-8 mt-12 md:grid-cols-2 lg:grid-cols-3">{categories.map((category) => <Card key={category.title} className="flex flex-col"><CardHeader><CardTitle>{category.title}</CardTitle></CardHeader><CardContent className="flex-grow"><CardDescription>{category.description}</CardDescription></CardContent><CardContent><Button variant="outline" asChild><Link href={category.href ?? '/docushare'}>Learn More <ArrowRight className="ml-2 h-4 w-4" /></Link></Button></CardContent></Card>)}</div></div>
+        <div className="container mx-auto px-4 md:px-6"><div className="grid gap-8 mt-12 md:grid-cols-2 lg:grid-cols-3">{categories.map((category) => <Card key={category.title} className="flex flex-col"><CardHeader><CardTitle>{category.title}</CardTitle></CardHeader><CardContent className="flex-grow space-y-3"><CardDescription>{category.description}</CardDescription><p className="text-sm text-muted-foreground">Published suites: {category.href?.includes('templates') ? countByType('templates') : category.href?.includes('companion-guides') ? countByType('companion-guides') : category.href?.includes('documentation-suites') ? countByType('documentation-suites') : category.href?.includes('end-to-end-processes') ? countByType('end-to-end-processes') : 'Service page'}</p></CardContent><CardContent><Button variant="outline" asChild><Link href={category.href ?? '/docushare'}>Browse category</Link></Button></CardContent></Card>)}</div></div>
       </section>
     </div>
   );

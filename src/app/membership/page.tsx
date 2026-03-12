@@ -1,8 +1,7 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { getMembershipPageContent } from '@/lib/data';
+import { getActivePartnerOffers, getMembershipPageContent, getPublishedServicePages } from '@/lib/data';
 
 const fallbackCards = [
   { title: 'Basic Membership', description: 'Essential resources to get your business started.', href: '/membership/basic' },
@@ -12,7 +11,7 @@ const fallbackCards = [
 ];
 
 export default async function MembershipPage() {
-  const content = await getMembershipPageContent();
+  const [content, offers, services] = await Promise.all([getMembershipPageContent(), getActivePartnerOffers(), getPublishedServicePages()]);
   const cards = content?.sections?.[0]?.items?.length ? content.sections[0].items : fallbackCards;
 
   return (
@@ -20,9 +19,10 @@ export default async function MembershipPage() {
       <section className="relative w-full pt-20 pb-12 md:pt-32 md:pb-20 lg:pt-40 lg:pb-28 bg-muted/40">
         <div className="container mx-auto px-4 md:px-6 text-center">
           <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">{content?.title ?? 'Membership Plans'}</h1>
-          <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground md:text-xl">{content?.description ?? 'Choose the right plan for your business growth.'}</p>
+          <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground md:text-xl">{content?.description ?? 'Compare access tiers and see public catalogue value before you subscribe.'}</p>
         </div>
       </section>
+      <section className="py-10"><div className="container mx-auto px-4 md:px-6"><div className="grid gap-4 md:grid-cols-3"><div className="rounded-lg border p-4">Active partner offers: <strong>{offers.length}</strong></div><div className="rounded-lg border p-4">Published advisory services: <strong>{services.length}</strong></div><div className="rounded-lg border p-4">Tier-aware catalogue previews are shown on each item.</div></div></div></section>
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -30,7 +30,7 @@ export default async function MembershipPage() {
               <Card key={card.title} className="flex flex-col">
                 <CardHeader><CardTitle className="text-center text-2xl">{card.title}</CardTitle></CardHeader>
                 <CardContent className="flex-grow text-center"><p className="text-muted-foreground">{card.description}</p></CardContent>
-                <CardFooter><Button asChild className="w-full" variant="outline"><Link href={card.href ?? '/membership'}>Learn More <ArrowRight className="ml-2 h-4 w-4" /></Link></Button></CardFooter>
+                <CardFooter><Button asChild className="w-full" variant="outline"><Link href={card.href ?? '/membership'}>View tier details</Link></Button></CardFooter>
               </Card>
             ))}
           </div>
