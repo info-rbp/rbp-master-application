@@ -1,11 +1,11 @@
 import type { PartnerOffer } from '@/lib/definitions';
 
 export const categories = {
-  top: { name: 'Top Strategic Deals', description: 'Our most valuable offers.' },
-  new: { name: 'New Offers', description: 'Latest partner opportunities.' },
-  exclusive: { name: 'Exclusive Deals', description: 'Member-exclusive offers.' },
-  our: { name: 'Our Picks', description: 'Team-recommended offers.' },
-  all: { name: 'All Offers', description: 'Browse every active partner offer.' },
+  top: { name: 'Top Offers', description: 'Most valuable currently active partner offers.' },
+  new: { name: 'New Offers', description: 'Recently added partner opportunities.' },
+  exclusive: { name: 'Exclusive Deals', description: 'Member-priority offers and negotiated discounts.' },
+  our: { name: 'Our Picks', description: 'Recommended offers selected by our team.' },
+  all: { name: 'All Partners', description: 'Browse every active partner marketplace offer.' },
 };
 
 export type OfferCategory = keyof typeof categories;
@@ -14,9 +14,13 @@ export type Offer = {
   id: string;
   partner: string;
   title: string;
-  description: string;
+  summary: string;
   href: string;
   categories: OfferCategory[];
+  accessTier?: string;
+  category?: string;
+  expiresAt?: string | null;
+  imageUrl?: string;
 };
 
 export function getOfferCategories(index: number, total: number, explicit?: string[]): OfferCategory[] {
@@ -39,8 +43,12 @@ export function toOfferView(offer: PartnerOffer, index = 0, total = 1): Offer {
     id: offer.id,
     partner: offer.partnerName ?? offer.title,
     title: offer.title,
-    description: offer.description,
+    summary: offer.summary ?? offer.description,
     href: `/partner-offers/${offer.slug ?? offer.id}`,
     categories: getOfferCategories(index, total, offer.categories),
+    accessTier: offer.entitlement?.accessTier,
+    category: offer.categories?.[0],
+    expiresAt: offer.expiresAt,
+    imageUrl: offer.imageUrl,
   };
 }
