@@ -292,10 +292,10 @@ export async function applyMemberOverride(memberId: string, reason: string, endD
 
   await logMembershipHistory({
     userId: memberId,
-    previousTier: null,
-    newTier: null,
-    previousStatus: null,
-    newStatus: null,
+    previousTier: undefined,
+    newTier: undefined,
+    previousStatus: undefined,
+    newStatus: undefined,
     reason: `Override applied: ${reason.trim()}`,
     changedBy: actor.email ?? actor.userId,
     source: 'manual',
@@ -335,10 +335,10 @@ export async function removeMemberOverride(memberId: string, actor: AdminActor):
 
   await logMembershipHistory({
     userId: memberId,
-    previousTier: null,
-    newTier: null,
-    previousStatus: null,
-    newStatus: null,
+    previousTier: undefined,
+    newTier: undefined,
+    previousStatus: undefined,
+    newStatus: undefined,
     reason: 'Override removed',
     changedBy: actor.email ?? actor.userId,
     source: 'manual',

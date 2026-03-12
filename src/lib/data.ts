@@ -238,19 +238,21 @@ export async function getMembershipPlans(): Promise<MembershipPlan[]> {
 
 export async function createMembershipPlan(
   plan: Omit<MembershipPlan, 'id'>,
+  actorUserId: string,
 ): Promise<MembershipPlan> {
   const docRef = await firestore.collection('membership_plans').add({
     ...plan,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'plan_create', targetId: docRef.id, targetType: 'membership_plan', after: plan });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'plan_create', targetId: docRef.id, targetType: 'membership_plan', after: plan });
   return { id: docRef.id, ...plan };
 }
 
 export async function updateMembershipPlan(
   id: string,
   data: Partial<Omit<MembershipPlan, 'id'>>,
+  actorUserId: string,
 ): Promise<MembershipPlan | null> {
   const ref = firestore.doc(`membership_plans/${id}`);
   const beforeSnapshot = await ref.get();
@@ -260,7 +262,7 @@ export async function updateMembershipPlan(
   const plan = snapshot.data();
   if (!plan) return null;
 
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'plan_update', targetId: id, targetType: 'membership_plan', before: beforeSnapshot.data() ?? null, after: snapshot.data() ?? null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'plan_update', targetId: id, targetType: 'membership_plan', before: beforeSnapshot.data() ?? null, after: snapshot.data() ?? null });
   return {
     id: snapshot.id,
     name: plan.name,
@@ -276,11 +278,11 @@ export async function updateMembershipPlan(
   };
 }
 
-export async function deleteMembershipPlan(id: string): Promise<boolean> {
+export async function deleteMembershipPlan(id: string, actorUserId: string): Promise<boolean> {
   const ref = firestore.doc(`membership_plans/${id}`);
   const before = await ref.get();
   await ref.delete();
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'plan_delete', targetId: id, targetType: 'membership_plan', before: before.data() ?? null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'plan_delete', targetId: id, targetType: 'membership_plan', before: before.data() ?? null });
   return true;
 }
 
@@ -366,6 +368,7 @@ export async function isKnowledgeSlugUnique(slug: string, excludeId?: string): P
 
 export async function createKnowledgeArticle(
   article: Omit<KnowledgeArticle, 'id' | 'createdAt' | 'updatedAt' | 'publishedAt'>,
+  actorUserId: string,
 ): Promise<KnowledgeArticle> {
   const now = new Date();
   const isUnique = await isKnowledgeSlugUnique(article.slug);
@@ -386,7 +389,7 @@ export async function createKnowledgeArticle(
     updatedAt: now,
     publishedAt: article.published ? now : null,
   });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'knowledge_article' });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'knowledge_article' });
   await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'knowledge_article' });
   return normalizeKnowledgeArticle(docRef.id, {
     ...article,
@@ -399,6 +402,7 @@ export async function createKnowledgeArticle(
 export async function updateKnowledgeArticle(
   id: string,
   data: Partial<Omit<KnowledgeArticle, 'id' | 'createdAt' | 'updatedAt' | 'publishedAt'>>,
+  actorUserId: string,
 ): Promise<KnowledgeArticle | null> {
   const ref = firestore.doc(`knowledge_articles/${id}`);
   const beforeSnapshot = await ref.get();
@@ -443,8 +447,8 @@ export async function updateKnowledgeArticle(
   const article = snapshot.data();
   if (!article) return null;
 
-  await saveContentRevision({ contentType: 'knowledge_article', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'knowledge_article' });
+  await saveContentRevision({ contentType: 'knowledge_article', contentId: id, editorUserId: actorUserId, previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'knowledge_article' });
   return {
     id: snapshot.id,
     title: article.title,
@@ -461,20 +465,20 @@ export async function updateKnowledgeArticle(
   };
 }
 
-export async function publishKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
-  return updateKnowledgeArticle(id, { published: true });
+export async function publishKnowledgeArticle(id: string, actorUserId: string): Promise<KnowledgeArticle | null> {
+  return updateKnowledgeArticle(id, { published: true }, actorUserId);
 }
 
-export async function unpublishKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
-  return updateKnowledgeArticle(id, { published: false });
+export async function unpublishKnowledgeArticle(id: string, actorUserId: string): Promise<KnowledgeArticle | null> {
+  return updateKnowledgeArticle(id, { published: false }, actorUserId);
 }
 
-export async function deleteKnowledgeArticle(id: string): Promise<boolean> {
+export async function deleteKnowledgeArticle(id: string, actorUserId: string): Promise<boolean> {
   const ref = firestore.doc(`knowledge_articles/${id}`);
   const before = await ref.get();
   await ref.delete();
-  await saveContentRevision({ contentType: 'knowledge_article', contentId: id, editorUserId: 'system-admin', previousContent: before.data() ?? null, currentContent: null });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'knowledge_article' });
+  await saveContentRevision({ contentType: 'knowledge_article', contentId: id, editorUserId: actorUserId, previousContent: before.data() ?? null, currentContent: null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'knowledge_article' });
   return true;
 }
 
@@ -501,6 +505,7 @@ export async function getPartnerOffers(): Promise<PartnerOffer[]> {
 
 export async function createPartnerOffer(
   offer: Omit<PartnerOffer, 'id' | 'createdAt' | 'updatedAt'>,
+  actorUserId: string,
 ): Promise<PartnerOffer> {
   const now = new Date();
   const docRef = await firestore.collection('partner_offers').add({
@@ -508,7 +513,7 @@ export async function createPartnerOffer(
     createdAt: now,
     updatedAt: now,
   });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'partner_offer' });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'partner_offer' });
   await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'partner_offer' });
   return { id: docRef.id, ...offer, createdAt: now.toISOString(), updatedAt: now.toISOString() };
 }
@@ -516,6 +521,7 @@ export async function createPartnerOffer(
 export async function updatePartnerOffer(
   id: string,
   data: Partial<Omit<PartnerOffer, 'id' | 'createdAt' | 'updatedAt'>>,
+  actorUserId: string,
 ): Promise<PartnerOffer | null> {
   const ref = firestore.doc(`partner_offers/${id}`);
   const beforeSnapshot = await ref.get();
@@ -525,8 +531,8 @@ export async function updatePartnerOffer(
   const offer = snapshot.data();
   if (!offer) return null;
 
-  await saveContentRevision({ contentType: 'partner_offer', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'partner_offer' });
+  await saveContentRevision({ contentType: 'partner_offer', contentId: id, editorUserId: actorUserId, previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'partner_offer' });
   await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userRole: 'admin', targetId: id, targetType: 'partner_offer' });
   return {
     id: snapshot.id,
@@ -544,12 +550,12 @@ export async function updatePartnerOffer(
   };
 }
 
-export async function deletePartnerOffer(id: string): Promise<boolean> {
+export async function deletePartnerOffer(id: string, actorUserId: string): Promise<boolean> {
   const ref = firestore.doc(`partner_offers/${id}`);
   const before = await ref.get();
   await ref.delete();
-  await saveContentRevision({ contentType: 'partner_offer', contentId: id, editorUserId: 'system-admin', previousContent: before.data() ?? null, currentContent: null });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'partner_offer' });
+  await saveContentRevision({ contentType: 'partner_offer', contentId: id, editorUserId: actorUserId, previousContent: before.data() ?? null, currentContent: null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'partner_offer' });
   await safeLogAnalyticsEvent({ eventType: 'admin_content_deleted', userRole: 'admin', targetId: id, targetType: 'partner_offer' });
   return true;
 }
@@ -575,6 +581,7 @@ export async function getTestimonials(): Promise<Testimonial[]> {
 
 export async function createTestimonial(
   testimonial: Omit<Testimonial, 'id' | 'createdAt' | 'updatedAt'>,
+  actorUserId: string,
 ): Promise<Testimonial> {
   const now = new Date();
   const docRef = await firestore.collection('testimonials').add({
@@ -582,7 +589,7 @@ export async function createTestimonial(
     createdAt: now,
     updatedAt: now,
   });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'testimonial' });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'testimonial' });
   await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'testimonial' });
   return {
     id: docRef.id,
@@ -595,6 +602,7 @@ export async function createTestimonial(
 export async function updateTestimonial(
   id: string,
   data: Partial<Omit<Testimonial, 'id' | 'createdAt' | 'updatedAt'>>,
+  actorUserId: string,
 ): Promise<Testimonial | null> {
   const ref = firestore.doc(`testimonials/${id}`);
   const beforeSnapshot = await ref.get();
@@ -604,8 +612,8 @@ export async function updateTestimonial(
   const testimonial = snapshot.data();
   if (!testimonial) return null;
 
-  await saveContentRevision({ contentType: 'testimonial', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'testimonial' });
+  await saveContentRevision({ contentType: 'testimonial', contentId: id, editorUserId: actorUserId, previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'testimonial' });
   await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userRole: 'admin', targetId: id, targetType: 'testimonial' });
   return {
     id: snapshot.id,
@@ -621,12 +629,12 @@ export async function updateTestimonial(
   };
 }
 
-export async function deleteTestimonial(id: string): Promise<boolean> {
+export async function deleteTestimonial(id: string, actorUserId: string): Promise<boolean> {
   const ref = firestore.doc(`testimonials/${id}`);
   const before = await ref.get();
   await ref.delete();
-  await saveContentRevision({ contentType: 'testimonial', contentId: id, editorUserId: 'system-admin', previousContent: before.data() ?? null, currentContent: null });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'testimonial' });
+  await saveContentRevision({ contentType: 'testimonial', contentId: id, editorUserId: actorUserId, previousContent: before.data() ?? null, currentContent: null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'testimonial' });
   await safeLogAnalyticsEvent({ eventType: 'admin_content_deleted', userRole: 'admin', targetId: id, targetType: 'testimonial' });
   return true;
 }
@@ -651,6 +659,7 @@ export async function getPastProjects(): Promise<PastProject[]> {
 
 export async function createPastProject(
   project: Omit<PastProject, 'id' | 'createdAt' | 'updatedAt'>,
+  actorUserId: string,
 ): Promise<PastProject> {
   const now = new Date();
   const docRef = await firestore.collection('past_projects').add({
@@ -658,7 +667,7 @@ export async function createPastProject(
     createdAt: now,
     updatedAt: now,
   });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'past_project' });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_create', targetId: docRef.id, targetType: 'past_project' });
   await safeLogAnalyticsEvent({ eventType: 'admin_publish_triggered', userRole: 'admin', targetId: docRef.id, targetType: 'past_project' });
   return {
     id: docRef.id,
@@ -671,6 +680,7 @@ export async function createPastProject(
 export async function updatePastProject(
   id: string,
   data: Partial<Omit<PastProject, 'id' | 'createdAt' | 'updatedAt'>>,
+  actorUserId: string,
 ): Promise<PastProject | null> {
   const ref = firestore.doc(`past_projects/${id}`);
   const beforeSnapshot = await ref.get();
@@ -680,8 +690,8 @@ export async function updatePastProject(
   const project = snapshot.data();
   if (!project) return null;
 
-  await saveContentRevision({ contentType: 'past_project', contentId: id, editorUserId: 'system-admin', previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'past_project' });
+  await saveContentRevision({ contentType: 'past_project', contentId: id, editorUserId: actorUserId, previousContent: beforeSnapshot.data() ?? null, currentContent: snapshot.data() ?? null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_update', targetId: id, targetType: 'past_project' });
   await safeLogAnalyticsEvent({ eventType: 'admin_content_updated', userRole: 'admin', targetId: id, targetType: 'past_project' });
   return {
     id: snapshot.id,
@@ -696,12 +706,12 @@ export async function updatePastProject(
   };
 }
 
-export async function deletePastProject(id: string): Promise<boolean> {
+export async function deletePastProject(id: string, actorUserId: string): Promise<boolean> {
   const ref = firestore.doc(`past_projects/${id}`);
   const before = await ref.get();
   await ref.delete();
-  await saveContentRevision({ contentType: 'past_project', contentId: id, editorUserId: 'system-admin', previousContent: before.data() ?? null, currentContent: null });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'past_project' });
+  await saveContentRevision({ contentType: 'past_project', contentId: id, editorUserId: actorUserId, previousContent: before.data() ?? null, currentContent: null });
+  await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'admin_content_delete', targetId: id, targetType: 'past_project' });
   await safeLogAnalyticsEvent({ eventType: 'admin_content_deleted', userRole: 'admin', targetId: id, targetType: 'past_project' });
   return true;
 }
@@ -812,7 +822,7 @@ export async function getUserAdminActivity(uid: string): Promise<import('./defin
 export async function updateUserAdminFields(
   uid: string,
   data: Partial<Pick<UserProfile, 'name' | 'phone' | 'company'>>,
-  actorUserId = 'system-admin',
+  actorUserId: string,
 ): Promise<UserProfile | null> {
   const cleanUpdates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
@@ -835,7 +845,7 @@ export async function updateUserAdminFields(
   return mapUserProfile(after.id, after.data() ?? {});
 }
 
-export async function updateUserRole(uid: string, role: string, actorUserId = 'system-admin'): Promise<UserProfile | null> {
+export async function updateUserRole(uid: string, role: string, actorUserId: string): Promise<UserProfile | null> {
   const nextRole = role.trim().toLowerCase();
   if (!validateAdminRole(nextRole)) {
     throw new Error(`Invalid role: ${role}`);
@@ -866,7 +876,7 @@ export async function updateUserRole(uid: string, role: string, actorUserId = 's
 export async function updateUserAccountStatus(
   uid: string,
   accountStatus: UserProfile['accountStatus'],
-  actorUserId = 'system-admin',
+  actorUserId: string,
 ): Promise<UserProfile | null> {
   const nextStatus = accountStatus === 'suspended' ? 'suspended' : 'active';
   const ref = firestore.doc(`users/${uid}`);
@@ -885,20 +895,21 @@ export async function updateUserAccountStatus(
 export async function updateUserAdminProfile(
   uid: string,
   data: Partial<Pick<UserProfile, 'name' | 'role' | 'membershipTier' | 'membershipStatus' | 'accountStatus'>>,
+  actorUserId: string,
 ): Promise<UserProfile | null> {
   let next = await getUserById(uid);
   if (data.name) {
-    next = await updateUserAdminFields(uid, { name: data.name });
+    next = await updateUserAdminFields(uid, { name: data.name }, actorUserId);
   }
   if (!next) return null;
 
   if (data.role) {
-    next = await updateUserRole(uid, data.role);
+    next = await updateUserRole(uid, data.role, actorUserId);
     if (!next) return null;
   }
 
   if (data.accountStatus) {
-    next = await updateUserAccountStatus(uid, data.accountStatus);
+    next = await updateUserAccountStatus(uid, data.accountStatus, actorUserId);
     if (!next) return null;
   }
 

@@ -24,9 +24,7 @@ export function initializeFirebase() {
                 disableWarnings: true,
             });
         }
-        if (firestore.emulator.options === undefined) {
-            connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
-        }
+        connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
     }
     return { firebaseApp: app, auth, firestore };
 }

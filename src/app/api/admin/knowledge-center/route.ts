@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createKnowledgeArticle, getKnowledgeArticlesWithFilters } from '@/lib/data';
-import { getRequestAuthContext } from '@/lib/server-auth';
+import { AuthorizationError, requireAdminRequestContext } from '@/lib/server-auth';
 import { isKnowledgeContentType, normalizeKnowledgeSlug, parseTagInput } from '@/lib/knowledge-center';
 
 export async function GET(request: NextRequest) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    await requireAdminRequestContext(request);
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const { searchParams } = new URL(request.url);
@@ -30,9 +32,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let auth;
+  try {
+    auth = await requireAdminRequestContext(request);
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const payload = await request.json();
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
     seoDescription: payload.seoDescription ? String(payload.seoDescription).trim() : undefined,
     externalLink: payload.externalLink ? String(payload.externalLink).trim() : undefined,
     ctaLabel: payload.ctaLabel ? String(payload.ctaLabel).trim() : undefined,
-  });
+  }, auth.userId);
 
   return NextResponse.json({ data: article }, { status: 201 });
 }

@@ -3,9 +3,11 @@ import { createAnnouncement, deleteAnnouncement, getAllAnnouncements, updateAnno
 import { logAuditEvent } from '@/lib/audit';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { requireAdminServerContext } from '@/lib/server-auth';
 
 async function createAnnouncementAction(formData: FormData) {
   'use server';
+  const auth = await requireAdminServerContext();
   const audience = String(formData.get('audience') ?? 'all') as 'public' | 'member' | 'admin' | 'all';
   const id = await createAnnouncement({
     title: String(formData.get('title') ?? ''),
@@ -18,7 +20,7 @@ async function createAnnouncementAction(formData: FormData) {
   });
 
   await logAuditEvent({
-    actorUserId: 'system-admin',
+    actorUserId: auth.userId,
     actorRole: 'admin',
     actionType: 'announcement_create',
     targetId: id,
@@ -30,18 +32,20 @@ async function createAnnouncementAction(formData: FormData) {
 
 async function toggleAnnouncementAction(formData: FormData) {
   'use server';
+  const auth = await requireAdminServerContext();
   const id = String(formData.get('id'));
   const active = formData.get('active') === 'true';
   await updateAnnouncement(id, { active: !active });
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'announcement_update', targetId: id, targetType: 'announcement', metadata: { active: !active } });
+  await logAuditEvent({ actorUserId: auth.userId, actorRole: 'admin', actionType: 'announcement_update', targetId: id, targetType: 'announcement', metadata: { active: !active } });
   revalidatePath('/admin/announcements');
 }
 
 async function deleteAnnouncementAction(formData: FormData) {
   'use server';
+  const auth = await requireAdminServerContext();
   const id = String(formData.get('id'));
   await deleteAnnouncement(id);
-  await logAuditEvent({ actorUserId: 'system-admin', actorRole: 'admin', actionType: 'announcement_delete', targetId: id, targetType: 'announcement' });
+  await logAuditEvent({ actorUserId: auth.userId, actorRole: 'admin', actionType: 'announcement_delete', targetId: id, targetType: 'announcement' });
   revalidatePath('/admin/announcements');
 }
 
