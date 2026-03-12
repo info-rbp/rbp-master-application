@@ -94,21 +94,30 @@ service cloud.firestore {
     match /customisation_requests/{requestId} {
       allow get: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
       allow list: if isAdmin();
-      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.memberId == request.auth.uid
+        && request.resource.data.workflowType == 'customisation'
+        && request.resource.data.status == 'submitted';
       allow update, delete: if isAdmin();
     }
 
     match /support_requests/{requestId} {
       allow get: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
       allow list: if isAdmin();
-      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.memberId == request.auth.uid
+        && request.resource.data.workflowType == 'implementation_support'
+        && request.resource.data.status == 'submitted';
       allow update, delete: if isAdmin();
     }
 
     match /discovery_calls/{callId} {
       allow get: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
       allow list: if isAdmin();
-      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.memberId == request.auth.uid
+        && request.resource.data.workflowType in ['discovery_call', 'strategic_checkup']
+        && request.resource.data.status == 'submitted';
       allow update, delete: if isAdmin();
     }
 

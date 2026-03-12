@@ -50,6 +50,9 @@ export type AnalyticsEventType =
   | 'customisation_request_submitted'
   | 'support_request_submitted'
   | 'discovery_call_requested'
+  | 'strategic_checkup_requested'
+  | 'service_workflow_status_changed'
+  | 'service_workflow_completed'
   | 'resource_saved'
   | 'member_recent_activity_clicked';
 

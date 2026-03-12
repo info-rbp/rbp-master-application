@@ -1,21 +1,23 @@
 import { firestore } from '@/firebase/server';
 import { logAuditEvent } from '@/lib/audit';
 import { requireAdminServerContext } from '@/lib/server-auth';
-
-type RequestStatus = 'submitted' | 'in_review' | 'scheduled' | 'in_progress' | 'resolved' | 'completed' | 'cancelled';
+import { listServiceQueue, updateWorkflowByAdmin, type ServiceWorkflowType, type WorkflowPriority, type WorkflowStatus } from './service-workflows';
 
 export type AdminServiceRequestRow = {
   id: string;
   memberId: string;
-  status: RequestStatus | string;
-  assignedAdmin?: string | null;
+  memberName?: string | null;
+  workflowType: ServiceWorkflowType;
+  status: WorkflowStatus;
+  assignedAdminId?: string | null;
+  assignedAdminName?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
-  requestType?: string | null;
-  callType?: 'discovery_call' | 'strategic_checkup' | string | null;
-  notes?: string | null;
   description?: string | null;
-  priority?: 'low' | 'normal' | 'high' | 'urgent' | string | null;
+  memberVisibleUpdate?: string | null;
+  internalNotes?: string | null;
+  priority?: WorkflowPriority;
+  preferredDateTime?: string | null;
 };
 
 export type PromotionType = 'free_membership' | 'discount_code' | 'service_purchase' | 'annual_plan';
@@ -42,33 +44,49 @@ const toIso = (value: unknown) => {
   return null;
 };
 
-const mapRequestDoc = (id: string, data: FirebaseFirestore.DocumentData): AdminServiceRequestRow => ({
-  id,
-  memberId: String(data.memberId ?? ''),
-  status: String(data.status ?? 'submitted'),
-  assignedAdmin: data.assignedAdmin ? String(data.assignedAdmin) : null,
-  createdAt: toIso(data.createdAt) ?? String(data.createdAt ?? ''),
-  updatedAt: toIso(data.updatedAt) ?? String(data.updatedAt ?? ''),
-  requestType: data.requestType ? String(data.requestType) : null,
-  callType: data.callType ? String(data.callType) : null,
-  notes: data.notes ? String(data.notes) : null,
-  description: data.description ? String(data.description) : null,
-  priority: data.priority ? String(data.priority) : null,
-});
-
-export async function getServiceRequests(collectionName: 'discovery_calls' | 'support_requests' | 'customisation_requests', opts?: { callType?: 'discovery_call' | 'strategic_checkup' }) {
+export async function getServiceRequests(workflowType: ServiceWorkflowType, filters?: { status?: WorkflowStatus; priority?: WorkflowPriority; memberId?: string; assignedAdminId?: string }) {
   await requireAdminServerContext();
-  let query: FirebaseFirestore.Query = firestore.collection(collectionName);
-  if (opts?.callType) query = query.where('callType', '==', opts.callType);
-  const snap = await query.orderBy('createdAt', 'desc').limit(100).get();
-  return snap.docs.map((doc) => mapRequestDoc(doc.id, doc.data()));
+  const rows = await listServiceQueue({ workflowType, ...filters });
+  return rows.map((row) => ({
+    id: row.id,
+    memberId: row.memberId,
+    memberName: row.memberName,
+    workflowType: row.workflowType,
+    status: row.status,
+    assignedAdminId: row.assignedAdminId,
+    assignedAdminName: row.assignedAdminName,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    description: row.requestDescription,
+    memberVisibleUpdate: row.memberVisibleUpdate,
+    internalNotes: row.internalNotes,
+    priority: row.priority,
+    preferredDateTime: row.preferredDateTime,
+  }));
 }
 
-export async function updateServiceRequestStatus(collectionName: 'discovery_calls' | 'support_requests' | 'customisation_requests', id: string, status: RequestStatus, note?: string) {
+export async function updateServiceRequestStatus(input: {
+  workflowType: ServiceWorkflowType;
+  id: string;
+  status: WorkflowStatus;
+  priority?: WorkflowPriority;
+  memberVisibleUpdate?: string;
+  internalNotes?: string;
+  assignedAdminId?: string;
+  assignedAdminName?: string;
+}) {
   const auth = await requireAdminServerContext();
-  const ref = firestore.collection(collectionName).doc(id);
-  await ref.update({ status, notes: note ?? null, assignedAdmin: auth.userId, updatedAt: new Date().toISOString() });
-  await logAuditEvent({ actorUserId: auth.userId, actorRole: 'admin', actionType: 'settings_change', targetType: collectionName, targetId: id, metadata: { status, note: note ?? null } });
+  await updateWorkflowByAdmin({
+    actorUserId: auth.userId,
+    workflowType: input.workflowType,
+    id: input.id,
+    status: input.status,
+    priority: input.priority,
+    internalNotes: input.internalNotes,
+    memberVisibleUpdate: input.memberVisibleUpdate,
+    assignedAdminId: input.assignedAdminId ?? auth.userId,
+    assignedAdminName: input.assignedAdminName ?? auth.email ?? auth.userId,
+  });
 }
 
 export async function getPromotions(type?: PromotionType) {
