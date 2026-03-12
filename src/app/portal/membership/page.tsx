@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireMemberAuth } from '../_lib/member-auth';
 import { getMemberOverview } from '@/lib/member-dashboard';
 import { ENTITLEMENT_MATRIX } from '@/lib/entitlements';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 
 export default async function MembershipPage() {
   const auth = await requireMemberAuth();

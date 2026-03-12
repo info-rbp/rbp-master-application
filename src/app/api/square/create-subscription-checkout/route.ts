@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { firestore } from '@/firebase/server';
-import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { createSquareSubscriptionPaymentLink, resolveSquareLocationId } from '@/lib/square';
 import { validatePlanForSquareCheckout } from '@/lib/subscriptions';

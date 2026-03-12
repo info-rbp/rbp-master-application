@@ -43,13 +43,18 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#39;');
 }
 
+function sanitizeEmailText(value: string) {
+  const escaped = escapeHtml(value);
+  return escaped.replace(/\bon[a-z]+\s*=/gi, (match) => `${match.slice(0, -1)}&#61;`);
+}
+
 export function renderEmailTemplate(
   templateKey: EmailTemplateKey,
   context: EmailTemplateContext = {},
 ): RenderedTemplate {
   const appUrl = context.appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://example.com';
-  const userName = escapeHtml(context.userName ?? 'there');
-  const contactMessage = escapeHtml(context.contactMessage ?? '-');
+  const userName = sanitizeEmailText(context.userName ?? 'there');
+  const contactMessage = sanitizeEmailText(context.contactMessage ?? '-');
 
   switch (templateKey) {
     case 'welcome':
@@ -74,7 +79,7 @@ export function renderEmailTemplate(
       return {
         subject: 'Your membership is expiring soon',
         text: `Your membership expires on ${context.membershipEndDate ?? 'soon'}. Renew at ${appUrl}/membership.`,
-        html: `<p>Your membership expires on <strong>${escapeHtml(context.membershipEndDate ?? 'soon')}</strong>.</p><p><a href="${appUrl}/membership">Renew membership</a></p>`,
+        html: `<p>Your membership expires on <strong>${sanitizeEmailText(context.membershipEndDate ?? 'soon')}</strong>.</p><p><a href="${appUrl}/membership">Renew membership</a></p>`,
       };
     case 'membership_expired':
       return {
@@ -104,25 +109,25 @@ export function renderEmailTemplate(
       return {
         subject: 'Your membership was updated by support',
         text: `An administrator updated your membership.${context.reason ? ` Reason: ${context.reason}` : ''}`,
-        html: `<p>An administrator updated your membership.</p>${context.reason ? `<p>Reason: ${escapeHtml(context.reason)}</p>` : ''}`,
+        html: `<p>An administrator updated your membership.</p>${context.reason ? `<p>Reason: ${sanitizeEmailText(context.reason)}</p>` : ''}`,
       };
     case 'new_resource_published':
       return {
         subject: 'New resource published',
         text: `A new resource is available: ${context.resourceTitle ?? 'New resource'}. Visit ${appUrl}/docushare.`,
-        html: `<p>A new resource is available: <strong>${escapeHtml(context.resourceTitle ?? 'New resource')}</strong>.</p><p><a href="${appUrl}/docushare">View resource</a></p>`,
+        html: `<p>A new resource is available: <strong>${sanitizeEmailText(context.resourceTitle ?? 'New resource')}</strong>.</p><p><a href="${appUrl}/docushare">View resource</a></p>`,
       };
     case 'admin_contact_alert':
       return {
-        subject: `New contact enquiry from ${escapeHtml(context.contactName ?? 'website visitor')}`,
+        subject: `New contact enquiry from ${sanitizeEmailText(context.contactName ?? 'website visitor')}`,
         text: `Name: ${context.contactName ?? '-'}\nEmail: ${context.contactEmail ?? '-'}\nMessage: ${context.contactMessage ?? '-'}`,
-        html: `<p><strong>Name:</strong> ${escapeHtml(context.contactName ?? '-')}</p><p><strong>Email:</strong> ${escapeHtml(context.contactEmail ?? '-')}</p><p><strong>Message:</strong> ${contactMessage}</p>`,
+        html: `<p><strong>Name:</strong> ${sanitizeEmailText(context.contactName ?? '-')}</p><p><strong>Email:</strong> ${sanitizeEmailText(context.contactEmail ?? '-')}</p><p><strong>Message:</strong> ${contactMessage}</p>`,
       };
     case 'admin_operational_alert':
       return {
         subject: `[Ops Alert] ${context.alertTitle ?? 'Operational issue detected'}`,
         text: `${context.alertTitle ?? 'Operational issue detected'}\n\n${context.alertMessage ?? 'No details provided.'}`,
-        html: `<p><strong>${escapeHtml(context.alertTitle ?? 'Operational issue detected')}</strong></p><p>${escapeHtml(context.alertMessage ?? 'No details provided.')}</p>`,
+        html: `<p><strong>${sanitizeEmailText(context.alertTitle ?? 'Operational issue detected')}</strong></p><p>${sanitizeEmailText(context.alertMessage ?? 'No details provided.')}</p>`,
       };
     default:
       return {

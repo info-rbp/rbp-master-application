@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { resolvePostAuthPath } from '@/lib/return-path';
-import { ANALYTICS_EVENTS } from '@/lib/analytics';
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
 import { useAuth } from '@/firebase/provider';
 
 export default function LoginPage() {

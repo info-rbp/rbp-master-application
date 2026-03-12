@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireMemberAuth } from './_lib/member-auth';
 import { countMemberRequestsThisMonth, getMemberOverview, listDiscoveryCalls, listRecentActivity, listSavedItems, listSupportRequests } from '@/lib/member-dashboard';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 
 export default async function PortalOverviewPage() {
   const auth = await requireMemberAuth();

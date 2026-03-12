@@ -1,7 +1,8 @@
 import { buildSeoMetadata } from '@/lib/seo';
 import { PublicCatalogueCard } from '@/components/public/public-catalogue-card';
 import { DiscoveryFilters } from '@/components/public/discovery-filters';
-import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import { applyDiscoveryFilters, getDiscoveryFilterOptions, getPublicDiscoveryItems, type DiscoveryFilters as DiscoveryQueryFilters } from '@/lib/discovery';
 
 export const metadata = buildSeoMetadata({ title: 'Search', description: 'Search the public catalogue across resources, offers, services, and knowledge.', path: '/search' });

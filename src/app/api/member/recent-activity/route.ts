@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthContext } from '@/lib/server-auth';
 import { addRecentActivity, listRecentActivity } from '@/lib/member-dashboard';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 
 export async function GET() {
   const auth = await getServerAuthContext();

@@ -20,7 +20,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/firebase/provider';
 import { resolvePostAuthPath } from '@/lib/return-path';
-import { ANALYTICS_EVENTS } from '@/lib/analytics';
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');

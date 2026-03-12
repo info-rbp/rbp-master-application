@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AnalyticsEventType, safeLogAnalyticsEvent } from '@/lib/analytics';
+import { AnalyticsEventType, safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import { getRequestAuthContext } from '@/lib/server-auth';
 
 export async function POST(request: NextRequest) {

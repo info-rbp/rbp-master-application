@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { createNotification } from '@/lib/notifications';
 import { triggerAdminAlert } from '@/lib/alerts';
-import { ANALYTICS_EVENTS, safeLogAnalyticsEvent } from '@/lib/analytics';
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import { sendTemplatedEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {

@@ -17,7 +17,7 @@ import type { Document, DocumentSuite } from '@/lib/definitions';
 import { firestore } from '@/firebase/server';
 import { triggerAdminAlert } from '@/lib/alerts';
 import { sendTemplatedEmail } from '@/lib/email';
-import { safeLogAnalyticsEvent } from '@/lib/analytics';
+import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import { createNotification } from '@/lib/notifications';
 
 async function notifyMembersOfNewResource(doc: Omit<Document, 'id' | 'createdAt'> & { id: string }) {
