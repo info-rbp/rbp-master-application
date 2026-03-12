@@ -2,7 +2,7 @@ import { firestore } from '@/firebase/server';
 import { safeLogAnalyticsEvent } from './analytics';
 import { logAuditEvent } from './audit';
 import { triggerAdminAlert, triggerMembershipAlert } from './alerts';
-import { normalizeMembershipStatusFromSquare } from './subscriptions';
+import { normalizeMembershipStatusFromSquare, resolveBillingCycleFromPlan, resolveMembershipTierFromPlan } from './subscriptions';
 
 function asIsoString(value: unknown) {
   if (!value) return null;
@@ -74,10 +74,17 @@ export async function processSquareEvent(event: Record<string, any>) {
 
   const membershipPlanId = planDoc?.id ?? null;
   const userId = userDoc?.id ?? null;
+  const resolvedPlan = planDoc?.data() as Record<string, unknown> | undefined;
+  const planCode = (resolvedPlan?.code as string | undefined) ?? 'basic_free';
+  const membershipTier = resolveMembershipTierFromPlan({ tier: (resolvedPlan?.tier as any) ?? null, code: planCode as any });
+  const billingCycle = resolveBillingCycleFromPlan({ billingCycle: (resolvedPlan?.billingCycle as any) ?? null, code: planCode as any });
 
   await subscriptionRef.set({
     userId,
     membershipPlanId,
+    membershipPlanCode: planCode,
+    membershipTier,
+    billingCycle,
     squareSubscriptionId,
     squareCustomerId: squareCustomerId ?? null,
     squareLocationId: subscription.location_id ?? null,
@@ -98,7 +105,9 @@ export async function processSquareEvent(event: Record<string, any>) {
     await firestore.doc(`users/${userDoc.id}`).set({
       membershipStatus: newStatus,
       subscriptionPlanId: membershipPlanId,
-      membershipTier: planDoc?.data()?.name ?? userDoc.data()?.membershipTier ?? 'none',
+      membershipPlanCode: planCode,
+      membershipTier,
+      billingCycle,
       squareSubscriptionId,
       squareCustomerId: squareCustomerId ?? null,
       updatedAt: new Date().toISOString(),

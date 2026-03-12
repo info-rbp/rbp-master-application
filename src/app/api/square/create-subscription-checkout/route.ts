@@ -5,6 +5,7 @@ import { safeLogAnalyticsEvent } from '@/lib/analytics';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { createSquareSubscriptionPaymentLink, resolveSquareLocationId } from '@/lib/square';
 import { validatePlanForSquareCheckout } from '@/lib/subscriptions';
+import { MEMBERSHIP_PLAN_DEFINITIONS } from '@/lib/entitlements';
 import type { MembershipPlan } from '@/lib/definitions';
 
 export async function POST(request: NextRequest) {
@@ -19,8 +20,27 @@ export async function POST(request: NextRequest) {
     const planSnapshot = await firestore.collection('membership_plans').doc(planId).get();
     if (!planSnapshot.exists) return NextResponse.json({ error: 'Membership plan not found.' }, { status: 404 });
 
-    const plan = planSnapshot.data() as Omit<MembershipPlan, 'id'>;
-    const validation = validatePlanForSquareCheckout({ id: planId, ...plan });
+    const raw = planSnapshot.data() as Partial<MembershipPlan>;
+    const code = (raw.code ?? 'basic_free');
+    const definition = MEMBERSHIP_PLAN_DEFINITIONS[code as keyof typeof MEMBERSHIP_PLAN_DEFINITIONS];
+    const plan: MembershipPlan = {
+      id: planId,
+      code: (raw.code ?? 'basic_free') as MembershipPlan['code'],
+      tier: (raw.tier ?? definition?.tier ?? 'basic') as MembershipPlan['tier'],
+      billingCycle: (raw.billingCycle ?? definition?.billingCycle ?? 'free') as MembershipPlan['billingCycle'],
+      name: raw.name ?? definition?.displayName ?? 'Basic',
+      description: raw.description ?? '',
+      currency: String(raw.currency ?? 'usd'),
+      amount: Number(raw.amount ?? definition?.amount ?? 0),
+      interval: (raw.interval ?? raw.billingCycle ?? definition?.billingCycle ?? 'free') as MembershipPlan['interval'],
+      active: Boolean(raw.active),
+      promotionEligible: Boolean(raw.promotionEligible ?? true),
+      squareSubscriptionPlanVariationId: raw.squareSubscriptionPlanVariationId ?? null,
+      squareSubscriptionPlanId: raw.squareSubscriptionPlanId ?? null,
+      squareLocationId: raw.squareLocationId ?? null,
+      squareCatalogObjectVersion: raw.squareCatalogObjectVersion ?? null,
+    };
+    const validation = validatePlanForSquareCheckout(plan);
     if (!validation.ok) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }

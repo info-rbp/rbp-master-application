@@ -1,3 +1,44 @@
+export const MEMBERSHIP_TIERS = ['basic', 'standard', 'premium'] as const;
+export type MembershipTier = (typeof MEMBERSHIP_TIERS)[number];
+
+export const BILLING_CYCLES = ['free', 'monthly', 'annual'] as const;
+export type BillingCycle = (typeof BILLING_CYCLES)[number];
+
+export const MEMBERSHIP_PLAN_CODES = [
+  'basic_free',
+  'standard_monthly',
+  'standard_annual',
+  'premium_monthly',
+  'premium_annual',
+] as const;
+export type MembershipPlanCode = (typeof MEMBERSHIP_PLAN_CODES)[number];
+
+export type MembershipStatus = 'active' | 'canceled' | 'past_due' | 'unpaid' | 'pending' | 'paused' | 'suspended' | 'lapsed';
+
+export type ToolsAccessLevel = 'none' | 'limited' | 'full';
+
+export type ContentTypeKey =
+  | 'docshare_template'
+  | 'docshare_companion_guide'
+  | 'docshare_documentation_suite'
+  | 'docshare_end_to_end_process'
+  | 'docshare_tool'
+  | 'partner_offer_top'
+  | 'partner_offer_exclusive'
+  | 'knowledge_center_article'
+  | 'service_discovery_call'
+  | 'service_strategic_checkup'
+  | 'implementation_support';
+
+export type EntitlementAccessFields = {
+  accessTier: MembershipTier;
+  requiresLogin: boolean;
+  requiresMembership: boolean;
+  previewEnabled: boolean;
+  isLimitedAccess: boolean;
+  contentType: ContentTypeKey;
+};
+
 export type Document = {
   id: string;
   name: string;
@@ -13,17 +54,22 @@ export type DocumentSuite = {
   name: string;
   description: string;
   contentType?: 'templates' | 'companion-guides' | 'documentation-suites' | 'end-to-end-processes' | 'customisation-service';
+  entitlement?: EntitlementAccessFields;
   documents: Document[];
 };
 
 export type MembershipPlan = {
   id: string;
+  code: MembershipPlanCode;
+  tier: MembershipTier;
+  billingCycle: BillingCycle;
   name: string;
   description: string;
   currency: string;
   amount: number;
-  interval: string;
+  interval: BillingCycle;
   active: boolean;
+  promotionEligible?: boolean;
   squareSubscriptionPlanVariationId?: string | null;
   squareSubscriptionPlanId?: string | null;
   squareLocationId?: string | null;
@@ -33,12 +79,17 @@ export type MembershipPlan = {
 export type Subscription = {
   id: string;
   userId: string;
+  membershipPlanCode: MembershipPlanCode;
+  membershipTier: MembershipTier;
+  billingCycle: BillingCycle;
   membershipPlanId: string;
   squareSubscriptionId: string;
   squareCustomerId?: string | null;
   squareLocationId?: string | null;
-  status: 'active' | 'canceled' | 'past_due' | 'unpaid' | 'pending' | 'paused';
+  status: MembershipStatus;
   startDate: string;
+  endDate?: string | null;
+  renewalDate?: string | null;
   currentBillingAnchorDate?: string | null;
   chargedThroughDate?: string | null;
   canceledDate?: string | null;
@@ -48,6 +99,22 @@ export type Subscription = {
   updatedAt: string;
   lastPaymentAt?: string | null;
   lastPaymentStatus?: 'paid' | 'failed' | 'pending' | null;
+  promotionSourceType?: string | null;
+  promotionSourceReferenceId?: string | null;
+};
+
+export type MembershipAccessGrant = {
+  id: string;
+  userId: string;
+  sourceType: 'service_purchase' | 'admin_grant' | 'discount_code' | 'seasonal_offer' | 'referral_offer' | 'bundle_offer' | 'limited_time_unlock' | 'system';
+  sourceReferenceId: string;
+  grantTier: MembershipTier;
+  grantStartAt: string;
+  grantEndAt: string;
+  status: 'active' | 'scheduled' | 'expired' | 'revoked';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type BillingEvent = {
@@ -80,6 +147,7 @@ export type KnowledgeArticle = {
   seoDescription?: string;
   externalLink?: string;
   ctaLabel?: string;
+  entitlement?: EntitlementAccessFields;
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
@@ -96,6 +164,7 @@ export type PartnerOffer = {
   imageUrl?: string;
   displayOrder?: number;
   expiresAt?: string | null;
+  entitlement?: EntitlementAccessFields;
   createdAt: string;
   updatedAt: string;
 };
@@ -132,8 +201,10 @@ export type UserProfile = {
   company?: string | null;
   phone?: string | null;
   role: string;
-  membershipTier?: string | null;
-  membershipStatus?: string;
+  membershipTier?: MembershipTier | null;
+  membershipStatus?: MembershipStatus;
+  membershipPlanCode?: MembershipPlanCode | null;
+  billingCycle?: BillingCycle | null;
   emailVerified?: boolean;
   lastLoginAt?: string | null;
   accountStatus?: 'active' | 'suspended';

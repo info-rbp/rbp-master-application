@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { getServiceDiscountPercent } from '@/lib/entitlements';
+import type { MembershipTier } from '@/lib/definitions';
 
 type ProfileForm = {
   name: string;
@@ -127,6 +129,10 @@ export default function AccountPage() {
               <div className="grid gap-2">
                 <Label htmlFor="membershipStatus">Membership Status</Label>
                 <Input id="membershipStatus" value={form.membershipStatus} readOnly />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="serviceDiscount">Service discount</Label>
+                <Input id="serviceDiscount" value={`${getServiceDiscountPercent((form.membershipTier || 'basic') as MembershipTier)}%`} readOnly />
               </div>
               <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</Button>
             </form>

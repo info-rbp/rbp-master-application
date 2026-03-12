@@ -3,15 +3,18 @@ import type {
   Document,
   DocumentSuite,
   KnowledgeArticle,
+  MembershipAccessGrant,
   MembershipPlan,
   PartnerOffer,
   PastProject,
   Testimonial,
   UserProfile,
 } from './definitions';
+import { MEMBERSHIP_TIERS } from './definitions';
 import { logAuditEvent, saveContentRevision } from './audit';
 import { safeLogAnalyticsEvent } from './analytics';
 import { canPublishKnowledgeArticle, type KnowledgeContentType } from './knowledge-center';
+import { getAccessMetadataForDocuShareSection, resolvePlanCodeToBillingCycle, resolvePlanCodeToTier } from './entitlements';
 import { filterAndSortUsers, validateAdminRole } from './user-admin';
 import { getPublicPartnerOffers, getPublicPastProjects, getPublicTestimonials } from './content-admin';
 import { getDocuShareSectionContent as getDocuShareSectionContentFromCms, getFAQsByCategory as getFAQsByCategoryFromCms, getHomepageContent as getHomepageContentFromCms, getKnowledgeLandingContent as getKnowledgeLandingContentFromCms, getMembershipPageContent as getMembershipPageContentFromCms, getPageContentBySlug as getPageContentBySlugFromCms, getPublishedServicePages as getPublishedServicePagesFromCms, getServicePageBySlug as getServicePageBySlugFromCms, getServicesLandingContent as getServicesLandingContentFromCms } from './public-content';
@@ -31,6 +34,16 @@ const toIsoString = (value: unknown): string => {
   return new Date().toISOString();
 };
 
+const isMembershipTier = (value: unknown): value is import('./definitions').MembershipTier =>
+  typeof value === 'string' && MEMBERSHIP_TIERS.includes(value as import('./definitions').MembershipTier);
+
+const normalizeMembershipStatus = (value: unknown): import('./definitions').MembershipStatus => {
+  const status = String(value ?? 'pending').toLowerCase();
+  if (['active', 'canceled', 'past_due', 'unpaid', 'pending', 'paused', 'suspended', 'lapsed'].includes(status)) {
+    return status as import('./definitions').MembershipStatus;
+  }
+  return 'pending';
+};
 
 
 export async function getDocumentSuites(): Promise<DocumentSuite[]> {
@@ -43,6 +56,7 @@ export async function getDocumentSuites(): Promise<DocumentSuite[]> {
       name: data.name,
       description: data.description,
       contentType: data.contentType,
+      entitlement: getAccessMetadataForDocuShareSection(data.contentType ?? 'templates'),
     } as Omit<DocumentSuite, 'documents'>;
   });
 
@@ -91,6 +105,7 @@ export async function getSuites(): Promise<Omit<DocumentSuite, 'documents'>[]> {
       name: data.name,
       description: data.description,
       contentType: data.contentType,
+      entitlement: getAccessMetadataForDocuShareSection(data.contentType ?? 'templates'),
     };
   });
 }
@@ -220,14 +235,19 @@ export async function getMembershipPlans(): Promise<MembershipPlan[]> {
   const snapshot = await firestore.collection('membership_plans').orderBy('amount', 'asc').get();
   return snapshot.docs.map((d) => {
     const data = d.data();
+    const code = data.code ?? 'basic_free';
     return {
       id: d.id,
+      code,
+      tier: data.tier ?? resolvePlanCodeToTier(code),
+      billingCycle: data.billingCycle ?? resolvePlanCodeToBillingCycle(code),
       name: data.name,
       description: data.description,
       currency: data.currency,
       amount: data.amount,
-      interval: data.interval,
+      interval: data.interval ?? resolvePlanCodeToBillingCycle(code),
       active: Boolean(data.active),
+      promotionEligible: Boolean(data.promotionEligible ?? true),
       squareSubscriptionPlanVariationId: data.squareSubscriptionPlanVariationId ?? null,
       squareSubscriptionPlanId: data.squareSubscriptionPlanId ?? null,
       squareLocationId: data.squareLocationId ?? null,
@@ -263,14 +283,19 @@ export async function updateMembershipPlan(
   if (!plan) return null;
 
   await logAuditEvent({ actorUserId, actorRole: 'admin', actionType: 'plan_update', targetId: id, targetType: 'membership_plan', before: beforeSnapshot.data() ?? null, after: snapshot.data() ?? null });
+  const code = plan.code ?? 'basic_free';
   return {
     id: snapshot.id,
+    code,
+    tier: plan.tier ?? resolvePlanCodeToTier(code),
+    billingCycle: plan.billingCycle ?? resolvePlanCodeToBillingCycle(code),
     name: plan.name,
     description: plan.description,
     currency: plan.currency,
     amount: plan.amount,
-    interval: plan.interval,
+    interval: plan.interval ?? resolvePlanCodeToBillingCycle(code),
     active: Boolean(plan.active),
+    promotionEligible: Boolean(plan.promotionEligible ?? true),
     squareSubscriptionPlanVariationId: plan.squareSubscriptionPlanVariationId ?? null,
     squareSubscriptionPlanId: plan.squareSubscriptionPlanId ?? null,
     squareLocationId: plan.squareLocationId ?? null,
@@ -318,6 +343,7 @@ function normalizeKnowledgeArticle(id: string, data: Record<string, unknown>): K
     seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
     externalLink: data.externalLink ? String(data.externalLink) : undefined,
     ctaLabel: data.ctaLabel ? String(data.ctaLabel) : undefined,
+    entitlement: (data.entitlement as import('./definitions').EntitlementAccessFields | undefined) ?? undefined,
     createdAt: toIsoString(data.createdAt),
     updatedAt: toIsoString(data.updatedAt),
     publishedAt: data.publishedAt ? toIsoString(data.publishedAt) : undefined,
@@ -497,6 +523,7 @@ export async function getPartnerOffers(): Promise<PartnerOffer[]> {
       imageUrl: data.imageUrl ?? undefined,
       displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
       expiresAt: data.expiresAt ? toIsoString(data.expiresAt) : null,
+      entitlement: (data.entitlement as import('./definitions').EntitlementAccessFields | undefined) ?? undefined,
       createdAt: toIsoString(data.createdAt),
       updatedAt: toIsoString(data.updatedAt),
     };
@@ -545,6 +572,7 @@ export async function updatePartnerOffer(
     imageUrl: offer.imageUrl ?? undefined,
     displayOrder: typeof offer.displayOrder === 'number' ? offer.displayOrder : 0,
     expiresAt: offer.expiresAt ? toIsoString(offer.expiresAt) : null,
+    entitlement: (offer.entitlement as import('./definitions').EntitlementAccessFields | undefined) ?? undefined,
     createdAt: toIsoString(offer.createdAt),
     updatedAt: toIsoString(offer.updatedAt),
   };
@@ -742,8 +770,8 @@ function mapUserProfile(uid: string, data: Record<string, unknown>): UserProfile
     company: data.company ? String(data.company) : null,
     phone: data.phone ? String(data.phone) : null,
     role: String(data.role ?? 'member'),
-    membershipTier: data.membershipTier ? String(data.membershipTier) : null,
-    membershipStatus: String(data.membershipStatus ?? 'pending'),
+    membershipTier: isMembershipTier(data.membershipTier) ? data.membershipTier : null,
+    membershipStatus: normalizeMembershipStatus(data.membershipStatus),
     emailVerified: Boolean(data.emailVerified),
     lastLoginAt: data.lastLoginAt ? toIsoString(data.lastLoginAt) : null,
     accountStatus: data.accountStatus === 'suspended' ? 'suspended' : 'active',
@@ -932,3 +960,24 @@ export const getFAQsByCategory = getFAQsByCategoryFromCms;
 export const getKnowledgeLandingContent = getKnowledgeLandingContentFromCms;
 export const getDocuShareSectionContent = getDocuShareSectionContentFromCms;
 export const getPageContentBySlug = getPageContentBySlugFromCms;
+
+
+export async function getMembershipAccessGrantsForUser(userId: string): Promise<MembershipAccessGrant[]> {
+  const snapshot = await firestore.collection('membership_access_grants').where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      userId: String(data.userId ?? userId),
+      sourceType: data.sourceType ?? 'system',
+      sourceReferenceId: String(data.sourceReferenceId ?? ''),
+      grantTier: data.grantTier ?? 'basic',
+      grantStartAt: toIsoString(data.grantStartAt),
+      grantEndAt: toIsoString(data.grantEndAt),
+      status: data.status ?? 'active',
+      notes: data.notes ? String(data.notes) : undefined,
+      createdAt: toIsoString(data.createdAt),
+      updatedAt: toIsoString(data.updatedAt),
+    } as MembershipAccessGrant;
+  });
+}

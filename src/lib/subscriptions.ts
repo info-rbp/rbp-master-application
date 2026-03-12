@@ -1,8 +1,12 @@
 import type { MembershipPlan } from './definitions';
+import { resolvePlanCodeToBillingCycle, resolvePlanCodeToTier } from './entitlements';
 
 export function validatePlanForSquareCheckout(plan: MembershipPlan | null | undefined) {
   if (!plan) return { ok: false as const, error: 'Membership plan not found.' };
   if (!plan.active) return { ok: false as const, error: 'Selected plan is not active.' };
+  if (plan.billingCycle === 'free') {
+    return { ok: false as const, error: 'Free plans do not require Square checkout.' };
+  }
   if (!plan.squareSubscriptionPlanVariationId) {
     return { ok: false as const, error: 'Selected plan is missing Square subscription plan variation mapping.' };
   }
@@ -17,4 +21,12 @@ export function normalizeMembershipStatusFromSquare(status: string | null | unde
   if (normalized === 'DEACTIVATED') return 'lapsed';
   if (normalized === 'PENDING') return 'pending';
   return 'pending';
+}
+
+export function resolveMembershipTierFromPlan(plan: Pick<MembershipPlan, 'tier' | 'code'>) {
+  return plan.tier ?? resolvePlanCodeToTier(plan.code);
+}
+
+export function resolveBillingCycleFromPlan(plan: Pick<MembershipPlan, 'billingCycle' | 'code'>) {
+  return plan.billingCycle ?? resolvePlanCodeToBillingCycle(plan.code);
 }
