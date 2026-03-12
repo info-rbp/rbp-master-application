@@ -1,26 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthContext } from '@/lib/server-auth';
-import { createCustomisationRequest, listCustomisationRequests, getMemberOverview } from '@/lib/member-dashboard';
+import { getMemberOverview } from '@/lib/member-dashboard';
+import { createCustomisationWorkflow, listMemberWorkflows } from '@/lib/service-workflows';
 
 export async function GET() {
   const auth = await getServerAuthContext();
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const records = await listCustomisationRequests(auth.userId);
-  return NextResponse.json({ records });
+  if (!auth) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  const records = await listMemberWorkflows(auth.userId, 'customisation');
+  return NextResponse.json({ ok: true, records });
 }
 
 export async function POST(request: NextRequest) {
   const auth = await getServerAuthContext();
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!auth) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   const body = await request.json();
   if (!body.requestDescription || typeof body.requestDescription !== 'string') {
-    return NextResponse.json({ error: 'requestDescription is required' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: 'requestDescription is required' }, { status: 400 });
   }
   const overview = await getMemberOverview(auth.userId);
-  try {
-    const id = await createCustomisationRequest(auth.userId, { requestDescription: body.requestDescription, relatedResourceId: body.relatedResourceId ?? null, priority: body.priority }, overview.tier);
-    return NextResponse.json({ id }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to submit request' }, { status: 403 });
+  const result = await createCustomisationWorkflow({
+    memberId: auth.userId,
+    memberName: overview.user?.name ?? null,
+    tier: overview.tier,
+    requestDescription: body.requestDescription,
+    requestedOutcome: body.requestedOutcome ?? null,
+    relatedResourceId: body.relatedResourceId ?? null,
+    relatedResourceType: body.relatedResourceType ?? null,
+    relatedResourceTitle: body.relatedResourceTitle ?? null,
+    priority: body.priority,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json({ ok: false, code: result.code, error: result.message }, { status: 403 });
   }
+
+  return NextResponse.json({ ok: true, id: result.id }, { status: 201 });
 }

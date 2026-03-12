@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCustomisationRequestAllowance } from '@/lib/entitlements';
 import { countMemberRequestsThisMonth, getMemberOverview, listCustomisationRequests } from '@/lib/member-dashboard';
@@ -20,20 +21,27 @@ export default async function CustomisationRequestsPage() {
       <Card>
         <CardHeader><CardTitle>Submit customisation request</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <p>Allowance this month: {String(allowance)}. Remaining: {remaining}.</p>
+          <p>Allowance this month: {String(allowance)}. Used: {usedThisMonth}. Remaining: {remaining}.</p>
           <SimpleRequestForm
             action="/api/member/customisation-requests"
-            disabledText={isBlocked ? 'Monthly customisation allowance reached. Upgrade for higher capacity.' : undefined}
-            fields={[{ key: 'requestDescription', label: 'Request description' }, { key: 'relatedResourceId', label: 'Related resource ID (optional)' }]}
+            disabledText={allowance === 0 ? 'Customisation requests are not included in your membership tier. Upgrade to Standard or Premium.' : (isBlocked ? 'Monthly customisation allowance reached for this billing period.' : undefined)}
+            fields={[
+              { key: 'requestDescription', label: 'Request description' },
+              { key: 'requestedOutcome', label: 'Requested outcome' },
+              { key: 'priority', label: 'Priority', options: ['low', 'normal', 'high', 'urgent'] },
+              { key: 'relatedResourceTitle', label: 'Related resource title (optional)' },
+              { key: 'relatedResourceId', label: 'Related resource ID (optional)' },
+            ]}
           />
+          {allowance === 0 || isBlocked ? <Link href="/membership" className="underline">View membership upgrade options</Link> : null}
         </CardContent>
       </Card>
       <Card>
         <CardHeader><CardTitle>Active and historical requests</CardTitle></CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
-            {requests.map((request) => <li key={request.id} className="border rounded p-2">{request.status} — {request.requestDescription}</li>)}
-            {requests.length === 0 ? <li className="text-muted-foreground">No requests yet.</li> : null}
+            {requests.map((request) => <li key={request.id} className="border rounded p-2">{request.status} · {request.priority} — {request.requestDescription} {request.memberVisibleUpdate ? `(${request.memberVisibleUpdate})` : ''}</li>)}
+            {requests.length === 0 ? <li className="text-muted-foreground">No requests yet. Submit your first customisation request to begin.</li> : null}
           </ul>
         </CardContent>
       </Card>

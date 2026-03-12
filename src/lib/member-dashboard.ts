@@ -3,49 +3,24 @@ import type { BillingCycle, MembershipPlanCode, MembershipStatus, MembershipTier
 import { getCustomisationRequestAllowance, getEffectiveMembershipTier, getServiceDiscountPercent } from './entitlements';
 import { safeLogAnalyticsEvent } from './analytics';
 import { getUserById, getMembershipAccessGrantsForUser } from './data';
+import {
+  countStandardCustomisationsThisMonth,
+  createCallWorkflow,
+  createCustomisationWorkflow,
+  createImplementationSupportWorkflow,
+  listMemberWorkflows,
+  type ServiceWorkflowRecord,
+  type WorkflowPriority,
+  type WorkflowStatus,
+} from './service-workflows';
 
-export type RequestStatus = 'submitted' | 'in_progress' | 'waiting_on_member' | 'completed' | 'canceled';
-export type SupportRequestType = 'implementation_support' | 'general_support';
+export type RequestStatus = WorkflowStatus;
+export type SupportRequestType = 'implementation_support';
 export type DiscoveryCallType = 'discovery_call' | 'strategic_checkup';
 
-export type CustomisationRequestRecord = {
-  id: string;
-  memberId: string;
-  relatedResourceId?: string | null;
-  requestDescription: string;
-  status: RequestStatus;
-  priority?: 'low' | 'normal' | 'high';
-  assignedAdmin?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string | null;
-};
-
-export type SupportRequestRecord = {
-  id: string;
-  memberId: string;
-  requestType: SupportRequestType;
-  description: string;
-  priority: 'low' | 'normal' | 'high' | 'urgent';
-  status: RequestStatus;
-  assignedAdmin?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string | null;
-};
-
-export type DiscoveryCallRecord = {
-  id: string;
-  memberId: string;
-  callType: DiscoveryCallType;
-  preferredDateTime?: string | null;
-  requestedWindow?: string | null;
-  notes?: string | null;
-  status: RequestStatus;
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string | null;
-};
+export type CustomisationRequestRecord = ServiceWorkflowRecord;
+export type SupportRequestRecord = ServiceWorkflowRecord;
+export type DiscoveryCallRecord = ServiceWorkflowRecord;
 
 export type SavedItemRecord = {
   id: string;
@@ -120,77 +95,46 @@ export async function getMemberOverview(memberId: string) {
 }
 
 export async function countMemberRequestsThisMonth(memberId: string) {
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const snapshot = await firestore
-    .collection('customisation_requests')
-    .where('memberId', '==', memberId)
-    .where('createdAt', '>=', monthStart)
-    .get();
-  return snapshot.size;
+  return countStandardCustomisationsThisMonth(memberId);
 }
 
 export async function listCustomisationRequests(memberId: string): Promise<CustomisationRequestRecord[]> {
-  const snapshot = await firestore.collection('customisation_requests').where('memberId', '==', memberId).orderBy('createdAt', 'desc').limit(50).get();
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    memberId,
-    relatedResourceId: doc.data().relatedResourceId ? String(doc.data().relatedResourceId) : null,
-    requestDescription: String(doc.data().requestDescription ?? ''),
-    status: (doc.data().status ?? 'submitted') as RequestStatus,
-    priority: doc.data().priority as CustomisationRequestRecord['priority'],
-    assignedAdmin: doc.data().assignedAdmin ? String(doc.data().assignedAdmin) : null,
-    createdAt: toIsoString(doc.data().createdAt),
-    updatedAt: toIsoString(doc.data().updatedAt),
-    completedAt: doc.data().completedAt ? toIsoString(doc.data().completedAt) : null,
-  }));
+  return listMemberWorkflows(memberId, 'customisation');
 }
 
-export async function createCustomisationRequest(memberId: string, input: { requestDescription: string; relatedResourceId?: string | null; priority?: 'low' | 'normal' | 'high' }, tier: MembershipTier) {
-  const used = await countMemberRequestsThisMonth(memberId);
-  const allowance = getCustomisationRequestAllowance(tier);
-  if (allowance !== 'unlimited' && used >= allowance) {
-    throw new Error('Customisation request allowance reached for this month.');
-  }
-  const now = new Date();
-  const ref = await firestore.collection('customisation_requests').add({
-    memberId,
-    relatedResourceId: input.relatedResourceId ?? null,
-    requestDescription: input.requestDescription,
-    status: 'submitted',
-    priority: input.priority ?? 'normal',
-    assignedAdmin: null,
-    createdAt: now,
-    updatedAt: now,
-    completedAt: null,
-  });
-  await safeLogAnalyticsEvent({ eventType: 'customisation_request_submitted', userId: memberId, userRole: 'member', targetId: ref.id, targetType: 'customisation_request' });
-  return ref.id;
+export async function createCustomisationRequest(
+  memberId: string,
+  input: { requestDescription: string; relatedResourceId?: string | null; relatedResourceType?: string | null; relatedResourceTitle?: string | null; requestedOutcome?: string | null; priority?: WorkflowPriority },
+  tier: MembershipTier,
+  memberName?: string | null,
+) {
+  const result = await createCustomisationWorkflow({ memberId, memberName, tier, ...input });
+  if (!result.ok) throw new Error(result.message);
+  return result.id;
 }
 
 export async function listSupportRequests(memberId: string): Promise<SupportRequestRecord[]> {
-  const snapshot = await firestore.collection('support_requests').where('memberId', '==', memberId).orderBy('createdAt', 'desc').limit(50).get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data(), createdAt: toIsoString(doc.data().createdAt), updatedAt: toIsoString(doc.data().updatedAt), completedAt: doc.data().completedAt ? toIsoString(doc.data().completedAt) : null })) as SupportRequestRecord[];
+  return listMemberWorkflows(memberId, 'implementation_support');
 }
 
-export async function createSupportRequest(memberId: string, input: { requestType: SupportRequestType; description: string; priority?: SupportRequestRecord['priority'] }) {
-  const now = new Date();
-  const ref = await firestore.collection('support_requests').add({ memberId, requestType: input.requestType, description: input.description, priority: input.priority ?? 'normal', status: 'submitted', assignedAdmin: null, createdAt: now, updatedAt: now, completedAt: null });
-  await safeLogAnalyticsEvent({ eventType: 'support_request_submitted', userId: memberId, userRole: 'member', targetId: ref.id, targetType: input.requestType });
-  return ref.id;
+export async function createSupportRequest(memberId: string, input: { description: string; category?: string | null; priority?: WorkflowPriority }, tier: MembershipTier, memberName?: string | null) {
+  const result = await createImplementationSupportWorkflow({ memberId, memberName, tier, ...input });
+  if (!result.ok) throw new Error(result.message);
+  return result.id;
 }
 
 export async function listDiscoveryCalls(memberId: string): Promise<DiscoveryCallRecord[]> {
-  const snapshot = await firestore.collection('discovery_calls').where('memberId', '==', memberId).orderBy('createdAt', 'desc').limit(50).get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data(), createdAt: toIsoString(doc.data().createdAt), updatedAt: toIsoString(doc.data().updatedAt), completedAt: doc.data().completedAt ? toIsoString(doc.data().completedAt) : null })) as DiscoveryCallRecord[];
+  const [discoveryCalls, strategicCheckups] = await Promise.all([
+    listMemberWorkflows(memberId, 'discovery_call'),
+    listMemberWorkflows(memberId, 'strategic_checkup'),
+  ]);
+  return [...discoveryCalls, ...strategicCheckups].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function createDiscoveryCall(memberId: string, input: { callType: DiscoveryCallType; preferredDateTime?: string | null; requestedWindow?: string | null; notes?: string | null }) {
-  const now = new Date();
-  const ref = await firestore.collection('discovery_calls').add({ memberId, callType: input.callType, preferredDateTime: input.preferredDateTime ?? null, requestedWindow: input.requestedWindow ?? null, notes: input.notes ?? null, status: 'submitted', createdAt: now, updatedAt: now, completedAt: null });
-  await safeLogAnalyticsEvent({ eventType: 'discovery_call_requested', userId: memberId, userRole: 'member', targetId: ref.id, targetType: input.callType });
-  return ref.id;
+export async function createDiscoveryCall(memberId: string, input: { callType: DiscoveryCallType; preferredDateTime?: string | null; requestedWindow?: string | null; notes?: string | null }, tier: MembershipTier, memberName?: string | null) {
+  const result = await createCallWorkflow({ memberId, memberName, tier, workflowType: input.callType, preferredDateTime: input.preferredDateTime, requestedWindow: input.requestedWindow, notes: input.notes });
+  if (!result.ok) throw new Error(result.message);
+  return result.id;
 }
 
 export async function listSavedItems(memberId: string): Promise<SavedItemRecord[]> {

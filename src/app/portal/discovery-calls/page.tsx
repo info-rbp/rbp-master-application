@@ -11,9 +11,17 @@ export default async function DiscoveryCallsPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle>Book a discovery call</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Request a call</CardTitle></CardHeader>
         <CardContent>
-          <SimpleRequestForm action="/api/member/discovery-calls" fields={[{ key: 'callType', label: 'Call type (discovery_call/strategic_checkup)' }, { key: 'preferredDateTime', label: 'Preferred date/time', type: 'datetime-local' }, { key: 'notes', label: 'Notes' }]} />
+          <SimpleRequestForm
+            action="/api/member/discovery-calls"
+            fields={[
+              { key: 'callType', label: 'Call type', options: canBookStrategicCheckup(overview.tier) ? ['discovery_call', 'strategic_checkup'] : ['discovery_call'] },
+              { key: 'preferredDateTime', label: 'Preferred date/time', type: 'datetime-local' },
+              { key: 'requestedWindow', label: 'Requested window (optional)' },
+              { key: 'notes', label: 'Notes' },
+            ]}
+          />
           <p className="text-xs text-muted-foreground mt-2">Strategic check-ups: {canBookStrategicCheckup(overview.tier) ? 'available' : 'Premium-only'}.</p>
         </CardContent>
       </Card>
@@ -21,7 +29,7 @@ export default async function DiscoveryCallsPage() {
         <CardHeader><CardTitle>Past and active call requests</CardTitle></CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
-            {calls.map((call) => <li key={call.id} className="border rounded p-2">{call.callType} · {call.status}</li>)}
+            {calls.map((call) => <li key={call.id} className="border rounded p-2">{call.workflowType} · {call.status} {call.memberVisibleUpdate ? `— ${call.memberVisibleUpdate}` : ''}</li>)}
             {calls.length === 0 ? <li className="text-muted-foreground">No call requests yet.</li> : null}
           </ul>
         </CardContent>

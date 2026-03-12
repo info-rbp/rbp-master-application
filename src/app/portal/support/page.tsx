@@ -13,13 +13,17 @@ export default async function SupportRequestsPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle>Support requests</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Implementation support requests</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <p>Implementation support is {canSubmit ? 'included in your tier.' : 'Premium-only.'}</p>
+          <p>Implementation support is {canSubmit ? 'included in your Premium membership.' : 'Premium-only.'}</p>
           <SimpleRequestForm
             action="/api/member/support-requests"
             disabledText={canSubmit ? undefined : 'Upgrade to Premium to submit implementation support requests.'}
-            fields={[{ key: 'description', label: 'Support request description' }, { key: 'requestType', label: 'Request type (implementation_support/general_support)' }]}
+            fields={[
+              { key: 'description', label: 'Support request description' },
+              { key: 'category', label: 'Category (optional)' },
+              { key: 'priority', label: 'Priority', options: ['low', 'normal', 'high', 'urgent'] },
+            ]}
           />
           {!canSubmit ? <Link href="/membership" className="underline">View upgrade options</Link> : null}
         </CardContent>
@@ -28,7 +32,7 @@ export default async function SupportRequestsPage() {
         <CardHeader><CardTitle>Your support history</CardTitle></CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm">
-            {requests.map((request) => <li key={request.id} className="border rounded p-2">{request.requestType} · {request.status}</li>)}
+            {requests.map((request) => <li key={request.id} className="border rounded p-2">{request.status} · {request.priority} — {request.requestDescription}</li>)}
             {requests.length === 0 ? <li className="text-muted-foreground">No support requests yet.</li> : null}
           </ul>
         </CardContent>
