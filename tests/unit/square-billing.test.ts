@@ -43,7 +43,7 @@ test('validatePlanForSquareCheckout accepts active mapped plan', () => {
 test('normalizeMembershipStatusFromSquare maps statuses', () => {
   assert.equal(normalizeMembershipStatusFromSquare('ACTIVE'), 'active');
   assert.equal(normalizeMembershipStatusFromSquare('CANCELED'), 'canceled');
-  assert.equal(normalizeMembershipStatusFromSquare('PAUSED'), 'suspended');
+  assert.equal(normalizeMembershipStatusFromSquare('PAUSED'), 'paused');
 });
 
 test('verifySquareWebhookSignature validates expected signature', () => {

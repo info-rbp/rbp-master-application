@@ -56,6 +56,9 @@ function hydrateMemberDetail(userId: string, data: FirestoreDoc, overrideEnabled
     squareSubscriptionStatus: data.squareSubscriptionStatus ?? null,
     squareSubscriptionId: data.squareSubscriptionId ?? null,
     squareCustomerId: data.squareCustomerId ?? null,
+    membershipPlanCode: data.membershipPlanCode ?? null,
+    billingCycle: data.billingCycle ?? null,
+    activePromotionGrantEndAt: toIso(data.activePromotionGrantEndAt),
   });
 
   return {
@@ -66,6 +69,9 @@ function hydrateMemberDetail(userId: string, data: FirestoreDoc, overrideEnabled
     lastPaymentStatus: data.lastPaymentStatus ?? null,
     lastPaymentAt: toIso(data.lastPaymentAt),
     squareLocationId: data.squareLocationId ?? null,
+    membershipPlanCode: data.membershipPlanCode ?? null,
+    billingCycle: data.billingCycle ?? null,
+    activePromotionGrantEndAt: toIso(data.activePromotionGrantEndAt),
   };
 }
 

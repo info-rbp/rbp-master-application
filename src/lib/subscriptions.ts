@@ -17,8 +17,10 @@ export function normalizeMembershipStatusFromSquare(status: string | null | unde
   const normalized = String(status ?? '').toUpperCase();
   if (normalized === 'ACTIVE') return 'active';
   if (normalized === 'CANCELED') return 'canceled';
-  if (normalized === 'PAUSED') return 'suspended';
+  if (normalized === 'PAUSED') return 'paused';
   if (normalized === 'DEACTIVATED') return 'lapsed';
+  if (normalized === 'UNPAID') return 'unpaid';
+  if (normalized === 'PAST_DUE') return 'past_due';
   if (normalized === 'PENDING') return 'pending';
   return 'pending';
 }

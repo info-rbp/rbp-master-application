@@ -1,8 +1,6 @@
 import { firestore } from '@/firebase/server';
-import { safeLogAnalyticsEvent } from './analytics';
-import { logAuditEvent } from './audit';
-import { triggerAdminAlert, triggerMembershipAlert } from './alerts';
-import { normalizeMembershipStatusFromSquare, resolveBillingCycleFromPlan, resolveMembershipTierFromPlan } from './subscriptions';
+import { resolvePlanCodeToBillingCycle, resolvePlanCodeToTier } from './entitlements';
+import { normalizeSquareLifecycleType, resolveLifecycleStatusFromSquare, syncMembershipLifecycle } from './membership-lifecycle';
 
 function asIsoString(value: unknown) {
   if (!value) return null;
@@ -10,7 +8,6 @@ function asIsoString(value: unknown) {
   if (value instanceof Date) return value.toISOString();
   return null;
 }
-
 
 async function findPlanByVariationId(variationId?: string) {
   if (!variationId) return null;
@@ -24,25 +21,13 @@ async function findUserBySquareCustomerId(customerId?: string) {
   return snapshot.docs[0] ?? null;
 }
 
-async function recordBillingHistory(input: {
-  eventType: string;
-  squareSubscriptionId?: string;
-  userId?: string;
-  planId?: string;
-  previousStatus?: string;
-  newStatus?: string;
-  metadata?: Record<string, unknown>;
-}) {
-  await firestore.collection('billing_history').add({
-    ...input,
-    squareSubscriptionId: input.squareSubscriptionId ?? null,
-    userId: input.userId ?? null,
-    planId: input.planId ?? null,
-    previousStatus: input.previousStatus ?? null,
-    newStatus: input.newStatus ?? null,
-    metadata: input.metadata ?? {},
-    createdAt: new Date(),
-  });
+function resolvePaymentStatus(eventType: string, payload: Record<string, any>) {
+  const normalizedType = eventType.toLowerCase();
+  if (!normalizedType.includes('payment') && !normalizedType.includes('invoice')) return null;
+  const paymentStatus = String(payload.payment?.status ?? payload.status ?? '').toUpperCase();
+  if (paymentStatus === 'COMPLETED' || paymentStatus === 'PAID') return 'paid' as const;
+  if (paymentStatus === 'FAILED') return 'failed' as const;
+  return 'pending' as const;
 }
 
 export async function processSquareEvent(event: Record<string, any>) {
@@ -59,131 +44,50 @@ export async function processSquareEvent(event: Record<string, any>) {
   const payload = event.data?.object ?? {};
   const subscription = payload.subscription ?? payload;
   const squareSubscriptionId = String(subscription.id ?? payload.subscription_id ?? '');
+  if (!squareSubscriptionId) throw new Error('Missing Square subscription id in event payload.');
+
   const squareCustomerId = String(subscription.customer_id ?? payload.customer_id ?? '') || undefined;
-  const previousStatus = String(subscription.old_status ?? payload.old_status ?? '').toLowerCase() || undefined;
-  const newStatus = normalizeMembershipStatusFromSquare(subscription.status ?? payload.status);
+  const previousStatus = resolveLifecycleStatusFromSquare(subscription.old_status ?? payload.old_status ?? null);
+  const nextStatus = resolveLifecycleStatusFromSquare(subscription.status ?? payload.status ?? null);
+  const paymentStatus = resolvePaymentStatus(eventType, payload);
 
   const planDoc = await findPlanByVariationId(subscription.plan_variation_id);
   const userDoc = await findUserBySquareCustomerId(squareCustomerId);
 
-  const subscriptionRef = squareSubscriptionId
-    ? firestore.collection('subscriptions').doc(squareSubscriptionId)
-    : firestore.collection('subscriptions').doc();
-
-  const beforeSubscription = await subscriptionRef.get();
-
-  const membershipPlanId = planDoc?.id ?? null;
-  const userId = userDoc?.id ?? null;
   const resolvedPlan = planDoc?.data() as Record<string, unknown> | undefined;
-  const planCode = (resolvedPlan?.code as string | undefined) ?? 'basic_free';
-  const membershipTier = resolveMembershipTierFromPlan({ tier: (resolvedPlan?.tier as any) ?? null, code: planCode as any });
-  const billingCycle = resolveBillingCycleFromPlan({ billingCycle: (resolvedPlan?.billingCycle as any) ?? null, code: planCode as any });
+  const planCode = (resolvedPlan?.code as any) ?? 'basic_free';
+  const membershipTier = (resolvedPlan?.tier as any) ?? resolvePlanCodeToTier(planCode);
+  const billingCycle = (resolvedPlan?.billingCycle as any) ?? resolvePlanCodeToBillingCycle(planCode);
+  const lifecycleType = normalizeSquareLifecycleType(eventType, nextStatus, paymentStatus ?? undefined);
 
-  await subscriptionRef.set({
-    userId,
-    membershipPlanId,
+  const result = await syncMembershipLifecycle({
+    userId: userDoc?.id ?? null,
+    squareSubscriptionId,
+    squareCustomerId: squareCustomerId ?? null,
+    squareLocationId: String(subscription.location_id ?? '') || null,
+    membershipPlanId: planDoc?.id ?? null,
     membershipPlanCode: planCode,
     membershipTier,
     billingCycle,
-    squareSubscriptionId,
-    squareCustomerId: squareCustomerId ?? null,
-    squareLocationId: subscription.location_id ?? null,
-    status: newStatus,
-    startDate: asIsoString(subscription.start_date) ?? new Date().toISOString(),
-    currentBillingAnchorDate: asIsoString(subscription.phases?.[0]?.cadence) ?? null,
-    chargedThroughDate: asIsoString(subscription.charged_through_date) ?? null,
-    canceledDate: asIsoString(subscription.canceled_date) ?? null,
-    cardId: subscription.card_id ?? null,
-    sourceType: 'square_webhook',
-    updatedAt: new Date().toISOString(),
-    createdAt: beforeSubscription.exists ? beforeSubscription.data()?.createdAt : new Date().toISOString(),
-    lastPaymentAt: beforeSubscription.data()?.lastPaymentAt ?? null,
-    lastPaymentStatus: beforeSubscription.data()?.lastPaymentStatus ?? null,
-  }, { merge: true });
-
-  if (userDoc) {
-    await firestore.doc(`users/${userDoc.id}`).set({
-      membershipStatus: newStatus,
-      subscriptionPlanId: membershipPlanId,
-      membershipPlanCode: planCode,
-      membershipTier,
-      billingCycle,
-      squareSubscriptionId,
-      squareCustomerId: squareCustomerId ?? null,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-  }
-
-  if (eventType === 'invoice.payment_made' || eventType === 'payment.updated') {
-    const paymentStatus = String(payload.payment?.status ?? payload.status ?? '').toUpperCase();
-    const normalizedPaymentStatus = paymentStatus === 'COMPLETED' ? 'paid' : paymentStatus === 'FAILED' ? 'failed' : 'pending';
-    const paymentAt = new Date().toISOString();
-    await subscriptionRef.set({
-      lastPaymentAt: paymentAt,
-      lastPaymentStatus: normalizedPaymentStatus,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-
-    if (userDoc) {
-      await firestore.doc(`users/${userDoc.id}`).set({
-        lastPaymentAt: paymentAt,
-        lastPaymentStatus: normalizedPaymentStatus,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
-    }
-
-    if (normalizedPaymentStatus === 'failed' && userDoc?.data()?.email) {
-      await triggerMembershipAlert({
-        type: 'payment_failed',
-        userId: userDoc.id,
-        email: String(userDoc.data().email),
-        title: 'Payment failed',
-        message: 'Your latest membership payment failed. Please update billing details in Square checkout.',
-        actionUrl: '/membership/subscribe',
-      });
-      await triggerAdminAlert({
-        type: 'payment_failed',
-        title: 'Member payment failed',
-        message: `Payment failed for user ${userDoc.id}`,
-        actionUrl: '/admin/membership/subscription-and-billing-oversight',
-      });
-    }
-
-    await safeLogAnalyticsEvent({
-      eventType: normalizedPaymentStatus === 'failed' ? 'payment_failure' : 'payment_succeeded',
-      userId: userId ?? undefined,
-      userRole: userDoc ? 'member' : undefined,
-      targetId: squareSubscriptionId,
-      targetType: 'square_subscription',
-      metadata: { squareEventType: eventType },
-    });
-  }
-
-  await recordBillingHistory({
-    eventType,
-    squareSubscriptionId,
-    userId: userId ?? undefined,
-    planId: membershipPlanId ?? undefined,
     previousStatus,
-    newStatus,
-    metadata: { squareCustomerId },
+    nextStatus,
+    eventType,
+    eventId,
+    lifecycleType,
+    paymentStatus,
+    chargedThroughDate: asIsoString(subscription.charged_through_date),
+    renewalDate: asIsoString(subscription.phases?.[0]?.end_date),
+    canceledDate: asIsoString(subscription.canceled_date),
+    metadata: { squareCustomerId: squareCustomerId ?? null, planVariationId: subscription.plan_variation_id ?? null },
   });
 
   await processedRef.set({
     eventType,
+    lifecycleType: result.lifecycleType,
+    squareSubscriptionId,
+    userId: userDoc?.id ?? null,
     processedAt: new Date(),
   });
 
-  await logAuditEvent({
-    actorUserId: 'square-webhook',
-    actorRole: 'admin',
-    actionType: 'billing_webhook_processed',
-    targetType: 'square_subscription',
-    targetId: squareSubscriptionId,
-    before: beforeSubscription.data() ?? null,
-    after: (await subscriptionRef.get()).data() ?? null,
-    metadata: { eventType, eventId },
-  });
-
-  return { duplicate: false, eventType };
+  return { duplicate: false, eventType, lifecycleType: result.lifecycleType };
 }
