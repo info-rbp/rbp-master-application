@@ -11,6 +11,7 @@ export type AuthContext = {
   userId: string;
   role: AuthRole;
   email?: string;
+  emailVerified?: boolean;
 };
 
 export class AuthorizationError extends Error {
@@ -25,8 +26,12 @@ export class AuthorizationError extends Error {
 
 async function getBearerToken(request: NextRequest) {
   const header = request.headers.get('authorization') ?? request.headers.get('Authorization');
-  if (!header?.startsWith('Bearer ')) return null;
-  return header.slice('Bearer '.length).trim();
+  if (header?.startsWith('Bearer ')) {
+    return header.slice('Bearer '.length).trim();
+  }
+
+  const cookieToken = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+  return cookieToken ?? null;
 }
 
 async function getAuthContextFromIdToken(token: string): Promise<AuthContext | null> {
@@ -39,6 +44,7 @@ async function getAuthContextFromIdToken(token: string): Promise<AuthContext | n
       userId: decoded.uid,
       role: adminDoc.exists ? 'admin' : 'member',
       email: decoded.email,
+      emailVerified: Boolean(decoded.email_verified),
     };
   } catch {
     return null;

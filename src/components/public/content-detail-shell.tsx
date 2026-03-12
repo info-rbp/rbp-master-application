@@ -1,6 +1,6 @@
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import type { RenderableContentObject } from '@/lib/content-objects';
+import { ProtectedActionCTA } from '@/components/public/protected-action-cta';
+import { getDefaultActionLabel, mapActionTypeFromContentAction } from '@/lib/protected-actions';
 
 export function ContentDetailShell({ content }: { content: RenderableContentObject }) {
   return (
@@ -11,13 +11,11 @@ export function ContentDetailShell({ content }: { content: RenderableContentObje
         {content.summary ? <p className="text-muted-foreground text-lg">{content.summary}</p> : null}
       </header>
       {content.description ? <p className="whitespace-pre-wrap text-base leading-7">{content.description}</p> : null}
-      {content.actionTarget ? (
-        <div>
-          <Button asChild>
-            <Link href={content.actionTarget}>{content.actionLabel ?? 'Continue'}</Link>
-          </Button>
-        </div>
-      ) : null}
+      <ProtectedActionCTA
+        actionType={mapActionTypeFromContentAction(content.actionType, content.contentType)}
+        slug={content.slug}
+        defaultLabel={content.actionLabel ?? getDefaultActionLabel(mapActionTypeFromContentAction(content.actionType, content.contentType))}
+      />
     </article>
   );
 }

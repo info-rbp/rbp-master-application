@@ -13,18 +13,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Logo from '@/components/logo';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/firebase/provider';
+import { resolvePostAuthPath } from '@/lib/return-path';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const auth = useAuth();
 
@@ -65,8 +67,8 @@ export default function SignupPage() {
         title: 'Account Created',
         description: 'Please check your email to verify your account before logging in.',
       });
-      // Redirect to verification info page
-      router.push('/verify-email');
+      const returnTo = resolvePostAuthPath(searchParams.get('returnTo'));
+      router.push(`/verify-email?returnTo=${encodeURIComponent(returnTo)}`);
     } catch (error: any) {
       toast({
         variant: 'destructive',
