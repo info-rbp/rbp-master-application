@@ -1,4 +1,5 @@
 import { firestore } from '@/firebase/server';
+import type { EntitlementAccessFields } from './definitions';
 
 const toIsoString = (value: unknown): string => {
   if (!value) return new Date().toISOString();
@@ -11,6 +12,7 @@ const toIsoString = (value: unknown): string => {
 };
 
 export type PublicContentItem = {
+  entitlement?: EntitlementAccessFields;
   title: string;
   description?: string;
   href?: string;
@@ -19,6 +21,7 @@ export type PublicContentItem = {
 };
 
 export type PublicPageContent = {
+  entitlement?: EntitlementAccessFields;
   slug: string;
   title: string;
   description: string;
@@ -34,6 +37,7 @@ export type PublicPageContent = {
 };
 
 export type ManagedServicePage = {
+  entitlement?: EntitlementAccessFields;
   id: string;
   slug: string;
   title: string;
@@ -73,6 +77,7 @@ async function getSitePage(slug: string): Promise<PublicPageContent | null> {
               href: item.href ? String(item.href) : undefined,
               imageUrl: item.imageUrl ? String(item.imageUrl) : undefined,
               order: typeof item.order === 'number' ? item.order : itemIndex,
+              entitlement: item.entitlement as EntitlementAccessFields | undefined,
             }))
           : [],
       }))
@@ -91,6 +96,7 @@ async function getSitePage(slug: string): Promise<PublicPageContent | null> {
     seoTitle: data.seoTitle ? String(data.seoTitle) : undefined,
     seoDescription: data.seoDescription ? String(data.seoDescription) : undefined,
     updatedAt: toIsoString(data.updatedAt),
+    entitlement: data.entitlement as EntitlementAccessFields | undefined,
   };
 }
 
@@ -131,6 +137,7 @@ export async function getServicePageBySlug(slug: string): Promise<ManagedService
           href: item.href ? String(item.href) : undefined,
           imageUrl: item.imageUrl ? String(item.imageUrl) : undefined,
           order: typeof item.order === 'number' ? item.order : index,
+          entitlement: item.entitlement as EntitlementAccessFields | undefined,
         }))
       : [];
 
@@ -146,6 +153,7 @@ export async function getServicePageBySlug(slug: string): Promise<ManagedService
     ctaHref: data.ctaHref ? String(data.ctaHref) : undefined,
     displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
     published: Boolean(data.published),
+    entitlement: data.entitlement as EntitlementAccessFields | undefined,
   };
 }
 

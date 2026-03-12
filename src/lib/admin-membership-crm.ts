@@ -9,6 +9,8 @@ import type {
   MemberNote,
   MemberOverride,
   MembershipHistoryItem,
+  MembershipStatus,
+  MembershipTier,
 } from '@/lib/definitions';
 import { filterMembersForAdminView, type MemberListFilters } from '@/lib/admin-membership-crm-client';
 import { buildMembershipMetrics, normalizeMemberRow } from '@/lib/membership-crm';
@@ -22,8 +24,8 @@ export type AdminActor = {
 };
 
 export type MembershipUpdateInput = {
-  membershipTier: string;
-  membershipStatus: string;
+  membershipTier: MembershipTier;
+  membershipStatus: MembershipStatus;
   membershipExpiresAt?: string | null;
   reason?: string;
 };

@@ -72,6 +72,13 @@ service cloud.firestore {
     }
 
 
+
+    match /membership_access_grants/{grantId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /subscriptions/{subscriptionId} {
       allow read: if isAdmin();
       allow create, update, delete: if false;

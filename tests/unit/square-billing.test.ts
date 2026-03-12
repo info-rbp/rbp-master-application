@@ -7,11 +7,14 @@ import crypto from 'node:crypto';
 test('validatePlanForSquareCheckout rejects plans without square variation id', () => {
   const result = validatePlanForSquareCheckout({
     id: 'p1',
+    code: 'standard_monthly',
+    tier: 'standard',
+    billingCycle: 'monthly',
     name: 'Pro',
     description: 'desc',
     currency: 'usd',
     amount: 10,
-    interval: 'month',
+    interval: 'monthly',
     active: true,
     squareSubscriptionPlanVariationId: null,
   });
@@ -22,11 +25,14 @@ test('validatePlanForSquareCheckout rejects plans without square variation id', 
 test('validatePlanForSquareCheckout accepts active mapped plan', () => {
   const result = validatePlanForSquareCheckout({
     id: 'p1',
+    code: 'standard_monthly',
+    tier: 'standard',
+    billingCycle: 'monthly',
     name: 'Pro',
     description: 'desc',
     currency: 'usd',
     amount: 10,
-    interval: 'month',
+    interval: 'monthly',
     active: true,
     squareSubscriptionPlanVariationId: 'SVAR123',
   });
