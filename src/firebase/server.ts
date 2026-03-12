@@ -17,7 +17,12 @@ function normalizePrivateKey(value: string): string {
   return normalized;
 }
 
-if (!admin.apps.length) {
+export function getAdminApp(): admin.app.App {
+  const existingApp = admin.apps.find((app): app is admin.app.App => Boolean(app));
+  if (existingApp) {
+    return existingApp;
+  }
+
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
@@ -25,7 +30,7 @@ if (!admin.apps.length) {
   if (projectId && clientEmail && privateKey) {
     const normalizedPrivateKey = normalizePrivateKey(privateKey);
 
-    admin.initializeApp({
+    return admin.initializeApp({
       credential: admin.credential.cert({
         projectId,
         privateKey: normalizedPrivateKey,
@@ -33,11 +38,22 @@ if (!admin.apps.length) {
       }),
       databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
     });
-  } else {
-    admin.initializeApp({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? 'demo-project',
-    });
   }
+
+  return admin.initializeApp({
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? 'demo-project',
+  });
 }
 
-export const firestore = admin.firestore();
+export function getFirestore(): FirebaseFirestore.Firestore {
+  return getAdminApp().firestore();
+}
+
+export const firestore: FirebaseFirestore.Firestore = new Proxy({} as FirebaseFirestore.Firestore, {
+  get(_target, prop, _receiver) {
+    const instance = getFirestore() as unknown as Record<PropertyKey, unknown>;
+    const value = instance[prop];
+
+    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(instance) : value;
+  },
+});
