@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processSquareEvent } from '@/lib/billing';
 import { verifySquareWebhookSignature } from '@/lib/square';
 
+function getWebhookOrigin(request: NextRequest): string {
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const forwardedHost = request.headers.get('x-forwarded-host');
+
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  return request.nextUrl.origin;
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const signature = request.headers.get('x-square-hmacsha256-signature');
-  const notificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/square/webhooks`;
+  const notificationUrl = `${getWebhookOrigin(request)}/api/square/webhooks`;
 
   const isValid = verifySquareWebhookSignature({
     body: rawBody,
