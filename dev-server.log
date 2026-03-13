@@ -1,0 +1,14 @@
+
+> nextn@0.1.0 dev
+> next dev --port 9002
+
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:9002
+   - Network:      http://10.88.0.3:9002
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 2.5s
+ ○ Compiling /mcp ...
+ ✓ Compiled /mcp in 2.9s (546 modules)
+ POST /mcp 200 in 3349ms
