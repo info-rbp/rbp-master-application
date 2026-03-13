@@ -9,6 +9,8 @@
     "build": "NODE_ENV=production next build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -50,7 +52,7 @@
     "firebase-admin": "^13.7.0",
     "genkit": "^1.28.0",
     "lucide-react": "^0.475.0",
-    "next": "15.5.9",
+    "next": "15.5.12",
     "react": "^19.2.1",
     "react-day-picker": "^9.11.3",
     "react-dom": "^19.2.1",
@@ -61,7 +63,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.6.5",
+    "@opennextjs/cloudflare": "^1.17.1",
     "@types/node": "^20",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
