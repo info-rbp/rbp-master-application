@@ -226,11 +226,22 @@ async function handleMcpRequest(req: NextRequest) {
 
 // Route handlers for the Next.js App Router
 export async function GET(req: NextRequest) {
-  return handleMcpRequest(req);
+  // ChatGPT probes this URL with a GET to start the SSE stream
+  const accept = req.headers.get('accept');
+  if (accept === 'text/event-stream') {
+    return await transport.handleRequest(req);
+  }
+  
+  // Basic health check for standard browsers/probes
+  return new NextResponse(JSON.stringify({ status: "ready" }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 export async function POST(req: NextRequest) {
-  return handleMcpRequest(req);
+  // This is where the actual tool calls happen
+  return await handleMcpRequest(req);
 }
 
 export async function OPTIONS(req: NextRequest) {
