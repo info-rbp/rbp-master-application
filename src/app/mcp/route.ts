@@ -77,7 +77,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: 'text', text: 'Error: key is required and must be a non-empty string.' }], isError: true };
       }
 
-      const docRef = firestore.collection('mcp_test_records').doc(key);
+      const docRef = firestore.collection('mcp_test_records').doc(key as string);
       const docSnap = await docRef.get();
 
       if (!docSnap.exists) {
@@ -100,7 +100,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: 'text', text: 'Error: value is required and must be a string.' }], isError: true };
       }
 
-      const docRef = firestore.collection('mcp_test_records').doc(key);
+      const docRef = firestore.collection('mcp_test_records').doc(key as string);
       const payload = {
         value,
         updatedAt: new Date().toISOString(),
