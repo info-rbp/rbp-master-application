@@ -128,18 +128,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Helper: Check authentication (Bearer token)
 function isAuthenticated(req: NextRequest) {
-  if (!process.env.MCP_API_KEY) {
-    return false; // Fail securely if not configured
-  }
+  if (!process.env.MCP_API_KEY) return false;
+
+  // 1. Try to get the token from the Authorization Header
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    if (token === process.env.MCP_API_KEY) return true;
   }
+
+  // 2. Fallback: Try to get the token from the URL query string (?key=...)
+  const { searchParams } = new URL(req.url);
+  const urlKey = searchParams.get('key');
   
-  const token = authHeader.substring(7);
-  return token === process.env.MCP_API_KEY;
+  return urlKey === process.env.MCP_API_KEY;
 }
 
 // Helper: Validate Origin
