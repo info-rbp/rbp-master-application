@@ -129,20 +129,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 function isAuthenticated(req: NextRequest) {
-  if (!process.env.MCP_API_KEY) return false;
+  const secret = process.env.MCP_API_KEY;
+  if (!secret) return false;
 
-  // 1. Try to get the token from the Authorization Header
+  // Check Header
   const authHeader = req.headers.get('Authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    if (token === process.env.MCP_API_KEY) return true;
-  }
+  if (authHeader === `Bearer ${secret}`) return true;
 
-  // 2. Fallback: Try to get the token from the URL query string (?key=...)
-  const { searchParams } = new URL(req.url);
-  const urlKey = searchParams.get('key');
-  
-  return urlKey === process.env.MCP_API_KEY;
+  // Check URL Query Param (?key=...)
+  const url = new URL(req.url);
+  if (url.searchParams.get('key') === secret) return true;
+
+  return false;
 }
 
 // Helper: Validate Origin
