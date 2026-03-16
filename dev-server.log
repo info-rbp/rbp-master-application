@@ -8,7 +8,8 @@
    - Environments: .env.local, .env
 
  ✓ Starting...
- ✓ Ready in 2.5s
+ ✓ Ready in 3.6s
  ○ Compiling /mcp ...
- ✓ Compiled /mcp in 2.9s (546 modules)
- POST /mcp 200 in 3349ms
+ ✓ Compiled /mcp in 3.4s (546 modules)
+ POST /mcp 200 in 4218ms
+ ✓ Compiled in 261ms (192 modules)
