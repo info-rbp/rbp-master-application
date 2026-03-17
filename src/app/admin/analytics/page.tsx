@@ -1,55 +1,75 @@
+'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { firestore } from '@/firebase/client';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { AnalyticsEvent } from '@/lib/analytics/taxonomy';
 
-export default function AnalyticsPage() {
-  return (
-    <div className="space-y-4 p-4 pt-6 md:p-8">
-      <h2 className="text-3xl font-bold tracking-tight">Analytics & Reporting</h2>
+export default function AnalyticsDashboardPage() {
+    const [events, setEvents] = useState<AnalyticsEvent[]>([]);
+    const [loading, setLoading] = useState(true);
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">1,234</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">$12,345</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Subscriptions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">+2350</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Now</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">+573</p>
-          </CardContent>
-        </Card>
-      </div>
+    useEffect(() => {
+        async function fetchEvents() {
+            try {
+                const eventsCollection = collection(firestore, 'analyticsEvents');
+                const q = query(eventsCollection, orderBy('timestamp', 'desc'));
+                const querySnapshot = await getDocs(q);
+                const fetchedEvents = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        ...data,
+                        // Firestore Timestamps need to be converted to a serializable format
+                        timestamp: data.timestamp?.toDate().toISOString(),
+                    } as AnalyticsEvent;
+                });
+                setEvents(fetchedEvents);
+            } catch (error) {
+                console.error('Error fetching analytics events:', error);
+            }
+            setLoading(false);
+        }
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Placeholder for recent activity feed */}
-          <p>Recent activity will be displayed here.</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        fetchEvents();
+    }, []);
+
+    if (loading) {
+        return <div>Loading events...</div>;
+    }
+
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <h1 className="text-3xl font-bold mb-6">Platform Analytics Events</h1>
+            <div className="bg-white shadow-md rounded my-6">
+                <table className="min-w-max w-full table-auto">
+                    <thead>
+                        <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                            <th className="py-3 px-6 text-left">Timestamp</th>
+                            <th className="py-3 px-6 text-left">Event Name</th>
+                            <th className="py-3 px-6 text-left">Category</th>
+                            <th className="py-3 px-6 text-left">Payload</th>
+                        </tr>
+                    </thead>
+                    <tbody className="text-gray-600 text-sm font-light">
+                        {events.map((event, index) => (
+                            <tr key={index} className="border-b border-gray-200 hover:bg-gray-100">
+                                <td className="py-3 px-6 text-left whitespace-nowrap">
+                                    {event.timestamp ? new Date(event.timestamp).toLocaleString() : 'N/A'}
+                                </td>
+                                <td className="py-3 px-6 text-left">
+                                    {event.name}
+                                </td>
+                                <td className="py-3 px-6 text-left">
+                                    {event.category}
+                                </td>
+                                <td className="py-3 px-6 text-left">
+                                    <pre className="whitespace-pre-wrap">{JSON.stringify(event.payload, null, 2)}</pre>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
 }

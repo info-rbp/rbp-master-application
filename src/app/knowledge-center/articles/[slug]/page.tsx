@@ -1,20 +1,21 @@
-import { buildContentMetadata } from '@/lib/seo';
 import { notFound } from 'next/navigation';
-import { ContentDetailShell } from '@/components/public/content-detail-shell';
-import { resolveKnowledgeBySlug } from '@/lib/content-routing';
-import { getServerAuthContext } from '@/lib/server-auth';
+import { resolveKnowledgeBySlugWithAccessControl } from '@/lib/content-routing';
+import { ContentDetailShell } from '@/components/content/content-detail-shell';
+import { getMemberAuth } from '@/lib/member-auth';
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const content = await resolveKnowledgeBySlug(slug, 'article');
-  if (!content) return buildContentMetadata({ title: 'Not found' }, '/knowledge-center/articles/');
-  return buildContentMetadata(content, `/knowledge-center/articles/${slug}`);
+interface ContentPageProps {
+  params: {
+    slug: string;
+  };
 }
 
-export default async function ArticleDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const content = await resolveKnowledgeBySlug(slug, 'article');
-  if (!content) notFound();
-  const auth = await getServerAuthContext();
+export default async function ContentPage({ params: { slug } }: ContentPageProps) {
+  const auth = await getMemberAuth();
+  const content = await resolveKnowledgeBySlugWithAccessControl(slug, 'article', auth?.userId);
+
+  if (!content) {
+    notFound();
+  }
+
   return <ContentDetailShell content={content} userId={auth?.userId} />;
 }

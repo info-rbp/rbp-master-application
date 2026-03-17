@@ -1,9 +1,10 @@
-
+'''
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   Form,
@@ -100,6 +101,7 @@ const signupSchema = z.object({
     email: z.string().email(),
     password: z.string().min(8, { message: 'Password must be at least 8 characters long.' }),
     confirmPassword: z.string(),
+    marketingConsent: z.boolean().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -116,6 +118,7 @@ export function SignupForm() {
             email: '',
             password: '',
             confirmPassword: '',
+            marketingConsent: false,
         },
     });
 
@@ -124,7 +127,11 @@ export function SignupForm() {
             const response = await fetch('/api/lifecycle/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: data.email, password: data.password }),
+                body: JSON.stringify({
+                  email: data.email,
+                  password: data.password,
+                  marketingConsent: data.marketingConsent,
+                }),
             });
 
             if (!response.ok) {
@@ -188,6 +195,25 @@ export function SignupForm() {
                         </FormItem>
                     )}
                 />
+                <FormField
+                    control={form.control}
+                    name="marketingConsent"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                            <FormControl>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                    I agree to receive marketing emails.
+                                </FormLabel>
+                            </div>
+                        </FormItem>
+                    )}
+                />
                 <Button type="submit" className="w-full">
                     Sign Up
                 </Button>
@@ -195,3 +221,4 @@ export function SignupForm() {
         </Form>
     );
 }
+''

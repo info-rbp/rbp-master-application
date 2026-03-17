@@ -1,145 +1,99 @@
-import { buildSeoMetadata } from '@/lib/seo';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { getActivePartnerOffers, getMembershipPageContent, getPublishedServicePages } from '@/lib/data';
-import { Check } from 'lucide-react';
 
-const fallbackCards = [
-  { title: 'Basic Membership', description: 'Essential resources to get your business started.', href: '/membership/basic' },
-  { title: 'Standard Membership', description: 'Advanced tools and content for growing businesses.', href: '/membership/standard' },
-  { title: 'Premium Membership', description: 'Bespoke support and expert access for established teams.', href: '/membership/premium' },
-  { title: 'FAQ', description: 'Find answers to common membership questions.', href: '/membership/faq' },
-];
+import * as React from "react";
+import { MarketingHeader } from "@/components/marketing-header";
+import { MarketingFooter } from "@/components/marketing-footer";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowRight, CheckCircle, Package } from "lucide-react";
 
-const platformPillars = [
-    { name: 'DocShare', description: 'Access a library of templates, guides, and AI-generated documents.' },
-    { name: 'Partner Marketplace', description: 'Discover offers from trusted partners.' },
-    { name: 'Knowledge Center', description: 'Learn from articles, case studies, and playbooks.' },
-    { name: 'Advisory Services', description: 'Get expert guidance on your business challenges.' },
-    { name: 'Support', description: 'Receive help with platform features and implementation.' },
-];
+const ValuePillarCard = ({ title, description, icon }: { title: string; description: string; icon: React.ReactNode }) => (
+    <div className="flex flex-col items-center text-center">
+        <div className="bg-accent p-4 rounded-full">
+            {icon}
+        </div>
+        <h3 className="mt-4 text-xl font-semibold">{title}</h3>
+        <p className="mt-2 text-muted-foreground">{description}</p>
+    </div>
+);
 
-const howItWorks = [
-    { step: 1, title: 'Explore Resources', description: 'Browse the library of templates, guides, and tools to identify what you need.' },
-    { step: 2, title: 'Implement Systems', description: 'Use our frameworks and AI tools to generate documents and build business systems.' },
-    { step: 3, title: 'Improve and Scale', description: 'Leverage advisory services and expert review to refine your operations and grow.' },
-];
-
-const keyFeatures = [
-    'AI Document Generator',
-    'Business Systems Library (DocShare)',
-    'Partner Marketplace',
-    'Business Advisory Access',
-    'Implementation Support',
-];
-
-export const metadata = buildSeoMetadata({ title: 'Membership Plans', description: 'Compare membership tiers, benefits, and upgrade paths.' });
-
-export const revalidate = 300;
-
-export default async function MembershipPage() {
-  const [content, offers, services] = await Promise.all([getMembershipPageContent(), getActivePartnerOffers(), getPublishedServicePages()]);
-  const cards = content?.sections?.[0]?.items?.length ? content.sections[0].items : fallbackCards;
-
+export default function MembershipPage() {
   return (
-    <div>
-      <section className="relative w-full pt-20 pb-12 md:pt-32 md:pb-20 lg:pt-40 lg:pb-28 bg-muted/40">
-        <div className="container mx-auto px-4 md:px-6 text-center">
-          <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">{'Unlock Your Business Potential'}</h1>
-          <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground md:text-xl">{'Access the tools, resources, and expert support you need to improve operations and scale your business.'}</p>
-          <div className="mt-8 flex justify-center gap-4">
-            <Button asChild size="lg"><Link href="#plans">View Plans</Link></Button>
-            <Button asChild size="lg" variant="outline"><Link href="/membership/basic">Explore Features</Link></Button>
+    <div className="flex flex-col min-h-screen">
+      <MarketingHeader />
+      <main className="flex-grow">
+        {/* Hero Section */}
+        <section className="bg-accent text-center py-24 sm:py-32">
+          <div className="container">
+            <h1 className="text-h1 font-bold tracking-tighter">Unlock Your Operational Toolkit</h1>
+            <p className="max-w-2xl mx-auto mt-6 text-body-l text-muted-foreground">
+              Membership gives you direct access to a curated library of operational resources, exclusive partner offers, and a community of forward-thinking business leaders.
+            </p>
+            <div className="mt-8 flex justify-center gap-4">
+              <Button size="large" variant="primary" asChild><a href="/membership/pricing">View Plans & Pricing</a></Button>
+              <Button size="large" variant="secondary">Explore Member Content</Button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">The Ultimate Platform for Business Improvement</h2>
-                <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">Everything you need to build a more efficient, scalable business.</p>
+        {/* Value Pillars Section */}
+        <section className="py-24 sm:py-32">
+          <div className="container">
+            <div className="text-center">
+              <h2 className="text-h2 font-bold tracking-tighter">The Value of Membership</h2>
+              <p className="max-w-xl mx-auto mt-4 text-body-l text-muted-foreground">
+                Go beyond advice. Get the tools, resources, and support you need to execute.
+              </p>
             </div>
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
-                {platformPillars.map((pillar) => (
-                    <div key={pillar.name} className="text-center">
-                        <div className="flex items-center justify-center h-16 w-16 mx-auto mb-4 rounded-full bg-primary text-primary-foreground">
-                            {/* Icon would go here */}
-                        </div>
-                        <h3 className="text-xl font-bold">{pillar.name}</h3>
-                        <p className="mt-2 text-muted-foreground">{pillar.description}</p>
-                    </div>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mt-12">
+              <ValuePillarCard title="Operational Asset Library" description="Access hundreds of templates, guides, and processes in our DocShare library." icon={<Package />} />
+              <ValuePillarCard title="Exclusive Partner Offers" description="Save thousands on top-tier software and services from our curated partner ecosystem." icon={<Package />} />
+              <ValuePillarCard title="Priority Support & Advisory" description="Get prioritized access to our team for customisation requests and strategic check-ups." icon={<Package />} />
             </div>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-24 bg-muted/40">
-        <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">How It Works</h2>
-                <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">A simple, three-step path to business improvement.</p>
-            </div>
-            <div className="grid gap-8 md:grid-cols-3">
-                {howItWorks.map((item) => (
-                    <div key={item.step} className="p-6 rounded-lg border">
-                        <div className="text-3xl font-bold text-primary mb-4">Step {item.step}</div>
-                        <h3 className="text-2xl font-bold mb-2">{item.title}</h3>
-                        <p className="text-muted-foreground">{item.description}</p>
-                    </div>
-                ))}
-            </div>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Key Platform Features</h2>
-                <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">The tools you need to succeed.</p>
-            </div>
-            <div className="max-w-4xl mx-auto">
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                    {keyFeatures.map((feature) => (
-                        <li key={feature} className="flex items-center gap-4">
-                            <Check className="h-6 w-6 text-primary" />
-                            <span className="text-lg">{feature}</span>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-        </div>
-      </section>
-
-      <section id="plans" className="py-16 md:py-24 bg-muted/40">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Choose Your Plan</h2>
-              <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">Select the right membership tier for your business needs.</p>
           </div>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {cards.map((card) => (
-              <Card key={card.title} className="flex flex-col">
-                <CardHeader><CardTitle className="text-center text-2xl">{card.title}</CardTitle></CardHeader>
-                <CardContent className="flex-grow text-center"><p className="text-muted-foreground">{card.description}</p></CardContent>
-                <CardFooter><Button asChild className="w-full"><Link href={card.href ?? '/membership'}>View Plan</Link></Button></CardFooter>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
 
-       <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4 md:px-6 text-center">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Ready to Transform Your Business?</h2>
-          <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground md:text-xl">Join today and start building a better business.</p>
-          <div className="mt-8">
-            <Button asChild size="lg"><Link href="#plans">Choose Your Plan</Link></Button>
+        {/* Access Details Section */}
+        <section className="bg-accent py-24 sm:py-32">
+          <div className="container grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <h2 className="text-h2 font-bold tracking-tighter">What Members Can Access</h2>
+              <p className="mt-4 text-body-l text-muted-foreground">
+                Your membership is the key to a comprehensive suite of resources designed to help you build, operate, and scale your business more effectively.
+              </p>
+              <ul className="mt-8 space-y-4">
+                <li className="flex items-start"><CheckCircle className="h-6 w-6 text-primary mr-4 mt-1" /><span><span className="font-semibold">DocShare Library:</span> Full access to all business templates, documentation suites, and process guides.</span></li>
+                <li className="flex items-start"><CheckCircle className="h-6 w-6 text-primary mr-4 mt-1" /><span><span className="font-semibold">Partner Offers:</span> Unlock exclusive discounts and premium benefits from partners like Square, Google, and more.</span></li>
+                <li className="flex items-start"><CheckCircle className="h-6 w-6 text-primary mr-4 mt-1" /><span><span className="font-semibold">Knowledge Center:</span> Unlimited access to in-depth guides, articles, and tools.</span></li>
+                <li className="flex items-start"><CheckCircle className="h-6 w-6 text-primary mr-4 mt-1" /><span><span className="font-semibold">Priority Service Queues:</span> Get faster turnaround on support and customisation requests.</span></li>
+              </ul>
+            </div>
+            <Card className="p-8">
+                <CardHeader>
+                    <CardTitle>How Access Works</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Once you become a member, you can instantly access all gated content and offers by signing into your portal. Resources are clearly marked with your membership level, so you always know what's available to you.</p>
+                    <Button variant="tertiary" className="mt-4">Learn more about the member portal <ArrowRight className="ml-2" /></Button>
+                </CardContent>
+            </Card>
           </div>
-        </div>
-      </section>
+        </section>
 
+        {/* Pricing Bridge Section */}
+        <section className="py-24 sm:py-32">
+          <div className="container text-center">
+            <h2 className="text-h2 font-bold tracking-tighter">Find the Plan That's Right for You</h2>
+            <p className="max-w-xl mx-auto mt-4 text-body-l text-muted-foreground">
+              We offer flexible plans designed for businesses at every stage. Compare our membership tiers to see which benefits and access levels fit your needs.
+            </p>
+            <div className="mt-8">
+              <Button size="large" asChild><a href="/membership/pricing">Compare Plans & See Pricing</a></Button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+      <MarketingFooter />
     </div>
   );
 }

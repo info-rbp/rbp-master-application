@@ -1,0 +1,1665 @@
+# Firebase Studio UX/UI Build Specification
+## Remote Business Partner
+### Template-led UX adaptation guide for public-facing catalogue, service, membership, and knowledge surfaces
+
+> **Purpose of this document**
+>
+> This file is the implementation brief Firebase Studio must follow when building the public UX/UI for Remote Business Partner.  
+> It is intentionally over-explained. Do not compress this into a vague interpretation.  
+> The goal is to translate the Limetech Webflow template system into a polished, credible, B2B consulting/product hybrid experience that fits Remote Business Partner, not an insurance brand.
+
+---
+
+## 1. Read this first before building anything
+
+### 1.1 What Firebase Studio is being asked to do
+Firebase Studio must build a **visually strong, production-shaped public experience** that uses the **layout language, hierarchy, spacing, and visual rhythm** of the Limetech template system, while replacing the template's industry assumptions, copy patterns, color emphasis, CTA language, and content structure with Remote Business Partner's own business model.
+
+The build is **not** a literal clone of the Limetech site.
+
+It **is** a controlled adaptation of:
+- section composition
+- card behavior
+- visual hierarchy
+- navigation rhythm
+- page shell consistency
+- CTA placement
+- whitespace strategy
+- motion polish
+- responsive behavior
+- detail-page structure
+
+### 1.2 What this project is not
+Do **not** build:
+- an insurance website
+- an ecommerce store aesthetic
+- a consumer startup aesthetic
+- a green/neon color-forward clone of the template
+- a page set with inconsistent page shells
+- a one-off visual treatment for every content type
+- a dashboard-first experience for public content
+
+### 1.3 What this project is
+This is a **hybrid consulting + knowledge + member-access platform** with these public catalogue surfaces:
+- Home
+- DocShare
+- Partner Offers
+- Knowledge Center
+- Services
+- Membership
+
+There is also a separate **member operations area** that should remain distinct from the public catalogue experience:
+- Portal / dashboard / member operations hub
+
+Public content discovery must happen in the public surfaces.  
+The member portal should not become a second public catalogue.
+
+---
+
+## 2. Source alignment and implementation context
+
+### 2.1 Template source references
+Use the following template mappings exactly:
+
+1. **Home page**  
+   Model after: `https://limetechtemplate.webflow.io/home-pages/home-v1`
+
+2. **DocShare, Partner Offers, Knowledge Center, Services, Membership landing pages**  
+   Model after: `https://limetechtemplate.webflow.io/home-pages/home-v2`
+
+3. **Membership pricing page**  
+   Model after: `https://limetechtemplate.webflow.io/pricing`
+
+4. **DocShare sub-pages**  
+   Business Templates  
+   Documentation Suites  
+   Business Applications  
+   Work Tools  
+   Processes  
+   Model after: `https://limetechtemplate.webflow.io/product/life-insurance`
+
+5. **Individual service offering pages under Services**  
+   Model after: `https://limetechtemplate.webflow.io/services`
+
+6. **Service offering category pages**  
+   Model after: `https://limetechtemplate.webflow.io/product/life-insurance`
+
+7. **Individual partner offers**  
+   Model after: `https://limetechtemplate.webflow.io/product/life-insurance`
+
+8. **Knowledge Center sub-pages**  
+   Model after:
+   - `https://limetechtemplate.webflow.io/help-center`
+   - `https://limetechtemplate.webflow.io/help-center-category/getting-started`
+
+### 2.2 Repository context that must influence the UX build
+The attached repository and the current application direction imply the following:
+
+- There is existing backend/MCP infrastructure and Firestore-backed capability rather than a mature finished public front end.
+- Public content types are being treated as structured content objects rather than arbitrary pages.
+- Public catalogue surfaces are meant to remain separate from the member operations hub.
+- Detail rendering should be implemented as a **shared shell + type-specific template sections**, not as hand-built bespoke pages for every item.
+
+### 2.3 Important architectural interpretation
+Firebase Studio must treat this UX build as a **front-end system layer** that sits on top of structured content and future application logic.
+
+That means:
+- build reusable public page templates
+- build reusable content detail templates
+- build a reusable navigation system
+- build a reusable filter/search/pagination pattern
+- build a reusable access-state CTA block
+- do **not** hard-code every page separately
+- do **not** confuse internal test tooling with the actual content/product UX
+
+### 2.4 Public vs member experience separation
+Public catalogue pages:
+- Home
+- DocShare
+- Partner Offers
+- Knowledge Center
+- Services
+- Membership
+- Pricing
+- Public detail pages for items/categories
+
+Private/member operations pages:
+- Portal overview
+- Membership status
+- Subscription
+- Customisation Requests
+- Support Requests
+- Discovery Calls
+- Saved & Recent
+
+This document is primarily for the **public-facing UX/UI**.  
+If Firebase Studio touches the portal, it must keep the portal stylistically aligned but structurally separate.
+
+---
+
+## 3. Core UX objective
+
+The UI must feel like:
+
+- premium but not corporate-boring
+- confident but not flashy
+- structured but not rigid
+- modern but not trend-chasing
+- editorial enough for knowledge content
+- commercial enough for services and offers
+- operational enough for member utility
+- trustworthy enough for consulting
+- visually memorable without relying on gimmicks
+
+The experience must clearly communicate:
+
+1. Remote Business Partner is an embedded strategic partner, not a generic consultant.
+2. Users can discover operational assets, documentation, tools, services, and partner offers through clean catalogue surfaces.
+3. Membership has real practical value and clear access logic.
+4. Every page belongs to one system.
+5. The site is designed intentionally, not assembled from random SaaS blocks.
+
+---
+
+## 4. Brand and visual translation rules
+
+## 4.1 Non-negotiable visual instruction
+**Do not use Limetech's bright lime-green palette as the primary color language.**
+
+The Limetech template should be used for:
+- layout logic
+- shape language
+- hierarchy
+- composition
+- rhythm
+- content choreography
+
+The Remote Business Partner website color scheme must drive:
+- all primary accents
+- CTA fills
+- active states
+- link emphasis
+- badges
+- section highlights
+- focus rings
+- chart accents
+- icon highlight fills
+- highlight chips behind selected words
+
+## 4.2 Required first step: convert current RBP website colors into tokens
+Before Firebase Studio builds pages, it must audit the current RBP site and create a tokenized palette.
+
+At minimum create these tokens:
+
+```txt
+--color-brand-primary
+--color-brand-primary-hover
+--color-brand-secondary
+--color-brand-accent
+--color-brand-accent-soft
+--color-text-primary
+--color-text-secondary
+--color-text-inverse
+--color-surface-page
+--color-surface-card
+--color-surface-muted
+--color-border-subtle
+--color-border-strong
+--color-success
+--color-warning
+--color-danger
+--color-focus-ring
+```
+
+If the current live site contains more nuanced tones, extend the token set, but do not reduce it.
+
+### 4.2.1 Palette behavior rules
+- Primary brand color = main CTA fill and active interaction color
+- Accent-soft = backgrounds behind highlighted text fragments or icon tiles
+- Dark neutral = headings, footer, strong dividers
+- Light neutral = page background and card surfaces
+- Secondary brand = hover states, alternate cards, subtle section emphasis
+
+### 4.2.2 Color application rules
+- Never flood the entire page with accent color
+- Accent backgrounds should be used in **contained zones**
+- Major reading surfaces should remain high-contrast and easy to scan
+- Keep a predominantly neutral base with selective brand punctuation
+- Use color to support hierarchy, not replace hierarchy
+
+## 4.3 Typography rules
+Typography should feel authoritative and editorial.
+
+### 4.3.1 Font behavior
+Use a modern, highly readable sans serif pairing if the current brand does not already define one:
+- primary: clean geometric / neo-grotesk for headings and UI
+- same family or compatible humanist sans for body copy
+
+Do not introduce decorative display fonts.
+
+### 4.3.2 Type scale
+Use a disciplined type scale:
+
+- Display XL: 64/72
+- Display L: 56/64
+- H1: 48/56
+- H2: 40/48
+- H3: 32/40
+- H4: 24/32
+- H5: 20/28
+- H6: 18/26
+- Body L: 18/30
+- Body M: 16/28
+- Body S: 14/24
+- Caption: 12/18
+
+### 4.3.3 Heading style
+Headings must:
+- be short and declarative
+- use selective line breaks
+- support highlighted word chips where appropriate
+- avoid giant undifferentiated paragraphs underneath
+
+## 4.4 Shape language
+Adopt the template's rounded-card language but tune it for a consulting/product brand:
+- large panels: 24px radius
+- standard cards: 20px radius
+- pills/badges: 999px radius
+- buttons: 14px to 16px radius
+- inputs: 14px radius
+
+Avoid aggressive glassmorphism, heavy gradients, or faux-3D effects.
+
+## 4.5 Illustration and imagery rules
+The Limetech template uses simple, high-contrast illustrative scenes.  
+RBP should adapt that pattern with one of the following, in order of preference:
+
+1. Custom business-operational illustration style aligned to brand
+2. Monoline editorial illustrations with restrained accent fills
+3. Carefully selected business imagery with consistent art direction
+4. Abstract operational/diagrammatic visuals
+
+Do not mix:
+- stock photos in some sections
+- flat cartoons in others
+- abstract blobs elsewhere
+
+Pick one visual system and stay consistent.
+
+---
+
+## 5. Design system requirements
+
+Firebase Studio must create a reusable design system before page assembly.
+
+## 5.1 Required primitives
+Create these primitives:
+
+- `Container`
+- `Section`
+- `Grid`
+- `Stack`
+- `Button`
+- `LinkButton`
+- `Badge`
+- `Tag`
+- `Breadcrumbs`
+- `Input`
+- `Textarea`
+- `Select`
+- `Checkbox`
+- `RadioGroup`
+- `Accordion`
+- `Tabs`
+- `Pagination`
+- `SearchInput`
+- `FilterChip`
+- `StatCard`
+- `IconTile`
+- `CTACluster`
+- `SectionHeader`
+- `TrustLogoRow`
+- `TestimonialCard`
+- `FeatureCard`
+- `ContentCard`
+- `ContentDetailShell`
+- `RelatedContentGrid`
+- `AccessStatePanel`
+- `PricingCard`
+- `ComparisonTable`
+- `FAQBlock`
+- `EmptyState`
+- `ErrorState`
+- `Skeleton`
+- `StickySidebar`
+
+## 5.2 Spacing scale
+Use a consistent spacing system:
+
+```txt
+4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80, 96, 120
+```
+
+### 5.2.1 Section spacing
+- desktop section top/bottom: 96 to 120
+- tablet: 72 to 88
+- mobile: 56 to 72
+
+### 5.2.2 Card padding
+- large hero cards: 40 to 56
+- standard content cards: 24 to 32
+- compact cards: 16 to 20
+
+## 5.3 Grid system
+Use:
+- desktop: 12 columns
+- tablet: 8 columns
+- mobile: 4 columns
+
+Max content width:
+- standard shell: 1280px
+- reading-optimized shell for knowledge detail: 1120px
+- dense admin/member shell if needed later: 1360px
+
+## 5.4 Motion rules
+Motion must be subtle and intentional.
+
+### 5.4.1 Allowed motion
+- fade up on section reveal
+- 8px to 16px translate on entry
+- button hover elevation or color shift
+- accordion expand/collapse
+- tab underline/active pill transition
+- card hover transform up to 2px
+- micro-opacity transitions
+
+### 5.4.2 Forbidden motion
+- long parallax
+- spinning icons
+- exaggerated bounce
+- delayed reveal chains that slow scanning
+- autoplay carousels for critical information
+- motion that interferes with content reading
+
+### 5.4.3 Timing
+- hover transitions: 120ms to 180ms
+- entrance motion: 180ms to 240ms
+- modal/drawer/accordion: 200ms to 260ms
+
+Respect reduced-motion preferences.
+
+---
+
+## 6. Information architecture and route structure
+
+## 6.1 Top-level route map
+Use this route strategy unless the application already enforces a slightly different naming convention.
+
+```txt
+/
+ /docshare
+ /docshare/[category]
+ /docshare/[category]/[slug]
+
+ /partner-offers
+ /partner-offers/[slug]
+
+ /knowledge-center
+ /knowledge-center/[category]
+ /knowledge-center/[category]/[slug]
+
+ /services
+ /services/[category]
+ /services/[category]/[slug]
+
+ /membership
+ /membership/pricing
+
+ /portal
+ /portal/membership
+ /portal/subscription
+ /portal/customisation-requests
+ /portal/support-requests
+ /portal/discovery-calls
+ /portal/saved
+ /portal/recent
+```
+
+## 6.2 Public navigation structure
+Primary navigation:
+- Home
+- DocShare
+- Partner Offers
+- Knowledge Center
+- Services
+- Membership
+
+Persistent CTA in header:
+- Book Discovery Call
+- or Join Membership
+- or Explore DocShare
+
+Header CTA priority should be configurable by page context.
+
+## 6.3 Footer structure
+Footer columns:
+- Explore
+- Resources
+- Services
+- Membership
+- Company / Contact
+
+Footer should also include:
+- concise brand statement
+- social links if used
+- legal pages
+- contact prompt
+- discovery-call CTA
+
+---
+
+## 7. Shared shell behavior across public pages
+
+Every public page must be composed from the same macro structure:
+
+1. Announcement or slim utility bar (optional, configurable)
+2. Header / primary navigation
+3. Hero block
+4. Main content sections
+5. Conversion block
+6. Footer
+
+This structure should feel stable across all top-level public routes.
+
+## 7.1 Header behavior
+Header must:
+- be sticky after scroll
+- reduce height slightly on scroll
+- preserve clear CTA visibility
+- support desktop dropdowns and mobile drawer
+- use active-state highlighting
+- include keyboard-accessible navigation
+- preserve contrast against hero background
+
+## 7.2 Mobile navigation
+Use a full-height drawer or panel, not a cramped dropdown.
+
+Must include:
+- primary nav items
+- expandable sub-sections
+- top CTA
+- secondary CTA if useful
+- member login/access route
+- close icon + overlay dismissal
+
+## 7.3 Hero construction rules
+Heroes should follow the template's pattern:
+- bold left-side message
+- supporting copy
+- CTA cluster
+- visual support zone on the right or behind
+- accent-backed content container
+- trust signal nearby
+
+Do not place huge amounts of copy in the hero.
+
+Hero copy formula:
+- eyebrow
+- short punchy heading
+- one paragraph
+- primary CTA
+- secondary CTA
+- optional proof strip or micro-stat row
+
+---
+
+## 8. Home page specification
+**Base reference:** Home V1
+
+## 8.1 Home page job to be done
+The home page must explain the whole platform quickly:
+- who RBP is
+- what kind of support it offers
+- what users can access
+- why it is different
+- what path the visitor should take next
+
+## 8.2 Required home page sections
+The home page should contain the following in this order:
+
+### 8.2.1 Hero
+Left:
+- eyebrow that frames embedded advisory / operational leverage
+- headline that communicates strategic embedded partnership
+- support copy
+- primary CTA: Book Discovery Call
+- secondary CTA: Explore Membership or Explore DocShare
+
+Right:
+- brand-aligned illustration or editorial visual
+- not generic insurance or finance imagery
+- must feel operational, strategic, and modern
+
+Optional sub-row:
+- 3 compact trust metrics
+- example: years experience, projects delivered, client outcomes, operational coverage
+
+### 8.2.2 Trust / logo strip
+A horizontally aligned partner/client/proof strip directly under hero or embedded in the hero follow-up zone.
+
+### 8.2.3 Core value proposition cards
+Three to six cards:
+- Embedded Leadership
+- Strategic Advisory
+- Operational Documentation
+- Business Tools
+- Partner Value
+- Membership Access
+
+These should visually resemble the template's service/plan block rhythm, but with content adapted for RBP.
+
+### 8.2.4 “Everything in one place” section
+Use the Home V1 pattern of a large explanatory block with supporting illustration/card cluster.  
+Translate it into:
+- strategy
+- resources
+- delivery support
+- member access
+- implementation outcomes
+
+### 8.2.5 How it works / engagement sequence
+A three-step or four-step process section:
+1. Discover
+2. Diagnose
+3. Deliver
+4. Embed / Optimize
+
+This should use the template's numbered process rhythm but with stronger B2B copy.
+
+### 8.2.6 Featured catalogue surfaces
+Grid linking to:
+- DocShare
+- Partner Offers
+- Knowledge Center
+- Services
+- Membership
+
+Each card should include:
+- title
+- short descriptor
+- visual/icon
+- CTA
+- optional badge such as “Members”, “Free”, “Featured”, “New”
+
+### 8.2.7 Testimonials / proof
+Use the template's testimonial rhythm but make it more restrained and credible.
+Use:
+- company name
+- role
+- outcome-led quote
+- optionally metric
+
+Avoid fake social-handle style unless actually used.
+
+### 8.2.8 Final CTA band
+A high-clarity conversion section with:
+- one primary action
+- one secondary exploration action
+- short reinforcement copy
+
+## 8.3 Home page visual instructions
+- Keep sections alternating between neutral backgrounds and soft accent containers
+- Maintain visual surprise through asymmetry, not randomness
+- Use larger section spacing than inner catalogue pages
+- Use highlighted word chips sparingly in hero and section headers
+
+---
+
+## 9. Landing page pattern for DocShare, Partner Offers, Knowledge Center, Services, Membership
+**Base reference:** Home V2
+
+These five pages must feel like siblings, not cousins pretending they have nothing in common.
+
+## 9.1 Shared page formula
+Use this sequence for each landing page:
+
+1. compact hero
+2. short intro
+3. featured items or categories
+4. supporting explanation block
+5. proof/benefit strip
+6. secondary category or content grid
+7. CTA block
+
+## 9.2 Shared landing hero rules
+Hero must include:
+- eyebrow
+- H1
+- one paragraph
+- primary CTA
+- secondary CTA
+- supportive visual panel
+
+The hero should be slightly smaller than the home hero.
+
+## 9.3 Shared card rules
+All listing cards should support:
+- title
+- descriptor
+- tags
+- access badge
+- category label
+- CTA text
+- optional metadata row
+
+## 9.4 DocShare landing page requirements
+Purpose:
+- communicate that DocShare is a curated operational resource library
+- help users understand the types of assets available
+- funnel users into categories
+
+Required sections:
+1. Hero
+2. Featured category cards
+3. “What you will find here” section
+4. Category collection grid
+5. Member access/value explanation
+6. Featured resources
+7. CTA
+
+Required categories:
+- Business Templates
+- Documentation Suites
+- Business Applications
+- Work Tools
+- Processes
+
+## 9.5 Partner Offers landing page requirements
+Purpose:
+- present the partner ecosystem as curated, practical, and outcome-led
+- make it clear RBP recommends partners intentionally
+
+Required sections:
+1. Hero
+2. Featured offers
+3. Why these partners are recommended
+4. Offer categories or filters
+5. Savings/value block
+6. Testimonial or trust section
+7. CTA
+
+## 9.6 Knowledge Center landing page requirements
+Purpose:
+- position the page as a structured resource center, not a messy blog
+- support search-first and category-first discovery
+
+Required sections:
+1. Hero with search input embedded or directly below
+2. Category cards
+3. Featured articles/guides/tools
+4. “Start here” / onboarding content block
+5. Latest content block
+6. CTA
+
+## 9.7 Services landing page requirements
+Purpose:
+- explain service model
+- surface categories
+- direct users into specific service paths
+
+Required sections:
+1. Hero
+2. Featured service categories
+3. Engagement model explanation
+4. Service highlights
+5. Outcomes/proof section
+6. CTA
+
+## 9.8 Membership landing page requirements
+Purpose:
+- explain what membership is
+- show why it matters
+- direct users to pricing and benefits
+- connect membership with access logic across the platform
+
+Required sections:
+1. Hero
+2. Membership value pillars
+3. Benefit blocks
+4. What members can access
+5. How access works
+6. Link to pricing
+7. CTA
+
+---
+
+## 10. Membership pricing page specification
+**Base reference:** Pricing page**
+
+## 10.1 Pricing page purpose
+The pricing page must remove ambiguity.  
+A user should understand:
+- the available tiers
+- the difference between tiers
+- who each tier is for
+- what is included
+- what is limited
+- what requires membership
+- what happens after signup
+
+## 10.2 Required pricing sections
+### 10.2.1 Hero
+- clear headline
+- short explanatory paragraph
+- trust/support line
+- optional billing toggle only if pricing actually varies by billing interval
+
+### 10.2.2 Tier cards
+Use 3 card tiers unless product strategy requires otherwise:
+- Basic
+- Standard
+- Premium
+
+Each card must contain:
+- tier name
+- one-line audience fit statement
+- price or contact-based pricing state
+- CTA
+- bullet list of benefits
+- access or usage limits
+
+One card may be visually emphasized, but not via garish color overload.
+
+### 10.2.3 Feature comparison table
+Rows should include things like:
+- access to DocShare content types
+- partner offer access
+- knowledge access
+- service discounts or priority
+- customisation requests
+- support requests
+- discovery call access
+- saved/recent convenience features
+- strategic check-up access
+
+### 10.2.4 FAQ section
+At minimum:
+- who membership is for
+- what content is included
+- whether services are included or discounted
+- request limits
+- billing behavior
+- cancellation
+- team use / seats if applicable
+
+### 10.2.5 Bottom CTA
+Include:
+- Book Discovery Call
+- Join Membership
+- Compare Plans
+
+## 10.3 Access-state logic
+Pricing page copy and visuals must align with actual access states:
+- Access available
+- Login to access
+- Membership required
+
+Do not use copy that implies universal access if the product model restricts it.
+
+---
+
+## 11. DocShare category and detail page specification
+**Base reference:** Product / Life Insurance page**
+
+This page model should be treated as a **content detail shell**, not a shopping page.
+
+## 11.1 DocShare categories that must follow this structure
+- Business Templates
+- Documentation Suites
+- Business Applications
+- Work Tools
+- Processes
+
+## 11.2 High-level adaptation rule
+Translate the template's product page structure into:
+- resource detail
+- document bundle detail
+- tool detail
+- process detail
+- suite detail
+
+Do **not** keep ecommerce wording such as:
+- Buy now
+- Insurance options
+- Product out of stock
+- pricing per month
+unless the actual content type genuinely uses that concept.
+
+## 11.3 Required layout structure
+### 11.3.1 Above-the-fold
+Left:
+- breadcrumbs
+- category label
+- title
+- short description
+- tags/badges
+- quick metadata row
+
+Right:
+- preview card
+- access-state panel
+- primary CTA
+- secondary CTA
+- optional “included in membership” badge
+- optional download/view format info
+
+### 11.3.2 “What’s included” section
+Required for all applicable DocShare detail pages.
+
+Possible content:
+- included documents
+- worksheets
+- SOPs
+- implementation notes
+- templates
+- companion guides
+- tool references
+- deliverables list
+
+### 11.3.3 “Best for” / use cases section
+Show:
+- who this item is for
+- team size/use case
+- business stage
+- operational scenario
+- pain points solved
+
+### 11.3.4 “Implementation guidance” section
+Required for:
+- documentation suites
+- business applications
+- processes
+- tools
+
+Should include:
+- prerequisites
+- setup considerations
+- expected effort
+- recommended owner
+- success criteria
+
+### 11.3.5 Preview / key screenshots / structural summary
+If there is a preview available, show it in a consistent media block.
+
+### 11.3.6 Related content section
+Show 3 to 6 related items from same category or adjacent categories.
+
+## 11.4 Category-specific section guidance
+### 11.4.1 Business Templates
+Focus on:
+- template purpose
+- editing guidance
+- situations to use it
+- expected outputs
+
+### 11.4.2 Documentation Suites
+Focus on:
+- included assets
+- implementation flow
+- team ownership
+- rollout sequence
+
+### 11.4.3 Business Applications
+Focus on:
+- what the app does
+- business workflow supported
+- setup/use notes
+- dependencies
+- ideal use case
+
+### 11.4.4 Work Tools
+Focus on:
+- tool purpose
+- day-to-day use
+- user roles
+- value quickly realized
+
+### 11.4.5 Processes
+Focus on:
+- process stages
+- inputs/outputs
+- owners
+- handoffs
+- governance checkpoints
+
+## 11.5 Sidebar / sticky panel rules
+Use a sticky right sidebar on desktop that includes:
+- access state
+- CTA
+- format info
+- related quick facts
+- support / request customisation prompt if relevant
+
+On mobile this must collapse below the hero content in a clear CTA block.
+
+---
+
+## 12. Services page system
+
+## 12.1 Services landing page
+**Base reference for top-level Services landing page:** Home V2
+
+This page introduces the whole services catalogue.
+
+Required sections:
+- Hero
+- Service category overview
+- Engagement model
+- Why RBP vs standard consulting
+- Featured service offerings
+- Client outcomes
+- CTA
+
+## 12.2 Service category pages
+**Base reference:** Product / Life Insurance page
+
+Examples might include categories such as:
+- Strategy
+- Operations
+- Finance
+- Commercial
+- People / Enablement
+- Systems / Process Design
+- Growth Support
+
+These pages should behave like focused category overviews with:
+- category intro
+- category promise
+- core outcomes
+- service modules/offers within that category
+- ideal client profile
+- engagement options
+- related case/proof content
+- CTA
+
+## 12.3 Individual service offering pages
+**Base reference:** Services page
+
+This instruction is unusual compared with standard IA, so Firebase Studio must interpret it carefully:
+
+The template's `Services` page is a list-style service pattern.  
+For RBP, use that visual grammar to build **single service offering pages that still feel service-oriented**, not productized like a shopping page.
+
+### 12.3.1 Required structure for individual service offering pages
+1. Hero with service title, short value proposition, CTA
+2. Outcome cards
+3. Scope / what's covered
+4. Delivery model / engagement style
+5. Who this is for
+6. Process or phases
+7. Related services
+8. CTA block
+
+### 12.3.2 Why this matters
+Do not build service offering detail pages as if they were downloadable products.  
+They should feel consultative, operational, and relational.
+
+### 12.3.3 Visual treatment
+- use icon-led summary cards
+- use proof snippets
+- use softer accent treatment than pricing/product pages
+- emphasize clarity of outcomes and delivery style
+
+---
+
+## 13. Partner Offers detail page specification
+**Base reference:** Product / Life Insurance page**
+
+Partner offer pages must use the same shell discipline as DocShare detail pages, but with partner-specific content.
+
+## 13.1 Required sections
+1. Breadcrumbs + hero
+2. Offer details
+3. Partner overview
+4. Why RBP recommends this partner
+5. Redemption / claiming steps
+6. Important conditions / exclusions
+7. Related offers
+8. CTA
+
+## 13.2 Offer detail hero requirements
+Left:
+- offer title
+- one-line value statement
+- short description
+- tags
+- category
+
+Right:
+- claim/redeem CTA
+- access or member benefit state
+- partner logo or visual
+- quick highlights
+
+## 13.3 Partner trust design
+Partner offers should not look like affiliate spam.
+They must look curated and deliberate.
+
+Include:
+- why recommended
+- who it is best for
+- what business problem it helps solve
+- what kind of value the offer creates
+
+## 13.4 Redemption experience
+If redemption requires:
+- code
+- login
+- member access
+- external redirect
+- internal request flow
+
+show that clearly in a structured block.
+
+---
+
+## 14. Knowledge Center page system
+
+## 14.1 Knowledge Center landing page
+**Base reference:** Help Center
+
+The landing page must function as a structured knowledge entry point.
+
+### Required sections
+1. Hero with large search
+2. Featured categories
+3. Start-here content
+4. Featured guides/articles/tools
+5. Latest updates
+6. CTA / support block
+
+## 14.2 Knowledge Center category pages
+**Base reference:** Help Center Category
+
+These pages should behave like filtered collections of related content.
+
+### Required sections
+1. Breadcrumbs
+2. Category header
+3. Intro copy
+4. Article list/grid
+5. Metadata row per item
+6. Optional featured article
+7. Related categories
+8. CTA
+
+## 14.3 Knowledge article detail pages
+Even though not explicitly listed in the template mapping, the build should include article detail pages for completeness.
+
+Recommended structure:
+1. Breadcrumbs
+2. Article header
+3. Metadata
+4. Sticky table of contents on desktop if article is long
+5. Rich content body
+6. Takeaways / resources / examples
+7. Related content
+8. CTA or membership nudges where appropriate
+
+## 14.4 Search/filter expectations
+Knowledge Center must support:
+- keyword search
+- category filter
+- content type filter
+- optional sort by latest / relevance
+
+Search must be prominent and usable on mobile.
+
+---
+
+## 15. Shared content card taxonomy
+
+Firebase Studio must not invent different card systems on every page.
+
+Use these card families:
+
+## 15.1 Large feature card
+Used for:
+- top category blocks
+- featured offers
+- featured service categories
+
+Contains:
+- eyebrow
+- title
+- short descriptor
+- icon/visual
+- CTA
+
+## 15.2 Standard content card
+Used for:
+- articles
+- resources
+- partner offers
+- tools
+- templates
+
+Contains:
+- title
+- descriptor
+- metadata
+- tags
+- CTA
+
+## 15.3 Compact utility card
+Used for:
+- quick links
+- support actions
+- member actions
+- small featured lists
+
+## 15.4 Proof/testimonial card
+Used for:
+- client outcomes
+- result snapshots
+- social proof
+
+## 15.5 Pricing card
+Used only on membership pricing and occasional comparison blocks.
+
+---
+
+## 16. Access, gating, and member-state UX
+
+The UX must clearly support three states across public detail pages:
+
+1. `Access available`
+2. `Login to access`
+3. `Membership required`
+
+## 16.1 Access state panel requirements
+Every public detail page that may be gated must show a consistent access panel.
+
+Panel content:
+- access badge/state
+- explanatory sentence
+- primary CTA
+- secondary CTA
+- optional membership comparison link
+
+## 16.2 Access state copy examples
+### Access available
+- Available now
+- Open resource
+- View details
+
+### Login to access
+- Sign in to continue
+- Access this resource from your account
+
+### Membership required
+- Included in Standard and Premium
+- Upgrade to access this resource
+- Compare membership options
+
+## 16.3 Avoid dark patterns
+Do not:
+- hide gating until late
+- mislabel unavailable content as open
+- use misleading button text
+- allow broken CTA paths
+
+---
+
+## 17. Component-level UI requirements
+
+## 17.1 Buttons
+Primary:
+- filled brand color
+- high contrast text
+- strong hover state
+- medium weight label
+
+Secondary:
+- outline or soft-fill
+- visible border
+- accessible contrast
+
+Tertiary:
+- text + icon
+- used for low-emphasis actions
+
+Button sizes:
+- large: hero, CTA bands
+- medium: standard content CTAs
+- small: filters, utilities
+
+## 17.2 Forms
+Forms must use:
+- clear labels above fields
+- helper/error text below
+- visible focus states
+- no placeholder-only labels
+- grouped spacing
+- consistent success/error feedback
+
+## 17.3 Search bars
+Search inputs must:
+- be large enough to feel primary
+- include icon
+- support keyboard submit
+- show empty-state handling
+- provide clear/reset behavior
+
+## 17.4 Accordions
+Use for:
+- FAQs
+- long support explanations
+- membership clarifications
+
+Accordions must:
+- animate smoothly
+- support keyboard navigation
+- maintain readable line lengths
+
+## 17.5 Tables
+Pricing or comparison tables must:
+- remain readable on tablet
+- collapse responsibly on mobile
+- avoid forcing horizontal scroll where possible
+- use row-grouping if necessary
+
+---
+
+## 18. Responsive behavior rules
+
+## 18.1 Desktop
+- full asymmetrical hero layouts
+- sticky right sidebars on detail pages
+- 3-column or 4-column grids where needed
+- larger breathing room
+
+## 18.2 Tablet
+- collapse hero into 1-column or stacked 2-row layout
+- reduce sidebar complexity
+- preserve CTA visibility
+- grids mostly 2-column
+
+## 18.3 Mobile
+- single column
+- key CTA above the fold
+- sticky sidebars become inline CTA blocks
+- filters may use drawers or chips
+- knowledge/search remains prominent
+- headings must remain punchy and not wrap into unreadable towers of text
+
+## 18.4 Mobile-specific caution
+Do not simply stack desktop sections without redesigning spacing and order.  
+On mobile, reorder content so users see:
+1. the purpose
+2. the CTA
+3. the value
+4. the supporting details
+
+---
+
+## 19. Content model mapping guidance
+
+Firebase Studio should assume the app benefits from a **template registry** rather than separate hard-coded page implementations.
+
+## 19.1 Suggested template registry
+```ts
+type PublicTemplateType =
+  | "home"
+  | "landing_docshare"
+  | "landing_partner_offers"
+  | "landing_knowledge_center"
+  | "landing_services"
+  | "landing_membership"
+  | "pricing_membership"
+  | "detail_docshare_template"
+  | "detail_docshare_suite"
+  | "detail_docshare_application"
+  | "detail_docshare_tool"
+  | "detail_docshare_process"
+  | "detail_partner_offer"
+  | "detail_service_category"
+  | "detail_service_offering"
+  | "knowledge_category"
+  | "knowledge_article";
+```
+
+## 19.2 Suggested content mappings
+### DocShare
+- template details
+- deliverables
+- what's included
+- use cases
+- implementation notes
+- related items
+
+### Partner Offers
+- offer details
+- highlights
+- partner services
+- why recommended
+- redemption steps
+- code or claim path
+
+### Knowledge Center
+- article/guidance body
+- key takeaways
+- resources
+- examples
+- tool steps where applicable
+
+### Services
+- service overview
+- outcomes
+- scope
+- engagement style
+- who it's for
+- related services
+
+## 19.3 Suggested UI metadata fields
+All public items should ideally support:
+- title
+- slug
+- summary
+- category
+- content type
+- tags
+- featured flag
+- access state
+- cover image/illustration
+- related item IDs
+- createdAt
+- updatedAt
+- optional author
+- optional read time
+- optional CTA label
+- optional external link
+
+---
+
+## 20. Data-state and system-state UX
+
+This is where builders usually get lazy and the product looks half-finished. Do not do that.
+
+## 20.1 Loading states
+Every list page and detail page must have proper skeletons.
+
+### List skeleton
+- title placeholder
+- filter row placeholder
+- 6 to 9 card placeholders
+
+### Detail skeleton
+- breadcrumb placeholder
+- hero text block placeholder
+- media/sidebar placeholder
+- body section placeholders
+
+## 20.2 Empty states
+Every listing/search/filter state must support:
+- no results found
+- category empty
+- access restricted
+- content coming soon
+
+Each empty state should provide a recovery path:
+- clear filters
+- browse related items
+- compare membership
+- contact support
+- request help
+
+## 20.3 Error states
+Error pages or blocks must:
+- explain what failed
+- allow retry
+- offer fallback navigation
+- not dump raw technical errors into the UI
+
+## 20.4 Not found behavior
+404 pages should stay on-brand and help users navigate back into:
+- DocShare
+- Knowledge Center
+- Services
+- Membership
+- Home
+
+---
+
+## 21. Accessibility requirements
+
+Firebase Studio must treat accessibility as core build quality, not optional cleanup.
+
+## 21.1 Minimum standard
+Target WCAG 2.2 AA.
+
+## 21.2 Required behaviors
+- visible focus ring on all interactive elements
+- keyboard navigation across header, drawers, accordions, tabs, filters
+- semantic headings
+- landmark usage
+- descriptive button/link labels
+- sufficient contrast
+- reduced-motion support
+- form error association
+- alt text support for meaningful imagery
+- no information conveyed by color alone
+
+## 21.3 Content readability rules
+- maximum comfortable text line length for body content
+- adequate paragraph spacing
+- bullet lists where scanning matters
+- avoid giant dense walls of text on knowledge pages
+
+---
+
+## 22. Performance and implementation quality
+
+The visual polish should not come at the cost of a sluggish mess.
+
+## 22.1 Performance requirements
+- optimize image sizes
+- lazy load offscreen media
+- avoid heavy animation libraries if not needed
+- keep critical above-the-fold content fast
+- prefer reusable, lightweight components
+- avoid shipping giant icon packs if only a subset is needed
+
+## 22.2 Technical build preference
+Build pages with:
+- shared layout shells
+- reusable section components
+- clear content contracts
+- consistent token usage
+- no hard-coded magic numbers scattered everywhere
+
+## 22.3 Image handling
+Use a consistent aspect-ratio system:
+- hero visual
+- card thumbnail
+- logo strip
+- content preview
+- knowledge article media
+
+Do not allow irregular image shapes to break layout rhythm.
+
+---
+
+## 23. SEO and metadata requirements
+
+Public pages must support clean metadata.
+
+## 23.1 Required metadata
+- title
+- description
+- open graph image
+- canonical URL
+- structured breadcrumbs where useful
+- article metadata for knowledge detail pages
+- organization/service metadata where applicable
+
+## 23.2 URL rules
+- lowercase slugs
+- short readable paths
+- no unnecessary nesting
+- no temporary placeholder route names in production
+
+---
+
+## 24. Explicit page-by-page build checklist
+
+## 24.1 Home
+- [ ] Home V1-inspired hero
+- [ ] proof strip
+- [ ] value cards
+- [ ] platform overview
+- [ ] process section
+- [ ] featured surface grid
+- [ ] testimonials
+- [ ] CTA band
+
+## 24.2 DocShare landing
+- [ ] Home V2-inspired structure
+- [ ] category cards
+- [ ] featured resources
+- [ ] member value block
+- [ ] CTA
+
+## 24.3 DocShare category/detail pages
+- [ ] Product-style detail shell
+- [ ] sticky access panel
+- [ ] what's included
+- [ ] use cases
+- [ ] implementation guidance
+- [ ] related content
+
+## 24.4 Partner Offers landing
+- [ ] Home V2-inspired structure
+- [ ] featured offers
+- [ ] why recommended section
+- [ ] category/filter grid
+- [ ] CTA
+
+## 24.5 Partner offer detail
+- [ ] product-style shell
+- [ ] offer details
+- [ ] partner overview
+- [ ] why recommended
+- [ ] redemption steps
+- [ ] conditions
+- [ ] related offers
+
+## 24.6 Knowledge Center landing
+- [ ] Help Center-inspired hero
+- [ ] primary search
+- [ ] category cards
+- [ ] featured content
+- [ ] latest content
+- [ ] CTA
+
+## 24.7 Knowledge category
+- [ ] Help Center Category-inspired header
+- [ ] list/grid
+- [ ] metadata
+- [ ] related categories
+- [ ] CTA
+
+## 24.8 Services landing
+- [ ] Home V2-inspired structure
+- [ ] service categories
+- [ ] engagement model
+- [ ] outcomes/proof
+- [ ] CTA
+
+## 24.9 Service category
+- [ ] product-style category overview
+- [ ] core outcomes
+- [ ] service modules
+- [ ] ideal client
+- [ ] engagement options
+- [ ] CTA
+
+## 24.10 Individual service offering
+- [ ] Services-inspired layout grammar
+- [ ] consultative hero
+- [ ] scope/outcomes
+- [ ] delivery style
+- [ ] process
+- [ ] related services
+- [ ] CTA
+
+## 24.11 Membership landing
+- [ ] Home V2-inspired structure
+- [ ] benefit blocks
+- [ ] access explanation
+- [ ] pricing bridge
+- [ ] CTA
+
+## 24.12 Membership pricing
+- [ ] pricing hero
+- [ ] tier cards
+- [ ] comparison table
+- [ ] FAQ
+- [ ] CTA
+
+---
+
+## 25. Things Firebase Studio must not do
+
+Do **not**:
+- clone the lime-green Limetech palette
+- copy insurance copy structure literally
+- use ecommerce product language for non-product content
+- build one-off pages instead of a system
+- collapse public catalogue surfaces into the member portal
+- hide access rules
+- use low-contrast muted text
+- overuse animation
+- add cluttered backgrounds behind every section
+- build mobile as an afterthought
+- mix unrelated visual styles
+- ship generic stock-SaaS UI without brand character
+
+---
+
+## 26. Definition of done
+
+The build is considered complete only when all of the following are true:
+
+1. Every required page type is implemented.
+2. The whole public experience feels like one design system.
+3. The template inspiration is visible in structure, not copied in industry styling.
+4. The current Remote Business Partner color language has replaced the template palette.
+5. Public and member experiences are clearly separated.
+6. Detail pages use a shared shell with type-specific sections.
+7. Search, filters, and access-state patterns are consistent.
+8. Mobile layouts feel intentionally designed.
+9. Accessibility basics are properly implemented.
+10. The end result looks premium enough that a serious business would trust it.
+
+---
+
+## 27. Final instruction to Firebase Studio
+
+When there is ambiguity, prefer these decisions in this order:
+
+1. preserve the shared UX system
+2. preserve clarity of content hierarchy
+3. preserve alignment with RBP brand tone
+4. preserve accessibility and responsiveness
+5. preserve reuse over page-specific hacks
+6. preserve conversion clarity
+7. preserve polish without unnecessary complexity
+
+If a template section is visually useful but semantically wrong for the business model, **adapt the structure and replace the semantics**.
+
+That is the job here.
+
+Do not build a template clone.  
+Build a Remote Business Partner experience that clearly evolved from the template system and is better suited to the actual product, membership, services, and content architecture.
+

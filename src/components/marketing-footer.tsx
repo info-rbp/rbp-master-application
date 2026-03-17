@@ -1,69 +1,68 @@
-import Link from 'next/link';
-import { Twitter, Linkedin, Facebook } from 'lucide-react';
-import Logo from './logo';
-import { Button } from './ui/button';
 
-export default function MarketingFooter() {
+import * as React from "react";
+import { Button } from "./ui/button";
+import { Logo } from "./logo";
+
+const FooterLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <a href={href} className="text-base text-muted-foreground transition-colors hover:text-foreground">
+    {children}
+  </a>
+);
+
+const FooterColumn = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="flex flex-col space-y-4">
+    <h3 className="text-sm font-medium text-foreground">{title}</h3>
+    {children}
+  </div>
+);
+
+export const MarketingFooter = () => {
   return (
-    <footer className="border-t bg-background">
-      <div className="container py-12">
-        <div className="grid gap-8 md:grid-cols-12">
-          <div className="md:col-span-3">
-            <Link href="/" className="flex items-center gap-2">
-              <Logo className="h-8 w-8" />
-              <span className="font-bold">Remote Business Partner</span>
-            </Link>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Your strategic partner for business growth and efficiency.
+    <footer className="bg-background text-foreground">
+      <div className="container py-24">
+        <div className="grid gap-16 lg:grid-cols-6">
+          <div className="col-span-2 flex flex-col space-y-4">
+            <a href="/" className="flex items-center space-x-2">
+              <Logo />
+              <span className="text-lg font-semibold">
+                Remote Business Partner
+              </span>
+            </a>
+            <p className="text-base text-muted-foreground">
+              Your embedded strategic partner for operational excellence and growth.
             </p>
-            <div className="mt-4 flex space-x-2">
-              <Button variant="ghost" size="icon" asChild>
-                <a href="#" aria-label="Twitter">
-                  <Twitter className="h-5 w-5" />
-                </a>
-              </Button>
-              <Button variant="ghost" size="icon" asChild>
-                <a href="#" aria-label="LinkedIn">
-                  <Linkedin className="h-5 w-5" />
-                </a>
-              </Button>
-              <Button variant="ghost" size="icon" asChild>
-                <a href="#" aria-label="Facebook">
-                  <Facebook className="h-5 w-5" />
-                </a>
-              </Button>
-            </div>
           </div>
-          <div className="md:col-span-2">
-            <h4 className="font-semibold">Company</h4>
-            <ul className="mt-4 space-y-2 text-sm">
-              <li><Link href="/services/past-projects" className="text-muted-foreground hover:text-foreground">Case Studies</Link></li>
-              <li><Link href="/contact" className="text-muted-foreground hover:text-foreground">Contact</Link></li>
-            </ul>
-          </div>
-          <div className="md:col-span-2">
-            <h4 className="font-semibold">Services</h4>
-            <ul className="mt-4 space-y-2 text-sm">
-              <li><Link href="/services" className="text-muted-foreground hover:text-foreground">Advisory on Demand</Link></li>
-              <li><Link href="/docushare" className="text-muted-foreground hover:text-foreground">DocuShare Portal</Link></li>
-              <li><Link href="/knowledge-center" className="text-muted-foreground hover:text-foreground">Knowledge Center</Link></li>
-              <li><Link href="/partner-offers" className="text-muted-foreground hover:text-foreground">Partner Offers</Link></li>
-              <li><Link href="/membership" className="text-muted-foreground hover:text-foreground">Membership</Link></li>
-            </ul>
-          </div>
-           <div className="md:col-span-2">
-            <h4 className="font-semibold">Legal</h4>
-            <ul className="mt-4 space-y-2 text-sm">
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground">Privacy Policy</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground">Terms of Service</Link></li>
-            </ul>
+          <div className="col-span-4 grid grid-cols-2 gap-8 md:grid-cols-4">
+            <FooterColumn title="Explore">
+              <FooterLink href="/docshare">DocShare</FooterLink>
+              <FooterLink href="/partner-offers">Partner Offers</FooterLink>
+            </FooterColumn>
+            <FooterColumn title="Resources">
+              <FooterLink href="/knowledge-center">Knowledge Center</FooterLink>
+            </FooterColumn>
+            <FooterColumn title="Services">
+              <FooterLink href="/services">All Services</FooterLink>
+            </FooterColumn>
+            <FooterColumn title="Company">
+              <FooterLink href="/membership">Membership</FooterLink>
+              <FooterLink href="/contact">Contact</FooterLink>
+            </FooterColumn>
           </div>
         </div>
-        <div className="mt-8 border-t pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Remote Business Partner. All Rights Reserved.</p>
-           <Link href="/admin/login" className="hover:underline mt-4 md:mt-0">Admin Login</Link>
+        <div className="mt-16 border-t pt-8 flex flex-col items-center justify-between md:flex-row">
+          <p className="text-sm text-muted-foreground">
+            © {new Date().getFullYear()} Remote Business Partner. All rights reserved.
+          </p>
+          <div className="mt-4 flex space-x-4 md:mt-0">
+            <FooterLink href="/privacy">Privacy</FooterLink>
+            <FooterLink href="/terms">Terms</FooterLink>
+          </div>
         </div>
       </div>
     </footer>
   );
+};
+
+function cn(...inputs: any[]) {
+    return inputs.filter(Boolean).join(' ');
 }

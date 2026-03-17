@@ -4,73 +4,83 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 215 28% 17%;
-    --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 28% 17%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 215 28% 17%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 215 14% 34%;
-    --accent: 220 14% 96%;
-    --accent-foreground: 215 28% 17%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    /* Brand Tokens */
+    --color-brand-primary: 217 91% 60%;
+    --color-brand-primary-hover: 217 91% 55%;
+    --color-brand-secondary: 215 28% 17%;
+    --color-brand-accent: 220 14% 96%;
+    --color-brand-accent-soft: 220 14% 98%;
+
+    /* Text Tokens */
+    --color-text-primary: 215 28% 17%;
+    --color-text-secondary: 215 14% 34%;
+    --color-text-inverse: 0 0% 100%;
+
+    /* Surface Tokens */
+    --color-surface-page: 0 0% 100%;
+    --color-surface-card: 0 0% 100%;
+    --color-surface-muted: 220 14% 96%;
+
+    /* Border Tokens */
+    --color-border-subtle: 220 13% 91%;
+    --color-border-strong: 220 13% 85%;
+    
+    /* System Tokens */
+    --color-success: 142 71% 45%;
+    --color-warning: 45 93% 47%;
+    --color-danger: 0 84% 60%;
+    --color-focus-ring: 217 91% 65%;
+
+    /* Tailwind Semantic Mapping */
+    --background: var(--color-surface-page);
+    --foreground: var(--color-text-primary);
+    --card: var(--color-surface-card);
+    --card-foreground: var(--color-text-primary);
+    --popover: var(--color-surface-card);
+    --popover-foreground: var(--color-text-primary);
+    --primary: var(--color-brand-primary);
+    --primary-foreground: var(--color-text-inverse);
+    --secondary: var(--color-brand-secondary);
+    --secondary-foreground: var(--color-text-inverse);
+    --muted: var(--color-surface-muted);
+    --muted-foreground: var(--color-text-secondary);
+    --accent: var(--color-brand-accent);
+    --accent-foreground: var(--color-text-primary);
+    --destructive: var(--color-danger);
+    --destructive-foreground: var(--color-text-inverse);
+    --border: var(--color-border-subtle);
+    --input: var(--color-border-subtle);
+    --ring: var(--color-focus-ring);
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 28% 17%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 215 28% 17%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --radius: 0.5rem; /* Base radius, will be overridden in tailwind.config */
   }
+
   .dark {
-    --background: 215 28% 17%;
-    --foreground: 220 14% 96%;
-    --card: 215 28% 17%;
-    --card-foreground: 220 14% 96%;
-    --popover: 215 28% 17%;
-    --popover-foreground: 220 14% 96%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 215 28% 17%;
-    --secondary: 215 14% 34%;
-    --secondary-foreground: 220 14% 96%;
-    --muted: 215 14% 34%;
-    --muted-foreground: 220 14% 70%;
-    --accent: 215 14% 34%;
-    --accent-foreground: 220 14% 96%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 215 14% 34%;
-    --input: 215 14% 34%;
-    --ring: 217 91% 60%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 215 28% 17%;
-    --sidebar-foreground: 220 14% 96%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 215 28% 17%;
-    --sidebar-accent: 215 14% 34%;
-    --sidebar-accent-foreground: 220 14% 96%;
-    --sidebar-border: 215 14% 34%;
-    --sidebar-ring: 217 91% 60%;
+    --color-brand-primary: 217 91% 60%;
+    --color-brand-primary-hover: 217 91% 55%;
+    --color-brand-secondary: 220 14% 96%;
+    --color-brand-accent: 215 14% 34%;
+    --color-brand-accent-soft: 215 28% 13%;
+
+    --color-text-primary: 0 0% 100%;
+    --color-text-secondary: 220 14% 70%;
+    --color-text-inverse: 215 28% 17%;
+
+    --color-surface-page: 215 28% 11%;
+    --color-surface-card: 215 28% 14%;
+    --color-surface-muted: 215 14% 34%;
+
+    --color-border-subtle: 215 14% 34%;
+    --color-border-strong: 215 14% 44%;
+
+    --color-success: 142 61% 55%;
+    --color-warning: 45 83% 57%;
+    --color-danger: 0 74% 70%;
+    --color-focus-ring: 217 91% 65%;
   }
 }
 

@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
@@ -10,6 +11,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
             <li><a href="/settings/profile">Profile</a></li>
             <li><a href="/settings/company">Company</a></li>
             <li><a href="/settings/security">Security</a></li>
+            <li><a href="/settings/notifications">Notifications</a></li>
           </ul>
         </nav>
         <main className="col-span-3">{children}</main>

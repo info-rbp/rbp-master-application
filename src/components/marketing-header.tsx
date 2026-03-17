@@ -1,193 +1,90 @@
 
-'use client';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import Logo from '@/components/logo';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, ChevronDown, Search } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { categories as partnerCategories } from '@/app/partner-offers/data';
+import * as React from "react";
+import { Button } from "./ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { Menu } from "lucide-react";
+import { Logo } from "./logo";
 
-const navLinks = [
-   {
-    label: 'Services',
-    href: '/services',
-    subLinks: [
-      { href: '/services', label: 'All Services' },
-      { href: '/services/operations', label: 'Operations Advisory' },
-      { href: '/services/financial', label: 'Financial Advisory' },
-      { href: '/services/sales-marketing', label: 'Sales & Marketing Advisory' },
-      { href: '/services/hr', label: 'Human Resources Advisory' },
-      { href: '/services/management', label: 'Management Advisory' },
-      { href: '/services/change-management', label: 'Change Management Advisory' },
-      { href: '/services/ai', label: 'AI Advisory' },
-      { href: '/services/past-projects', label: 'Past Projects' },
-    ]
-  },
-  {
-    label: 'Partner Offers',
-    href: '/partner-offers',
-    subLinks: Object.keys(partnerCategories).map(key => ({
-        href: `/partner-offers/offers/${key}`,
-        label: (partnerCategories as any)[key].name,
-    }))
-  },
-  { 
-    label: 'DocuShare',
-    href: '/docushare',
-    subLinks: [
-        { href: '/docushare', label: 'DocuShare Home' },
-        { href: '/docushare/templates', label: 'Templates' },
-        { href: '/docushare/companion-guides', label: 'Companion Guides' },
-        { href: '/docushare/documentation-suites', label: 'Documentation Suites' },
-        { href: '/docushare/end-to-end-processes', label: 'End-to-End Processes' },
-        { href: '/docushare/customisation-service', label: 'Customisation Service' },
-    ]
-  },
-  {
-    label: 'Membership',
-    href: '/membership',
-    subLinks: [
-        { href: '/membership', label: 'Membership Overview' },
-        { href: '/membership/basic', label: 'Basic Membership' },
-        { href: '/membership/standard', label: 'Standard Membership' },
-        { href: '/membership/premium', label: 'Premium Membership' },
-        { href: '/membership/faq', label: 'FAQ' },
-        { href: '/signup', label: 'Sign Up Now' },
-    ]
-  },
-  { 
-    label: 'Knowledge Center',
-    href: '/knowledge-center',
-    subLinks: [
-        { href: '/knowledge-center', label: 'Knowledge Center Home' },
-        { href: '/knowledge-center/articles', label: 'Articles' },
-        { href: '/knowledge-center/guides', label: 'Guides' },
-        { href: '/knowledge-center/tools', label: 'Tools' },
-        { href: '/knowledge-center/knowledge', label: 'Knowledge Base' },
-    ]
-  },
-  { href: '/contact', label: 'Contact Us' },
-];
+const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <a href={href} className="text-base font-medium text-foreground transition-colors hover:text-primary">
+    {children}
+  </a>
+);
 
-export default function MarketingHeader() {
-  const pathname = usePathname();
+export const MarketingHeader = () => {
+  const [isScrolled, setIsScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
-        <div className="mr-4 flex items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo className="h-8 w-8" />
+    <header className={cn(
+      "sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+      { "h-16": isScrolled, "h-20": !isScrolled }
+    )}>
+      <div className="container flex h-full items-center">
+        <div className="mr-4 hidden md:flex">
+          <a href="/" className="mr-6 flex items-center space-x-2">
+            <Logo />
             <span className="hidden font-bold sm:inline-block">
               Remote Business Partner
             </span>
-          </Link>
+          </a>
+          <nav className="flex items-center space-x-6 text-sm font-medium">
+            <NavLink href="/docshare">DocShare</NavLink>
+            <NavLink href="/partner-offers">Partner Offers</NavLink>
+            <NavLink href="/knowledge-center">Knowledge Center</NavLink>
+            <NavLink href="/services">Services</NavLink>
+            <NavLink href="/membership">Membership</NavLink>
+          </nav>
         </div>
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          {navLinks.map((link) =>
-            link.subLinks ? (
-               <DropdownMenu key={link.label}>
-                <DropdownMenuTrigger
-                  className={cn(
-                    'flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground',
-                    pathname.startsWith(link.href) && 'text-foreground'
-                  )}
-                >
-                  {link.label}
-                  <ChevronDown className="h-4 w-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {link.subLinks.map((subLink) => (
-                    <DropdownMenuItem key={subLink.href} asChild>
-                      <Link href={subLink.href}>{subLink.label}</Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  'text-muted-foreground transition-colors hover:text-foreground',
-                  pathname === link.href && 'text-foreground'
-                )}
-              >
-                {link.label}
-              </Link>
-            )
-          )}
-        </nav>
-        <div className="flex flex-1 items-center justify-end gap-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/search" aria-label="Search catalogue">
-              <Search className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button variant="ghost" asChild>
-            <Link href="/login">Login</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/signup">Sign Up</Link>
-          </Button>
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right">
-                <div className="grid gap-4 py-6">
-                  <Link href="/" className="flex items-center gap-2 font-bold">
-                    <Logo className="h-8 w-8" />
-                    <span>RBP</span>
-                  </Link>
-                  {navLinks.flatMap((link) => {
-                    const mainLink = (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className={cn(
-                          'flex w-full items-center py-2 text-lg font-semibold',
-                          pathname === link.href ? 'text-primary' : 'text-muted-foreground'
-                        )}
-                      >
-                        {link.label}
-                      </Link>
-                    );
-                    if (link.subLinks) {
-                      const subLinks = link.subLinks.map((subLink) => (
-                        <Link
-                          key={subLink.href}
-                          href={subLink.href}
-                          className={cn(
-                            'flex w-full items-center py-2 pl-6 text-base font-medium',
-                            pathname === subLink.href ? 'text-primary' : 'text-muted-foreground'
-                          )}
-                        >
-                          {subLink.label}
-                        </Link>
-                      ));
-                      return [mainLink, ...subLinks];
-                    }
-                    return mainLink;
-                  })}
-                </div>
-              </SheetContent>
-            </Sheet>
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <div className="w-full flex-1 md:w-auto md:flex-none">
+            {/* Search bar can be added here later */}
           </div>
+          <nav className="hidden md:flex">
+            <Button variant="secondary" size="medium">
+              Book Discovery Call
+            </Button>
+          </nav>
         </div>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="md:hidden">
+              <Menu />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="pr-0">
+            <a href="/" className="mr-6 flex items-center space-x-2">
+              <Logo />
+              <span className="font-bold">
+                Remote Business Partner
+              </span>
+            </a>
+            <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
+              <div className="flex flex-col space-y-4">
+                <NavLink href="/docshare">DocShare</NavLink>
+                <NavLink href="/partner-offers">Partner Offers</NavLink>
+                <NavLink href="/knowledge-center">Knowledge Center</NavLink>
+                <NavLink href="/services">Services</NavLink>
+                <NavLink href="/membership">Membership</NavLink>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </header>
   );
+};
+
+function cn(...inputs: any[]) {
+    return inputs.filter(Boolean).join(' ');
 }
