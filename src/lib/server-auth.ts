@@ -5,7 +5,7 @@ import { firestore } from '@/firebase/server';
 
 export const AUTH_COOKIE_NAME = 'rbp_id_token';
 
-export type AuthRole = 'admin' | 'member';
+export type AuthRole = 'owner' | 'admin' | 'member' | 'viewer' | 'support' | 'content_admin' | 'super_admin';
 
 export type AuthContext = {
   userId: string;
@@ -40,9 +40,22 @@ async function getAuthContextFromIdToken(token: string): Promise<AuthContext | n
   try {
     const decoded = await admin.auth().verifyIdToken(token);
     const adminDoc = await firestore.collection('roles_admin').doc(decoded.uid).get();
+    const userDoc = await firestore.collection('users').doc(decoded.uid).get();
+    const user = userDoc.data();
+
+    let role: AuthRole = 'member'; // Default role
+
+    if (adminDoc.exists) {
+        role = 'admin';
+    }
+
+    if (user && user.role) {
+        role = user.role;
+    }
+
     return {
       userId: decoded.uid,
-      role: adminDoc.exists ? 'admin' : 'member',
+      role: role,
       email: decoded.email,
       emailVerified: Boolean(decoded.email_verified),
     };

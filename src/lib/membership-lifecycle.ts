@@ -1,9 +1,11 @@
+
 import { firestore } from '@/firebase/server';
 import type { BillingCycle, MembershipPlanCode, MembershipStatus, MembershipTier } from './definitions';
 import { resolvePlanCodeToBillingCycle, resolvePlanCodeToTier } from './entitlements';
 import { safeLogAnalyticsEvent } from './analytics-server';
 import { logAuditEvent, logMembershipHistory } from './audit';
 import { triggerAdminAlert, triggerMembershipAlert } from './alerts';
+import { createLifecycleEvent } from './events';
 
 export type BillingLifecycleType =
   | 'subscription_created'
@@ -92,7 +94,11 @@ export async function syncMembershipLifecycle(input: {
   }, { merge: true });
 
   if (input.userId) {
-    await firestore.collection('users').doc(input.userId).set({
+    const userRef = firestore.collection('users').doc(input.userId);
+    const beforeUserSnap = await userRef.get();
+    const beforeUserData = beforeUserSnap.data();
+
+    await userRef.set({
       membershipStatus: input.nextStatus,
       membershipTier,
       membershipPlanCode: planCode,
@@ -108,11 +114,21 @@ export async function syncMembershipLifecycle(input: {
       updatedAt: now,
     }, { merge: true });
 
+    const oldTier = beforeUserData?.membershipTier ?? null;
+    const oldStatus = beforeUserData?.membershipStatus ?? null;
+
+    if (oldTier !== membershipTier) {
+      await createLifecycleEvent('membership.tier_changed', input.userId, { oldTier, newTier: membershipTier });
+    }
+    if (oldStatus !== input.nextStatus) {
+      await createLifecycleEvent('membership.status_changed', input.userId, { oldStatus, newStatus: input.nextStatus });
+    }
+
     await logMembershipHistory({
       userId: input.userId,
-      previousTier: beforeSubscription.data()?.membershipTier ?? null,
+      previousTier: oldTier,
       newTier: membershipTier,
-      previousStatus: input.previousStatus ?? beforeSubscription.data()?.status ?? null,
+      previousStatus: oldStatus,
       newStatus: input.nextStatus,
       changedBy: 'square-webhook',
       source: 'provider_sync',

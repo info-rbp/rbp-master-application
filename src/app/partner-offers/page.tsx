@@ -1,59 +1,62 @@
-import { buildSeoMetadata } from '@/lib/seo';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import OfferCard from './components/offer-card';
-import { categories, toOfferView } from './data';
-import { getActivePartnerOffers } from '@/lib/data';
 
-export const metadata = buildSeoMetadata({ title: 'Partner Marketplace', description: 'Browse active partner offers and compare membership value.', path: '/partner-offers' });
+'use client';
 
-export const revalidate = 300;
+import { MarketingHeader } from "@/components/marketing-header";
+import { MarketingFooter } from "@/components/marketing-footer";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { useAuth } from "@/firebase/provider";
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/firebase/client';
+import { offers } from './data';
+import { getEffectiveMembershipTier } from '@/lib/entitlements';
+import { compareMembershipTier } from '@/lib/entitlements';
 
-export default async function PartnerOffersPage() {
-  try {
-    const activeOffers = await getActivePartnerOffers();
-    const offers = activeOffers.map((offer, index) => toOfferView(offer, index, activeOffers.length));
-    const topOffers = offers.filter((offer) => offer.categories.includes('top')).slice(0, 3);
+export default function PartnerOffersPage() {
+  const { user } = useAuth();
+  const userTier = user ? getEffectiveMembershipTier(user) : 'basic';
 
-    return (
-      <>
-        <section className="bg-muted/40 py-20 md:py-28">
-          <div className="container mx-auto px-4 md:px-6 text-center">
-            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">Partner Marketplace</h1>
-            <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground md:text-xl">Browse active partner offers, compare value, and review membership tier requirements before redeeming.</p>
-            <div className="mt-8 flex justify-center gap-4">
-              <Button asChild size="lg"><Link href="/partner-offers/offers/all">Browse all partner offers</Link></Button>
-              <Button asChild size="lg" variant="outline"><Link href="/membership">Compare membership tiers</Link></Button>
-              <Button asChild size="lg" variant="ghost"><Link href="/search?contentType=partner_offer">Search all catalogue items</Link></Button>
-            </div>
-          </div>
-        </section>
+  const handleSave = async (offer: any) => {
+    if (user) {
+      await addDoc(collection(db, 'saved_content'), {
+        userId: user.uid,
+        savedAt: serverTimestamp(),
+        type: 'partner_offer',
+        content: offer,
+      });
+      alert('Offer saved!');
+    }
+  };
 
-        <section className="py-12">
-          <div className="container mx-auto px-4 md:px-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {Object.entries(categories).map(([key, info]) => (
-              <Link key={key} href={`/partner-offers/offers/${key}`} className="rounded-lg border bg-card p-4 text-sm hover:border-primary">
-                <p className="font-semibold">{info.name}</p>
-                <p className="mt-1 text-muted-foreground">{info.description}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
+  const filteredOffers = offers.filter(offer => {
+    return compareMembershipTier(userTier, offer.entitlement.accessTier) >= 0;
+  });
 
-        <section className="py-16 md:py-24 bg-muted/40">
-          <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center mb-12"><h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Featured active offers</h2></div>
-            {topOffers.length === 0 ? (
-              <Alert className="max-w-2xl mx-auto"><AlertTitle>No active offers right now</AlertTitle><AlertDescription>Our team is preparing new partner offers. Please check back soon.</AlertDescription></Alert>
-            ) : (
-              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">{topOffers.map((offer) => (<OfferCard key={offer.id} offer={offer} />))}</div>
-            )}
-          </div>
-        </section>
-      </>
-    );
-  } catch {
-    return <div className="container mx-auto px-4 md:px-6 py-16"><Alert variant="destructive" className="max-w-2xl mx-auto"><AlertTitle>Unable to load partner offers</AlertTitle><AlertDescription>Please try again shortly.</AlertDescription></Alert></div>;
-  }
+  return (
+    <div className="flex flex-col min-h-screen">
+      <MarketingHeader />
+      <main className="flex-col container mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold text-center mb-8">Partner Offers</h1>
+        <div className="max-w-2xl mx-auto">
+            <ul className="space-y-4">
+                {filteredOffers.map((offer) => (
+                    <li key={offer.id} className="border rounded-lg p-4 flex justify-between items-center">
+                        <div>
+                            <h2 className="font-bold">{offer.title}</h2>
+                            <p>{offer.description}</p>
+                        </div>
+                        <div>
+                            <Link href={`/partner-offers/redeem?offerId=${offer.id}`} passHref>
+                                <Button>Redeem</Button>
+                            </Link>
+                            <Button variant="outline" className="ml-2" onClick={() => handleSave(offer)}>Save for Later</Button>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </div>
+      </main>
+      <MarketingFooter />
+    </div>
+  );
 }

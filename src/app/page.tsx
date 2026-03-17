@@ -1,9 +1,11 @@
 import { buildSeoMetadata } from '@/lib/seo';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PublicCatalogueCard } from '@/components/public/public-catalogue-card';
 import { getActivePartnerOffers, getHomepageContent, getKnowledgeArticles, getPublishedServicePages, getPublishedTestimonials } from '@/lib/data';
+import images from '@/lib/placeholder-images.json';
 
 export const metadata = buildSeoMetadata({ title: 'Home', description: 'Browse services, DocuShare resources, partner offers, and knowledge content for growing businesses.', path: '/' });
 
@@ -32,9 +34,9 @@ export default async function HomePage() {
                         </div>
                     </div>
                     <div className="hidden md:block relative h-[600px]">
-                        <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/67b45f3c18b76c126588d3b5_home%20three%20image%20one.webp" alt="home three image one" className="rounded-lg absolute top-0 left-0 w-3/5" />
-                        <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/67b474bb0444002bf709d17d_home%20three%20image%20two.webp" alt="home three image two" className="rounded-lg absolute top-1/4 -right-16 w-3/4" />
-                        <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/67b45f3cc83b0f0b4b248a31_home%20three%20image%20three.webp" alt="home three image three" className="rounded-lg absolute bottom-0 left-1/4 w-3/5" />
+                        <Image src={images.hero.src} alt="home three image one" width={images.hero.width} height={images.hero.height} className="rounded-lg absolute top-0 left-0 w-3/5" />
+                        <Image src={images.homeHero.src} alt="home three image two" width={images.homeHero.width} height={images.homeHero.height} className="rounded-lg absolute top-1/4 -right-16 w-3/4" />
+                        <Image src={images.servicesHero.src} alt="home three image three" width={images.servicesHero.width} height={images.servicesHero.height} className="rounded-lg absolute bottom-0 left-1/4 w-3/5" />
                     </div>
                 </div>
             </div>
@@ -55,7 +57,7 @@ export default async function HomePage() {
                         {whatWeDo.map((item) => (
                             <Card key={item.title}>
                                 <CardHeader className="flex flex-row items-center space-x-4">
-                                    <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/67b45d3f3af1edabb53210a3_icon%20four%20(3).svg" alt="" className="w-8 h-8" />
+                                    <Image src={images.hero.src} alt="" width={32} height={32} className="w-8 h-8" />
                                     <CardTitle>{item.title}</CardTitle>
                                 </CardHeader>
                                 <CardContent>
@@ -94,7 +96,7 @@ export default async function HomePage() {
                             <Card key={testimonial.id}>
                                 <CardContent className="p-6">
                                     <div className="flex items-center space-x-4 mb-4">
-                                        <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/678893961f62181776991316_client-5.webp" alt="" className="w-12 h-12 rounded-full" />
+                                        <Image src={images.testimonial1.src} alt="" width={48} height={48} className="w-12 h-12 rounded-full" />
                                         <div>
                                             <div className="font-semibold">{testimonial.clientName}</div>
                                         </div>

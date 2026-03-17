@@ -7,6 +7,7 @@ import { getRelatedResourcesForContent } from '@/lib/discovery';
 import type { RenderableContentObject } from '@/lib/content-objects';
 import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
 import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
+import { FeedbackForm } from '@/components/feedback/feedback-form';
 
 function AccessCta({ content }: { content: RenderableContentObject }) {
   const access = content.accessBehavior;
@@ -30,7 +31,7 @@ function AccessCta({ content }: { content: RenderableContentObject }) {
         </p>
         {content.actionTarget ? (
           <Button asChild>
-            <Link href={content.actionTarget}>{content.actionLabel ?? 'Continue'}</Link>
+            <Link href={content.actionTarget} aria-label={`Continue to ${content.title}`}>{content.actionLabel ?? 'Continue'}</Link>
           </Button>
         ) : null}
       </CardContent>
@@ -41,8 +42,8 @@ function AccessCta({ content }: { content: RenderableContentObject }) {
 function SectionBlock({ title, body, items }: { title: string; body?: string; items?: string[] }) {
   if (!body && (!items || items.length === 0)) return null;
   return (
-    <section className="space-y-3">
-      <h2 className="text-2xl font-semibold">{title}</h2>
+    <section className="space-y-3" aria-labelledby={`section-title-${title.replace(/\s+/g, '-').toLowerCase()}`}>
+      <h2 id={`section-title-${title.replace(/\s+/g, '-').toLowerCase()}`} className="text-2xl font-semibold">{title}</h2>
       {body ? <p className="text-muted-foreground whitespace-pre-wrap">{body}</p> : null}
       {items?.length ? (
         <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
@@ -80,8 +81,8 @@ function RelatedContent({
 }) {
   if (!related.length) return null;
   return (
-    <section className="space-y-3">
-      <h2 className="text-2xl font-semibold">Related resources</h2>
+    <section className="space-y-3" aria-labelledby="related-content-title">
+      <h2 id="related-content-title" className="text-2xl font-semibold">Related resources</h2>
       <div className="grid gap-3 md:grid-cols-2">
         {related.map((item) => (
           <Card key={item.id}>
@@ -93,7 +94,7 @@ function RelatedContent({
                 {item.accessTier ? <Badge>Tier: {item.accessTier}</Badge> : null}
               </div>
               <Button size="sm" variant="outline" asChild>
-                <Link href={item.path}>View</Link>
+                <Link href={item.path} aria-label={`View ${item.title}`}>View</Link>
               </Button>
             </CardContent>
           </Card>
@@ -111,7 +112,7 @@ function eventTypeByContent(contentType: string) {
   return ANALYTICS_EVENTS.PUBLIC_RESOURCE_VIEWED;
 }
 
-export async function ContentDetailShell({ content }: { content: RenderableContentObject }) {
+export async function ContentDetailShell({ content, userId }: { content: RenderableContentObject, userId?: string }) {
   const relatedItems = await getRelatedResourcesForContent(content, 6);
   await safeLogAnalyticsEvent({
     eventType: eventTypeByContent(content.contentType),
@@ -120,8 +121,10 @@ export async function ContentDetailShell({ content }: { content: RenderableConte
     metadata: { slug: content.slug, relatedCount: relatedItems.length },
   });
 
+  const downloadableResources = content.templateFields?.downloadableResources as string[] | undefined;
+
   return (
-    <article className="container mx-auto px-4 md:px-6 py-16 max-w-5xl space-y-10">
+    <article role="main" className="container mx-auto px-4 md:px-6 py-16 max-w-5xl space-y-10">
       <header className="space-y-4">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="outline">{content.contentType.replaceAll('_', ' ')}</Badge>
@@ -142,6 +145,31 @@ export async function ContentDetailShell({ content }: { content: RenderableConte
 
       <TemplateSections content={content} />
       {content.description ? <SectionBlock title="Overview" body={content.description} /> : null}
+
+      {downloadableResources && downloadableResources.length > 0 && (
+        <section className="space-y-3" aria-labelledby="download-section-title">
+          <h2 id="download-section-title" className="text-2xl font-semibold">Downloads</h2>
+          <div className="space-y-2">
+            {downloadableResources.map((resource) => (
+              <Card key={resource}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <p className="font-medium">{resource.split('/').pop()}</p>
+                  <Button asChild>
+                    <Link href={`/api/download?file=${encodeURIComponent(resource)}`} target="_blank">
+                      Download
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="py-8">
+        <FeedbackForm contentId={content.sourceId} contentType={content.contentType} userId={userId} />
+      </div>
+
       <AccessCta content={content} />
       <RelatedContent related={relatedItems.map((item) => ({ id: item.id, title: item.title, path: item.path, contentType: item.contentType, category: item.category, accessTier: item.accessTier }))} />
     </article>

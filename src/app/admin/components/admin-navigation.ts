@@ -40,6 +40,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     pathPrefix: '/admin/membership',
     items: [
       { title: 'Members', href: '/admin/membership/member-administration', icon: Users, matchPrefixes: ['/admin/membership/member-administration', '/admin/membership/members'] },
+      { title: 'CRM', href: '/admin/crm', icon: Users },
       { title: 'Membership Plans', href: '/admin/membership/plans', icon: BadgeDollarSign },
       { title: 'Billing', href: '/admin/membership/subscription-and-billing-oversight', icon: BadgeDollarSign },
       { title: 'Access Permissions', href: '/admin/membership/access-control', icon: ShieldCheck },

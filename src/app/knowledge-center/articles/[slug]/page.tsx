@@ -2,6 +2,8 @@ import { buildContentMetadata } from '@/lib/seo';
 import { notFound } from 'next/navigation';
 import { ContentDetailShell } from '@/components/public/content-detail-shell';
 import { resolveKnowledgeBySlug } from '@/lib/content-routing';
+import { getServerAuthContext } from '@/lib/server-auth';
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const content = await resolveKnowledgeBySlug(slug, 'article');
@@ -13,5 +15,6 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const content = await resolveKnowledgeBySlug(slug, 'article');
   if (!content) notFound();
-  return <ContentDetailShell content={content} />;
+  const auth = await getServerAuthContext();
+  return <ContentDetailShell content={content} userId={auth?.userId} />;
 }

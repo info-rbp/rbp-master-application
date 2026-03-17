@@ -1,121 +1,46 @@
-'use client';
 
-import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase/provider';
-import type { MembershipPlan } from '@/lib/definitions';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { MarketingHeader } from '@/components/marketing-header';
+import { MarketingFooter } from '@/components/marketing-footer';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
-export default function MembershipSubscribePage() {
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const { user } = useUser();
-  const [plans, setPlans] = useState<MembershipPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
+export default function SubscribePage() {
+  const router = useRouter();
 
-  useEffect(() => {
-    const loadPlans = async () => {
-      setLoading(true);
-      try {
-        const plansRef = collection(firestore, 'membership_plans');
-        const snapshot = await getDocs(query(plansRef, where('active', '==', true)));
-        const loadedPlans = snapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          return {
-            id: docSnap.id,
-            name: data.name,
-            description: data.description,
-            amount: data.amount,
-            currency: data.currency,
-            interval: data.interval,
-            active: Boolean(data.active),
-            squareSubscriptionPlanVariationId: data.squareSubscriptionPlanVariationId ?? null,
-            squareSubscriptionPlanId: data.squareSubscriptionPlanId ?? null,
-            squareLocationId: data.squareLocationId ?? null,
-          } as MembershipPlan;
-        });
-        setPlans(loadedPlans);
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Unable to load plans',
-          description: error instanceof Error ? error.message : 'Please try again shortly.',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadPlans();
-  }, [firestore, toast]);
-
-  const handleSubscribe = async (planId: string) => {
-    setCheckoutPlanId(planId);
+  const handleSubscribe = async () => {
     try {
-      if (!user) throw new Error('Please log in to start checkout.');
-      const token = await user.getIdToken();
       const response = await fetch('/api/square/create-subscription-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ planId }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'premium' }), // This would be dynamic in a real app
       });
 
-      const payload = (await response.json()) as { error?: string; url?: string };
-      if (!response.ok || !payload.url) {
-        throw new Error(payload.error || 'Could not start Square checkout.');
+      const { checkoutUrl } = await response.json();
+      if (checkoutUrl) {
+        router.push(checkoutUrl);
       }
-
-      window.location.assign(payload.url);
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Subscription failed',
-        description: error instanceof Error ? error.message : 'Please try again.',
-      });
-    } finally {
-      setCheckoutPlanId(null);
+      console.error('Error creating checkout session:', error);
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold tracking-tight mb-2">Choose your membership</h1>
-      <p className="text-muted-foreground mb-8">Select an active plan and continue to secure Square checkout.</p>
-
-      {loading ? (
-        <p className="text-muted-foreground">Loading plans...</p>
-      ) : plans.length === 0 ? (
-        <p className="text-muted-foreground">No active membership plans are available right now.</p>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <Card key={plan.id}>
-              <CardHeader>
-                <CardTitle>{plan.name}</CardTitle>
-                <CardDescription>{plan.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">
-                  {plan.currency.toUpperCase()} {Number(plan.amount).toFixed(2)}
-                </p>
-                <p className="text-sm text-muted-foreground">Billed every {plan.interval}</p>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="w-full"
-                  onClick={() => handleSubscribe(plan.id)}
-                  disabled={checkoutPlanId === plan.id}
-                >
-                  {checkoutPlanId === plan.id ? 'Redirecting...' : 'Subscribe'}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+    <div className="flex flex-col min-h-screen">
+      <MarketingHeader />
+      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+        <div className="w-full max-w-md text-center">
+          <h1 className="text-3xl font-bold mb-4">Choose Your Plan</h1>
+          <p className="text-gray-600 mb-8">Select the best plan for your needs.</p>
+          <div className="border rounded-lg p-8">
+            <h2 className="text-2xl font-bold">Premium Plan</h2>
+            <p className="text-4xl font-extrabold my-4">$99/mo</p>
+            <Button onClick={handleSubscribe} className="w-full">
+              Subscribe
+            </Button>
+          </div>
         </div>
-      )}
+      </main>
+      <MarketingFooter />
     </div>
   );
 }

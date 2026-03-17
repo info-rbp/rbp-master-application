@@ -39,6 +39,30 @@ export type EntitlementAccessFields = {
   contentType: ContentTypeKey;
 };
 
+export type Tool = {
+    toolKey: string;
+    name: string;
+    enabled: boolean;
+    baseUrl: string;
+    requiredTier: MembershipTier;
+    launchMode: "jwt" | "direct";
+    hostingMode: "cloudflare_worker" | "cloudflare_container" | "self_hosted";
+    supportsProvisioning: boolean;
+    supportsTenanting: boolean;
+    googleBrokerFeatures: string[];
+}
+
+export type ToolAccount = {
+    userId: string;
+    toolKey: string;
+    tenantId: string;
+    externalUserId: string;
+    externalWorkspaceId: string;
+    role: "member" | "admin";
+    status: "active" | "suspended";
+    lastProvisionedAt: string;
+}
+
 export type Document = {
   id: string;
   name: string;
@@ -533,3 +557,26 @@ export type SitePageContent = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type LifecycleEventType =
+    | "user.created"
+    | "user.account_status_changed"
+    | "membership.tier_changed"
+    | "membership.status_changed"
+    | "tool.account_provisioned"
+    | "tool.account_suspended"
+    | "tool.account_unsuspended"
+    | "tool.account_deleted";
+
+export type LifecycleEvent<T = Record<string, unknown>> = {
+    id: string;
+    type: LifecycleEventType;
+    userId: string;
+    processedAt?: string;
+    data: T;
+};
+
+export type ToolLifecycleEvent = LifecycleEvent<{
+    toolKey: string;
+    [key: string]: any;
+}>;

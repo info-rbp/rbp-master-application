@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { createNotification } from '@/lib/notifications';
@@ -5,6 +6,7 @@ import { triggerAdminAlert } from '@/lib/alerts';
 import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
 import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import { sendTemplatedEmail } from '@/lib/email';
+import { createLifecycleEvent } from '@/lib/events';
 
 export async function POST(request: NextRequest) {
   const auth = await getRequestAuthContext(request);
@@ -15,6 +17,7 @@ export async function POST(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
   const tasks: Promise<unknown>[] = [
+    createLifecycleEvent('user.created', auth.userId, {}),
     createNotification({
       userId: auth.userId,
       audienceRole: 'member',
@@ -55,5 +58,5 @@ export async function POST(request: NextRequest) {
   }
 
   await Promise.all(tasks);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, redirectUrl: '/welcome' });
 }
