@@ -1,0 +1,392 @@
+	# Application Master Workflow Register
+
+## Purpose
+
+This document defines the full workflow inventory required for the application to operate effectively across acquisition, membership, billing, content delivery, tools, partner commerce, support, administration, compliance, and operational reliability.
+
+This is intended to function as a **technical master workflow register** for product, engineering, QA, operations, and implementation planning.
+
+---
+
+## 1. Architectural Context
+
+The application operates as a multi-surface system with the following functional layers:
+
+1. **Public Experience Layer**
+   - Homepage
+   - Advisory pages
+   - Public tools catalogue and previews
+   - Membership sales pages
+   - Public resources and content funnel pages
+   - Partner listing teasers
+   - Booking pages
+
+2. **Authenticated Client Portal Layer**
+   - Dashboard
+   - Tools
+   - Reports/history
+   - Document generation
+   - Member library
+   - Partner offers
+   - Billing
+   - Support
+   - Settings
+
+3. **Commercial Layer**
+   - Membership plans
+   - Square billing/subscriptions
+   - Entitlements
+   - Upgrade/downgrade logic
+   - Billing recovery
+   - Partner monetisation
+   - Advisory upsell
+
+4. **Administrative / Operational Layer**
+   - Admin content management
+   - Publish/review controls
+   - Audit logging
+   - Analytics
+   - Incident response
+   - Compliance and retention management
+
+5. **Cross-Cutting Platform Layer**
+   - Authentication
+   - Authorisation
+   - Notifications
+   - Search and discovery
+   - Lifecycle automation
+   - Webhook reconciliation
+   - Error handling
+   - Observability
+
+---
+
+## 2. Core Technical Assumptions
+
+### Identity and Access
+- User authentication is handled via a secure identity provider.
+- Roles must support, at minimum: `owner`, `admin`, `member`, `viewer`, `support`, `content_admin`, `super_admin`.
+- Access must be enforced at:
+  - frontend route level
+  - backend service/API level
+  - database rules level
+  - storage/file-download level
+
+### Billing and Commercial State
+- Square is the authoritative source for recurring billing events.
+- Internal membership state is the authoritative source for product entitlements.
+- Billing state and entitlement state must be stored separately and synchronised via webhook/event processing.
+
+### Data Scope
+- User-scoped records must remain isolated unless explicitly shared.
+- Company-scoped records must respect company membership and role permissions.
+- Admin-only content and settings must be strictly separated from member-facing data.
+
+### Workflow Design Rules
+Each workflow should define:
+- trigger
+- primary actors
+- route/screen entry points
+- core entities and storage objects
+- key states and transitions
+- access requirements
+- integration dependencies
+- telemetry/events
+- failure and recovery behaviour
+
+---
+
+## 3. Workflow Catalogue
+
+The workflows below represent the full operating set for the application.
+
+### Status Legend
+- **Required**: must exist for effective operation
+- **Core MVP**: recommended for first release
+- **Post-MVP**: should follow soon after core release
+
+---
+
+## 4. Pre-Member Workflows
+
+| ID | Workflow | Objective | Primary Actors | Trigger / Entry Point | Core Systems / Components | Primary Entities | Critical States / Transitions | Required Controls / Telemetry | Delivery Priority |
+|---|---|---|---|---|---|---|---|---|---|
+| PM-01 | Visitor to Lead | Convert anonymous visitors into identifiable leads through CTAs, forms, previews, downloads, or bookings. | Visitor, marketing user, sales/admin | Public pages, content CTAs, form submits | Public website, lead forms, CRM integration, analytics | session, lead, campaign, sourcePage | anonymous -> engaged visitor -> lead captured | source attribution, anti-spam, form validation, conversion event logging | Core MVP |
+| PM-02 | Content Funnel | Move a visitor from free value into account creation, membership consideration, and later advisory conversion. | Visitor, registered user, marketing automation | Resource pages, guides, tool previews, membership pages | CMS/content layer, CTA routing, lead capture, lifecycle automation | session, lead, lifecycleStage, CTAEvent | content viewed -> CTA clicked -> lead/account created -> nurture | CTA analytics, stage progression tracking, campaign attribution | Core MVP |
+| PM-03 | Sign-Up and Authentication | Establish secure identity for new or returning users. | Visitor, registered user | `/signup`, `/login`, gated route redirect | auth provider, user profile service, session manager | user, authIdentity, companyLink | unauthenticated -> authenticated -> verified -> active | password policy, email verification, session logging, lockout protection | Core MVP |
+| PM-04 | Membership Sign-Up and Activation | Capture user/business data, selected plan, payment, and activate membership. | Visitor, prospect, new member | membership page, upgrade flow, signup CTA | signup forms, Square checkout, membership service | user, company, subscriptionIntent, membership | package selected -> payment successful -> membership active | input validation, pricing integrity, payment confirmation logging | Core MVP |
+| PM-05 | Subscription Purchase and Entitlement Assignment | Translate a successful plan purchase into feature access and portal visibility. | User, billing system | checkout success, plan upgrade, webhook confirmation | Square integration, entitlement service, portal access layer | subscription, entitlementSnapshot, planVariation | pending -> active -> entitled | webhook sync, idempotency, access recalculation | Core MVP |
+| PM-06 | Advisory Booking | Allow prospects and users to book a strategy/advisory session. | Visitor, member, advisor, ops staff | `/book`, CTA banners, support follow-up | scheduler integration, CRM, email reminders | booking, contact, advisorSlot, meetingLink | booking initiated -> confirmed -> reminded -> completed | availability validation, timezone handling, no-show tracking | Core MVP |
+| PM-07 | Lead Qualification and Segmentation | Classify inbound leads by intent, business stage, size, and likely conversion route. | Lead, sales/admin, automation | form submission, content download, call booking | CRM, scoring service, lifecycle engine | leadScore, industry, businessStage, source | unqualified -> MQL -> high-intent lead | scoring rules, source quality reporting, enrichment logging | Post-MVP |
+| PM-08 | Email Verification and Identity Activation | Prevent access to protected or paid features until identity is trusted. | User, auth system | signup, email change, suspicious login | auth provider, email service | verificationToken, emailStatus | unverified -> verified -> active | secure token generation, resend rules, audit events | Core MVP |
+| PM-09 | Marketing Opt-In and Consent Capture | Capture communication consent and preference state during acquisition. | Visitor, user | forms, signup, downloads | form service, consent store, notification preferences | consentRecord, channelPrefs | unknown -> opted-in/opted-out | timestamped consent logging, policy versioning | Post-MVP |
+
+---
+
+## 5. Membership and Portal Workflows
+
+| ID | Workflow | Objective | Primary Actors | Trigger / Entry Point | Core Systems / Components | Primary Entities | Critical States / Transitions | Required Controls / Telemetry | Delivery Priority |
+|---|---|---|---|---|---|---|---|---|---|
+| MB-01 | Client Portal Entry and Dashboard Load | Provide the member landing surface with context-aware modules, access, and next actions. | Member, company user | `/app` | portal shell, dashboard service, entitlement engine | dashboardState, userContext, quickActions | login -> dashboard load -> contextual modules displayed | route protection, dashboard load metrics, personalised state logging | Core MVP |
+| MB-02 | Billing Management with Square | Let members manage billing, plan changes, payment methods, failed payments, pause/resume, cancellation. | Member, finance/admin | `/app/billing` | Square APIs, billing service, payment method UI, webhook processor | squareCustomer, subscription, invoice, paymentMethod | active/past_due/paused/cancelled | secure card handling, webhook dedupe, audit logging | Core MVP |
+| MB-03 | Gated Tool Access | Ensure only authorised members can open the right tools. | Member | `/tools/[toolSlug]`, `/app/tools/[toolSlug]` | entitlement engine, tool catalogue, access policy service | tool, membershipTier, usageQuota | access requested -> granted/denied | route guard, entitlement checks, blocked access analytics | Core MVP |
+| MB-04 | Tool Execution | Execute tool logic from form completion through output rendering. | Member | tool detail page, run action | dynamic form engine, validation service, run processor, output renderer | toolRun, inputSnapshot, outputSnapshot | draft -> submitted -> processing -> completed/failed | server-side validation, idempotency, run duration telemetry | Core MVP |
+| MB-05 | Saved Outputs and Report Retrieval | Persist generated outputs and allow retrieval, export, duplication, and reuse. | Member | `/app/reports`, post-run save | report service, storage, search metadata, history UI | report, runId, reportFile, reportVersion | completed -> saved -> reopened/exported/duplicated | ownership enforcement, signed download links, open/download analytics | Core MVP |
+| MB-06 | Document Generation | Generate structured documents from user input, templates, and connector logic. | Member | document catalogue, tool module | document schema engine, template engine, formatting service, connector | documentJob, templateId, clauseSet, generatedFile | initiated -> validating -> generating -> stored | template integrity, version tagging, input-output audit link | Core MVP |
+| MB-07 | Document Versioning and Regeneration | Support controlled updates and regeneration of existing document outputs. | Member | report detail, document history | version service, diff metadata, rerun engine | documentVersion, parentDocument, regenerationInput | version N -> version N+1 | immutable version snapshots, linkage to prior outputs | Post-MVP |
+| MB-08 | Template and Resource Access | Provide members with controlled access to resources, templates, downloads, and premium content. | Member | `/app/library`, resource pages | library service, search/filter engine, secure file delivery | resource, resourceVersion, downloadEvent | listed -> viewed -> downloaded/used | entitlement-aware listing, signed URLs, download metrics | Core MVP |
+| MB-09 | Partner / Affiliate Offer Access | Provide gated access to partner offers and member-only benefits. | Member | `/partners`, `/partners/[slug]` | partner service, entitlement checks, redirect service | partner, offer, entitlementState | locked -> unlocked -> clicked | offer expiry checks, visibility rules, click attribution | Core MVP |
+| MB-10 | Support Ticket Management | Allow members to submit, track, and respond to support issues. | Member, support agent | `/app/support`, contextual issue links | ticketing service, attachment storage, notification service | ticket, ticketMessage, attachment, SLARecord | new -> open -> awaiting_customer -> resolved -> closed | ownership checks, SLA telemetry, message audit trail | Core MVP |
+| MB-11 | Profile Settings | Allow users to maintain their own personal data and preferences. | Member | `/app/settings/profile` | profile service, file upload service, preference store | userProfile, avatar, personalPrefs | view -> edit -> saved | self-only access, field validation, audit events | Core MVP |
+| MB-12 | Company Settings | Allow authorised company roles to maintain business information and branding. | Owner, admin | `/app/settings/company` | company service, permission engine | company, brandingAsset, companyPrefs | view -> edit -> saved | role-based editing, sensitive field audit, history logging | Core MVP |
+| MB-13 | Security Settings | Allow users to manage password, MFA, login identity, and session controls. | Member | `/app/settings/security` | auth provider, security event service | credentialState, mfaState, sessionRecord | unchanged -> pending verification -> active | reauthentication, security notifications, session audit | Core MVP |
+| MB-14 | Team Invitation and Member Access | Invite additional users into a company workspace and onboard them securely. | Owner, admin, invited user | `/app/settings/team`, invite CTA | invitation service, auth provider, role assignment service | teamInvite, companyUser, roleAssignment | invited -> accepted -> active | invite token security, duplicate user resolution, invite analytics | Post-MVP |
+| MB-15 | Team Role and Permission Management | Manage roles and permissions for users within a company workspace. | Owner, admin | team management screen | role service, access policy engine | roleAssignment, permissionSet, companyUser | member -> upgraded/downgraded role | strict authorisation, permission diff audit | Post-MVP |
+| MB-16 | Member Onboarding | Guide a newly registered or newly paid member to first value. | New member | post-signup, post-purchase, first dashboard login | onboarding engine, checklist service, recommendations | onboardingState, milestone, taskCompletion | new -> onboarding_started -> activated | milestone analytics, prompt suppression rules | Post-MVP |
+| MB-17 | First Tool Experience | Drive first successful tool run as the member activation event. | New member | dashboard prompt, onboarding CTA | recommendation engine, tool templates, progress tracking | firstToolRecommendation, runAttempt | unstarted -> started -> first success | activation funnel telemetry, friction/error tracking | Post-MVP |
+| MB-18 | Member Engagement Loop | Encourage recurring portal usage through prompts, recent activity, and next-best actions. | Member | dashboard load, email reminders, inactivity triggers | activity feed, recommendation service, lifecycle engine | activityLog, engagementScore, recommendation | active -> dormant -> re-engaged | usage analytics, recommendation click-through | Post-MVP |
+| MB-19 | Renewal and Churn Prevention | Reduce churn before renewal or expiry by showing value, reminders, and offers. | Member, billing system | renewal window, inactivity, past_due state | lifecycle automation, billing service, email/in-app notifications | renewalDate, valueScore, churnRisk | active -> at_risk -> renewed/churned | churn scoring, reminder effectiveness, recovery rate | Post-MVP |
+| MB-20 | Re-engagement and Win-Back | Bring inactive or cancelled members back into active usage or subscription. | Former member, inactive member | inactivity threshold, cancellation event | lifecycle automation, campaign engine | inactivityState, lastLoginAt, cancelReason | inactive -> re-engaged/reactivated | cohort analytics, campaign attribution | Post-MVP |
+| MB-21 | Billing Dispute and Refund Handling | Manage refund requests, charge issues, and member billing disputes. | Member, support, finance admin | support ticket, billing action, dispute notification | billing service, support service, finance workflow | refundRequest, invoiceRef, disputeCase | submitted -> investigated -> approved/rejected -> resolved | billing audit trail, approval permissions | Post-MVP |
+| MB-22 | Offboarding and Account Closure | Handle cancellation, access expiry, optional data retention, and clean exit paths. | Member, admin | account closure request, cancellation completion | billing service, retention engine, user lifecycle service | closureRequest, entitlementEndDate, retentionState | active -> cancelling -> expired -> archived | confirmation safeguards, retention compliance, reactivation hooks | Post-MVP |
+
+---
+
+## 6. Platform-Wide / Shared Service Workflows
+
+| ID | Workflow | Objective | Primary Actors | Trigger / Entry Point | Core Systems / Components | Primary Entities | Critical States / Transitions | Required Controls / Telemetry | Delivery Priority |
+|---|---|---|---|---|---|---|---|---|---|
+| SH-01 | Access Control and Security | Enforce identity, role, entitlement, ownership, and company scope consistently. | All authenticated actors | every protected route/action/file access | auth, policy engine, DB rules, storage access controls | securityContext, accessPolicy, ownershipMap | requested -> granted/denied | deny logging, least privilege, signed file access | Core MVP |
+| SH-02 | Notification and Communication | Centralise outbound messaging across email, in-app, SMS, and system alerts. | User, member, admin, support | workflow events across product | notification service, template engine, preference store | notification, deliveryStatus, channelPreference | queued -> sent -> delivered/failed | preference enforcement, retry rules, delivery metrics | Post-MVP |
+| SH-03 | Customer Lifecycle Automation | Progress users through lifecycle stages and trigger context-aware automations. | Visitor, lead, member, churn-risk user | lead capture, signup, purchase, inactivity, high-intent actions | lifecycle engine, automation rules, CRM sync | lifecycleStage, triggerEvent, automationRun | stage A -> stage B | automation audit, stage-change history | Post-MVP |
+| SH-04 | Platform Analytics and Reporting | Capture product, commercial, and operational events for analysis. | Product, ops, admin | all relevant user/system events | analytics pipeline, event bus, reporting dashboards | event, cohort, conversionMetric | raw event -> processed metric | event taxonomy, schema validation, pipeline health | Core MVP |
+| SH-05 | Search and Discovery | Make tools, reports, resources, and offers searchable and filterable. | Member, admin | global search, library search, reports filters | search index, metadata service, query engine | searchQuery, searchResult, facetState | search initiated -> results -> action | permission-filtered search, query analytics | Post-MVP |
+| SH-06 | Personalisation and Recommendations | Surface relevant tools, content, offers, and actions based on behaviour and context. | Member, lead | dashboard, library, nurture flows | recommendation engine, activity model, lifecycle service | recommendationSet, relevanceScore | generic -> personalised experience | recommendation quality metrics, bias checks | Post-MVP |
+| SH-07 | Error Handling and Recovery | Provide structured recovery paths for failures across forms, integrations, and processing jobs. | User, member, admin, support | any failure condition | error service, retry queue, observability stack | errorEvent, retryJob, supportContext | failed -> retried/recovered/escalated | no raw error leakage, alerting, retry outcome metrics | Core MVP |
+| SH-08 | Webhook Processing and Reconciliation | Process external webhook events reliably and reconcile internal state. | Square, partner APIs, platform services | external webhook arrival | webhook endpoint, dedupe store, reconciliation job | webhookEvent, reconciliationRecord | received -> verified -> applied -> reconciled | signature verification, idempotency, replay support | Core MVP |
+| SH-09 | Audit Logging and Activity History | Record important security, billing, admin, and content actions. | User, admin, support, system | critical action completion | audit logger, immutable event storage | auditEvent, actor, targetRef | action -> logged | tamper resistance, actor attribution, searchable history | Post-MVP |
+| SH-10 | Privacy, Consent, and Data Requests | Manage consent, export requests, deletion requests, and privacy compliance actions. | User, admin | settings, account closure, policy actions | privacy service, retention engine, export generator | consentRecord, exportRequest, deletionRequest | submitted -> verified -> fulfilled | identity verification, legal retention checks, completion audit | Post-MVP |
+| SH-11 | Incident Management | Detect, classify, and respond to platform incidents and service degradation. | Ops, admin, support | alerts, repeated failures, monitoring thresholds | alerting, status service, incident tracker | incident, severity, affectedService | detected -> triaged -> mitigated -> resolved | alert routing, postmortem logging, status page events | Post-MVP |
+| SH-12 | Compliance and Retention Management | Apply retention windows, archival rules, deletion policies, and compliance controls. | System, admin, compliance | scheduled jobs, closure workflows, legal policy updates | retention engine, archive storage, policy config | retentionPolicy, archiveRecord, purgeJob | active -> archived -> purged | policy versioning, purge audit, hold exceptions | Post-MVP |
+| SH-13 | Feedback and Satisfaction Collection | Gather structured user feedback after meaningful touchpoints. | Member, prospect | support resolution, document completion, advisory session | survey service, event triggers | feedbackRequest, score, response | triggered -> completed/ignored | sampling rules, follow-up routing, sentiment reporting | Post-MVP |
+| SH-14 | Global File Access and Signed Delivery | Securely deliver downloadable assets without exposing raw storage paths. | Member, admin | file download request | storage gateway, signed URL service, access policy engine | fileRef, signedLink, accessContext | request -> validated -> signed -> downloaded | expiry enforcement, download logging, ownership validation | Core MVP |
+
+---
+
+## 7. Admin and Operational Workflows
+
+| ID | Workflow | Objective | Primary Actors | Trigger / Entry Point | Core Systems / Components | Primary Entities | Critical States / Transitions | Required Controls / Telemetry | Delivery Priority |
+|---|---|---|---|---|---|---|---|---|---|
+| AD-01 | Admin Content Management | Allow internal admins to manage tools, partners, resources, and content states. | Content admin, super admin, editor | `/app/admin` | admin portal, content services, asset manager | contentItem, contentVersion, status | draft -> published/unpublished/archived | admin-only access, publish audit, version history | Core MVP |
+| AD-02 | Publish / Review Workflow | Introduce governance for content before it goes live. | Editor, reviewer, content admin | create/edit content, scheduled release | review engine, approval states, scheduling | reviewStatus, approvalRecord, schedule | draft -> in_review -> approved -> published | approval permissions, publish conflict checks | Post-MVP |
+| AD-03 | Asset Upload and File Management | Manage logos, PDFs, templates, preview files, and downloadable assets. | Admin, content editor | content edit forms, upload actions | storage service, asset metadata service | asset, assetVersion, ownerRef | uploaded -> active/replaced/archived | file validation, storage controls, orphan cleanup jobs | Core MVP |
+| AD-04 | Admin User and Role Management | Manage privileged users and internal content/ops roles. | Super admin | admin settings, user admin screens | role service, auth claims sync | adminRoleAssignment, claimSync | requested -> granted/revoked | separation of duties, high-risk audit trail | Post-MVP |
+| AD-05 | Operational Dashboard and Monitoring | Give internal teams visibility into system health, conversions, errors, and operational queues. | Ops, support, admin | admin dashboard | analytics, alerting, queue monitoring | KPIWidget, queueDepth, alertState | normal -> warning -> critical | role-controlled visibility, dashboard health checks | Post-MVP |
+| AD-06 | Partner Offer Operations | Maintain partner metadata, offers, expiry windows, URLs, promo codes, and active states. | Partner admin, content admin | `/app/admin/partners` | partner service, content admin UI | partner, offer, offerVersion | draft -> active -> expired -> archived | outbound URL validation, expiry rules, click performance analytics | Core MVP |
+| AD-07 | Tool Catalogue Operations | Manage tool metadata, schemas, tier requirements, examples, and live availability. | Product admin, content admin | `/app/admin/tools` | tool registry, schema editor, version control | tool, schemaVersion, featureFlag | draft -> active -> deprecated | schema validation, backward compatibility tracking | Core MVP |
+| AD-08 | Resource Library Operations | Manage member/public resources, categories, preview states, files, and access tiers. | Content admin | `/app/admin/resources` | library admin UI, asset manager | resource, category, accessType | draft -> published -> archived | file integrity checks, access-tier validation | Core MVP |
+| AD-09 | Support Operations and SLA Triage | Allow staff to assign, escalate, respond to, and resolve member tickets. | Support agent, support lead | support queue, ticket detail | support console, SLA tracker, internal notes | supportTicket, assignment, SLAState | new -> assigned -> in_progress -> resolved | assignment audit, SLA breach alerts | Post-MVP |
+
+---
+
+## 8. Partner, Commerce, and Attribution Workflows
+
+| ID | Workflow | Objective | Primary Actors | Trigger / Entry Point | Core Systems / Components | Primary Entities | Critical States / Transitions | Required Controls / Telemetry | Delivery Priority |
+|---|---|---|---|---|---|---|---|---|---|
+| PC-01 | Click Tracking and Attribution | Log outbound clicks and associate them with user/session, partner, source, and plan context. | Visitor, member | `/out/[partnerSlug]` | redirect service, analytics, partner service | partnerClick, sourceContext, campaignTag | clicked -> logged -> redirected | safe redirect validation, click dedupe, source attribution | Core MVP |
+| PC-02 | Offer Expiry and Availability Management | Ensure expired or disabled offers do not appear or redirect incorrectly. | Member, admin | offer view, outbound click | partner service, scheduler, content state engine | offerWindow, offerStatus | active -> expired/disabled | date validation, broken-offer monitoring | Core MVP |
+| PC-03 | Conversion Attribution Reconciliation | Reconcile downstream partner conversions to prior outbound clicks where available. | Partner admin, ops | partner conversion feed, manual import | attribution service, reporting layer | conversionRecord, clickRef | clicked -> converted/reconciled | data matching rules, discrepancy reporting | Post-MVP |
+| PC-04 | Advisory Upsell from Product Use | Trigger premium service offers based on usage patterns and business intent. | Member, sales/advisory | high-value usage signals, CTA clicks | lifecycle engine, CRM, dashboard banners | advisoryProspect, intentSignal | engaged -> advisory prospect -> booked/converted | intent scoring, conversion attribution | Post-MVP |
+
+---
+
+## 9. Data and Entity Model Coverage
+
+To support the workflow set above, the application should expect to maintain the following major entity families:
+
+### Identity and Membership
+- `users`
+- `userProfiles`
+- `companies`
+- `companyUsers`
+- `roleAssignments`
+- `memberships`
+- `entitlements`
+- `securityEvents`
+
+### Billing and Commercial
+- `squareCustomers`
+- `subscriptions`
+- `paymentMethods`
+- `invoices`
+- `billingEvents`
+- `refundRequests`
+
+### Product Use
+- `tools`
+- `toolSchemaVersions`
+- `toolRuns`
+- `reports`
+- `reportFiles`
+- `documents`
+- `documentVersions`
+
+### Content and Partner Operations
+- `resources`
+- `resourceVersions`
+- `downloads`
+- `partners`
+- `partnerOffers`
+- `partnerClicks`
+
+### Support and Operations
+- `supportTickets`
+- `supportMessages`
+- `supportAttachments`
+- `slaRecords`
+- `auditEvents`
+- `incidents`
+
+### Lifecycle and Analytics
+- `leads`
+- `lifecycleStates`
+- `automationRuns`
+- `notifications`
+- `analyticsEvents`
+- `feedbackResponses`
+
+---
+
+## 10. Cross-Workflow Non-Functional Requirements
+
+All workflows in this register should be implemented with the following platform requirements in mind:
+
+### Security
+- backend-enforced access control
+- database-level read/write rules
+- secure file access
+- role and scope enforcement
+- sensitive-action auditing
+
+### Reliability
+- idempotent external event processing
+- retryable async jobs
+- queued heavy processing
+- graceful failure states
+- monitoring and alerting
+
+### Observability
+- structured event logging
+- workflow-level metrics
+- conversion and failure funnels
+- admin/ops dashboards
+- traceability for user-impacting failures
+
+### UX Consistency
+- clear success/failure states
+- preserved return paths after auth/upgrade
+- transparent access-denied messaging
+- no dead-end screens
+- async job visibility where relevant
+
+### Compliance
+- consent tracking
+- retention and archival controls
+- export/deletion request handling
+- activity audit history
+- controlled use of PII and company-sensitive records
+
+---
+
+## 11. Suggested Delivery Sequencing
+
+### Phase 1: Core Operating Loop
+- Visitor to Lead
+- Content Funnel
+- Sign-Up and Authentication
+- Membership Sign-Up and Activation
+- Subscription Purchase and Entitlement Assignment
+- Billing Management with Square
+- Client Portal Entry and Dashboard Load
+- Gated Tool Access
+- Tool Execution
+- Saved Outputs and Report Retrieval
+- Template and Resource Access
+- Advisory Booking
+- Access Control and Security
+- Platform Analytics and Reporting
+- Error Handling and Recovery
+- Admin Content Management
+- Asset Upload and File Management
+
+### Phase 2: Controlled Scale and Value Expansion
+- Document Generation
+- Partner / Affiliate Offer Access
+- Click Tracking and Attribution
+- Company Settings
+- Profile Settings
+- Security Settings
+- Support Ticket Management
+- Webhook Processing and Reconciliation
+- Tool Catalogue Operations
+- Resource Library Operations
+- Partner Offer Operations
+- Global File Access and Signed Delivery
+
+### Phase 3: Retention, Governance, and Optimisation
+- Member Onboarding
+- First Tool Experience
+- Member Engagement Loop
+- Renewal and Churn Prevention
+- Re-engagement and Win-Back
+- Team Invitation and Member Access
+- Team Role and Permission Management
+- Publish / Review Workflow
+- Customer Lifecycle Automation
+- Notification and Communication
+- Search and Discovery
+- Personalisation and Recommendations
+- Audit Logging and Activity History
+- Privacy, Consent, and Data Requests
+- Incident Management
+- Compliance and Retention Management
+- Feedback and Satisfaction Collection
+- Billing Dispute and Refund Handling
+- Offboarding and Account Closure
+- Conversion Attribution Reconciliation
+- Advisory Upsell from Product Use
+
+---
+
+## 12. Implementation Guidance
+
+When converting this register into delivery artefacts, each workflow should be decomposed into:
+
+1. **User stories / actor scenarios**
+2. **State model and transitions**
+3. **Route map / UI surfaces**
+4. **API or service contract**
+5. **Data objects / schemas**
+6. **Permissions matrix**
+7. **Telemetry events**
+8. **Failure modes and recovery handling**
+9. **Integration dependencies**
+10. **Test coverage requirements**
+
+This register should be treated as the authoritative application workflow index and used to derive:
+- roadmap phases
+- requirements specifications
+- engineering tickets
+- QA test plans
+- admin operating procedures
+- access-control matrices
+- event taxonomy and analytics architecture
+
+---
+
+## 13. Final Note
+
+The application should not be treated as a set of independent screens. It is a workflow-driven system whose reliability, commercial performance, and member value all depend on the integrity of the workflows defined above.
+
+If any major workflow family is omitted, the product may still launch, but it will not operate effectively at scale.
+

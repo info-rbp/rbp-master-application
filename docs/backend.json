@@ -106,6 +106,79 @@
         "fileSize",
         "uploadedAt"
       ]
+    },
+    "DocumentGenerationJob": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DocumentGenerationJob",
+      "type": "object",
+      "description": "Tracks the status and details of an AI-powered document description generation task.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DocumentGenerationJob."
+        },
+        "documentId": {
+          "type": "string",
+          "description": "The ID of the document for which the description is being generated."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the job (e.g., 'pending', 'processing', 'completed', 'failed')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when the job was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The timestamp when the job was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DocumentGenerationVersion": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DocumentGenerationVersion",
+      "type": "object",
+      "description": "Stores a version of an AI-generated document description, linking it to a specific generation job.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DocumentGenerationVersion."
+        },
+        "jobId": {
+          "type": "string",
+          "description": "The ID of the generation job that produced this version."
+        },
+        "documentId": {
+          "type": "string",
+          "description": "The ID of the document to which this generated description belongs."
+        },
+        "generatedDescription": {
+          "type": "string",
+          "description": "The AI-generated description content for this version."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when this version was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "jobId",
+        "documentId",
+        "generatedDescription",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -151,8 +224,44 @@
             }
           ]
         }
+      },
+      {
+        "path": "/document_generation_jobs/{jobId}",
+        "definition": {
+          "entityName": "DocumentGenerationJob",
+          "schema": {
+            "$ref": "#/backend/entities/DocumentGenerationJob"
+          },
+          "description": "Admin-only collection for tracking AI document generation jobs.",
+          "params": [
+            {
+              "name": "jobId",
+              "description": "The unique identifier of the generation job."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/document_generation_jobs/{jobId}/versions/{versionId}",
+        "definition": {
+          "entityName": "DocumentGenerationVersion",
+          "schema": {
+            "$ref": "#/backend/entities/DocumentGenerationVersion"
+          },
+          "description": "Subcollection for storing versions of generated content for a specific job.",
+          "params": [
+            {
+              "name": "jobId",
+              "description": "The unique identifier of the parent generation job."
+            },
+            {
+              "name": "versionId",
+              "description": "The unique identifier of the content version."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure for the DocShare Portal is designed to prioritize public readability for clients while enforcing strict administrative control over content management. This design adheres to the core principles of Authorization Independence, Structural Segregation, DBAC, and QAPs.\n\n**Authorization Independence & Denormalization:**\nBoth `DocumentationSuite` and `Document` entities are publicly readable (`allow read: if true`). This means their read authorization is fully independent and doesn't rely on any hierarchical lookups or denormalized fields. For write operations, the intent is for only authorized administrators to create, update, or delete content. To achieve Authorization Independence for write access (i.e., avoiding `get()` calls to the data being modified), a separate, global admin role collection is required. Ideally, this would be a collection like `/roles_admin/{adminUid}`, where the mere existence of a document at `roles_admin/$(request.auth.uid)` grants administrative privileges. This method ensures that authorization for write operations is independent of the `DocumentationSuite` or `Document` data itself, allowing for atomic write operations without breaking security rules. However, due to the constraints of the provided `backend.entities` (lacking an `AdminRole` or `User` entity to reference), this `roles_admin` collection cannot be explicitly defined in the `firestorePaths` array per the output schema's `$ref` requirement. Nevertheless, the underlying security model for write operations for `DocumentationSuite` and `Document` is designed to leverage such an independent collection check.\n\n**Structural Segregation & QAPs:**\n\n1.  **`/documentation_suites/{documentationSuiteId}`:** This top-level collection holds all `DocumentationSuite` entities. All documents within this collection share the same security posture: public readability (for client browsing) and admin-only write access (for content management). This segregation ensures that all clients can query (`list`) and retrieve (`get`) documentation suites directly without any security filters, thereby meeting the QAP (Queries Are Not Filters) principle.\n\n2.  **`/documentation_suites/{documentationSuiteId}/documents/{documentId}`:** The `Document` entities are stored as a subcollection under their respective `DocumentationSuite`. This hierarchical structure naturally represents the `1:N` relationship. Like their parent suites, all documents within this subcollection share the same security posture: public readability (for client downloads) and admin-only write access. Clients can query (`list`) documents within a specific suite without needing complex security filters, directly supporting the QAP principle and the simple landing page requirement. The `documentationSuiteId` is included in each `Document` for data consistency and query flexibility, though not directly for authorization in this public read scenario.\n\n**DBAC:** The overall design adheres to DBAC by intending to store role information (admin status) within the database (`/roles_admin/{uid}`), even if its explicit definition is constrained by the current schema input. Authorization relies solely on `request.auth.uid` being present in this dedicated role collection for write access. No custom claims are used for roles."
+    "reasoning": "The Firestore structure for the DocShare Portal is designed to prioritize public readability for clients while enforcing strict administrative control over content management. This design adheres to the core principles of Authorization Independence, Structural Segregation, DBAC, and QAPs.\n\n**Authorization Independence & Denormalization:**\nBoth `DocumentationSuite` and `Document` entities are publicly readable (`allow read: if true`). This means their read authorization is fully independent and doesn't rely on any hierarchical lookups or denormalized fields. For write operations, the intent is for only authorized administrators to create, update, or delete content. To achieve Authorization Independence for write access (i.e., avoiding `get()` calls to the data being modified), a separate, global admin role collection is required. Ideally, this would be a collection like `/roles_admin/{adminUid}`, where the mere existence of a document at `roles_admin/$(request.auth.uid)` grants administrative privileges. This method ensures that authorization for write operations is independent of the `DocumentationSuite` or `Document` data itself, allowing for atomic write operations without breaking security rules. However, due to the constraints of the provided `backend.entities` (lacking an `AdminRole` or `User` entity to reference), this `roles_admin` collection cannot be explicitly defined in the `firestorePaths` array per the output schema's `$ref` requirement. Nevertheless, the underlying security model for write operations for `DocumentationSuite` and `Document` is designed to leverage such an independent collection check.\n\n**Structural Segregation & QAPs:**\n\n1.  **`/documentation_suites/{documentationSuiteId}`:** This top-level collection holds all `DocumentationSuite` entities. All documents within this collection share the same security posture: public readability (for client browsing) and admin-only write access (for content management). This segregation ensures that all clients can query (`list`) and retrieve (`get`) documentation suites directly without any security filters, thereby meeting the QAP (Queries Are Not Filters) principle.\n\n2.  **`/documentation_suites/{documentationSuiteId}/documents/{documentId}`:** The `Document` entities are stored as a subcollection under their respective `DocumentationSuite`. This hierarchical structure naturally represents the `1:N` relationship. Like their parent suites, all documents within this subcollection share the same security posture: public readability (for client downloads) and admin-only write access. Clients can query (`list`) documents within a specific suite without needing complex security filters, directly supporting the QAP principle and the simple landing page requirement. The `documentationSuiteId` is included in each `Document` for data consistency and query flexibility, though not directly for authorization in this public read scenario.\n\n**DBAC:** The overall design adheres to DBAC by intending to store role information (admin status) within the database (`/roles_admin/{uid}`), even if its explicit definition is constrained by the current schema input. Authorization relies solely on `request.auth.uid` being present in this dedicated role collection for write access. No custom claims are used for roles.\n\n**AI Content Versioning:**\nThe `document_generation_jobs` and `document_generation_versions` collections are added to track and version AI-generated content. These collections are intended for admin-only access and provide a history of generated content, allowing for auditing and rollbacks if needed. The `DocumentGenerationJob` entity tracks the status of a generation task, while the `DocumentGenerationVersion` entity stores the actual generated content for each version."
   }
 }

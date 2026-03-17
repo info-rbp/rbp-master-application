@@ -21,29 +21,92 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col">
-      <section className="relative py-20 md:py-32 lg:py-40 bg-gradient-to-br from-primary/10 via-background to-background">
-        <div className="container mx-auto px-4 md:px-6 text-center">
-          <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">Innovative Solutions for Lasting Impact</h1>
-          <p className="mt-6 text-lg text-muted-foreground md:text-xl">{content?.description ?? 'Explore services, DocuShare resources, partner offers, and knowledge content in one public catalogue.'}</p>
-          <div className="mt-8 flex justify-center gap-4">
-            <Button asChild size="lg"><Link href="/contact-one">Let's connect</Link></Button>
-          </div>
-        </div>
-      </section>
+        <section className="relative bg-background overflow-hidden">
+            <div className="container mx-auto px-4 md:px-6">
+                <div className="grid md:grid-cols-2 gap-8 items-center">
+                    <div className="py-20 md:py-32 lg:py-40">
+                        <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">Innovative Solutions for Lasting Impact</h1>
+                        <p className="mt-6 text-lg text-muted-foreground md:text-xl">{content?.description ?? 'Explore services, DocuShare resources, partner offers, and knowledge content in one public catalogue.'}</p>
+                        <div className="mt-8 flex gap-4">
+                            <Button asChild size="lg"><Link href="/contact-one">Let's connect</Link></Button>
+                        </div>
+                    </div>
+                    <div className="hidden md:block relative h-[600px]">
+                        <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/67b45f3c18b76c126588d3b5_home%20three%20image%20one.webp" alt="home three image one" className="rounded-lg absolute top-0 left-0 w-3/5" />
+                        <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/67b474bb0444002bf709d17d_home%20three%20image%20two.webp" alt="home three image two" className="rounded-lg absolute top-1/4 -right-16 w-3/4" />
+                        <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/67b45f3cc83b0f0b4b248a31_home%20three%20image%20three.webp" alt="home three image three" className="rounded-lg absolute bottom-0 left-1/4 w-3/5" />
+                    </div>
+                </div>
+            </div>
+        </section>
 
-      <section className="w-full py-16 md:py-24">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="grid gap-6 md:grid-cols-3">{(whatWeDo.length ? whatWeDo : [{ title: 'Marketing Strategy', description: 'Lorem ipsum dolor consectetur orci tempus potentiac lectus.' }, { title: 'Workflow Optimization', description: 'Lorem ipsum dolor consectetur orci tempus potentiac lectus.'}, { title: 'Growth Planning', description: 'Lorem ipsum dolor consectetur orci tempus potentiac lectus.'}]).map((item) => <Card key={item.title}><CardHeader><CardTitle>{item.title}</CardTitle></CardHeader><CardContent className="text-muted-foreground">{item.description}</CardContent></Card>)}</div>
-        </div>
-      </section>
+        <section className="w-full py-16 md:py-24">
+            <div className="container mx-auto px-4 md:px-6">
+                <div className="grid gap-8 md:grid-cols-2 items-center">
+                    <div className="space-y-4">
+                        <div className="inline-block bg-primary text-primary-foreground py-1 px-3 rounded-full text-sm font-semibold">About Conselo</div>
+                        <h2 className="text-3xl font-bold tracking-tight">Empowering Businesses to Achieve Goals with Strategic Consulting Solutions</h2>
+                        <div className="flex items-center space-x-4">
+                            <div className="text-6xl font-bold text-primary">13+</div>
+                            <div className="text-lg text-muted-foreground">Years of Experience</div>
+                        </div>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-2">
+                        {whatWeDo.map((item) => (
+                            <Card key={item.title}>
+                                <CardHeader className="flex flex-row items-center space-x-4">
+                                    <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/67b45d3f3af1edabb53210a3_icon%20four%20(3).svg" alt="" className="w-8 h-8" />
+                                    <CardTitle>{item.title}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-muted-foreground">{item.description}</p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
 
-      <section className="w-full py-16 md:py-24 bg-muted/40"><div className="container mx-auto px-4 md:px-6"><h2 className="mb-8 text-3xl font-bold">Browse Our Latest News & Articles On Conselo</h2><div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">{offers.slice(0, 1).map((offer) => <PublicCatalogueCard key={offer.id} title={offer.title} href={`/partner-offers/${offer.slug ?? offer.id}`} summary={offer.summary ?? offer.description} category={offer.partnerName ?? 'Partner offer'} requiredTier={offer.entitlement?.accessTier} previewEnabled={offer.entitlement?.previewEnabled} imageUrl={offer.imageUrl} ctaLabel="View offer" />)}{knowledge.slice(0, 1).map((item) => <PublicCatalogueCard key={item.id} title={item.title} href={`/knowledge-center/${item.contentType === 'guide' ? 'guides' : item.contentType === 'tool' ? 'tools' : item.contentType === 'knowledge_base' ? 'knowledge' : 'articles'}/${item.slug}`} summary={item.summary ?? item.excerpt} category={item.contentType} tags={item.tags} ctaLabel="Read" />)}{services.slice(0, 1).map((service) => <PublicCatalogueCard key={service.id} title={service.title} href={`/services/${service.slug}`} summary={service.shortDescription} category="Service" requiredTier={service.entitlement?.accessTier} ctaLabel="View service" />)}</div></div></section>
+        <section className="w-full py-16 md:py-24 bg-muted/40">
+            <div className="container mx-auto px-4 md:px-6">
+                <div className="text-center space-y-4">
+                    <div className="inline-block bg-primary text-primary-foreground py-1 px-3 rounded-full text-sm font-semibold">News & Articles</div>
+                    <h2 className="text-3xl font-bold tracking-tight">Browse Our Latest News & Articles On Conselo</h2>
+                </div>
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mt-8">
+                    {offers.slice(0, 1).map((offer) => <PublicCatalogueCard key={offer.id} title={offer.title} href={`/partner-offers/${offer.slug ?? offer.id}`} summary={offer.summary ?? offer.description} category={offer.partnerName ?? 'Partner offer'} requiredTier={offer.entitlement?.accessTier} previewEnabled={offer.entitlement?.previewEnabled} imageUrl={offer.imageUrl} ctaLabel="View offer" />)}
+                    {knowledge.slice(0, 1).map((item) => <PublicCatalogueCard key={item.id} title={item.title} href={`/knowledge-center/${item.contentType === 'guide' ? 'guides' : item.contentType === 'tool' ? 'tools' : item.contentType === 'knowledge_base' ? 'knowledge' : 'articles'}/${item.slug}`} summary={item.summary ?? item.excerpt} category={item.contentType} tags={item.tags} ctaLabel="Read" />)}
+                    {services.slice(0, 1).map((service) => <PublicCatalogueCard key={service.id} title={service.title} href={`/services/${service.slug}`} summary={service.shortDescription} category="Service" requiredTier={service.entitlement?.accessTier} ctaLabel="View service" />)}
+                </div>
+            </div>
+        </section>
 
-      <section className="w-full py-16 md:py-24">
-        <div className="container mx-auto px-4 md:px-6 grid max-w-5xl grid-cols-1 gap-8 pt-12 lg:grid-cols-2">
-          {testimonials.slice(0, 2).map((testimonial) => <Card key={testimonial.id}><CardContent className="p-6"><p className="text-muted-foreground">“{testimonial.content}”</p><div className="mt-4"><p className="font-semibold">{testimonial.clientName}</p></div></CardContent></Card>)}
-        </div>
-      </section>
+        <section className="w-full py-16 md:py-24">
+            <div className="container mx-auto px-4 md:px-6">
+                <div className="grid gap-8 md:grid-cols-2 items-center">
+                    <div className="space-y-4">
+                        <h2 className="text-3xl font-bold tracking-tight">Empowering Your Business for Long-Term Growth</h2>
+                        <p className="text-muted-foreground">Let's make something great work together. <Link href="/contact-one" className="text-primary font-semibold hover:underline">Got a project in mind?</Link></p>
+                    </div>
+                    <div className="space-y-8">
+                        {testimonials.slice(0, 2).map((testimonial) => (
+                            <Card key={testimonial.id}>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center space-x-4 mb-4">
+                                        <img src="https://cdn.prod.website-files.com/67287335339d4a8f1a5e77de/678893961f62181776991316_client-5.webp" alt="" className="w-12 h-12 rounded-full" />
+                                        <div>
+                                            <div className="font-semibold">{testimonial.clientName}</div>
+                                        </div>
+                                    </div>
+                                    <p className="text-muted-foreground">“{testimonial.content}”</p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
   );
 }

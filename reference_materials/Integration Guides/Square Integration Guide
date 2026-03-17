@@ -1,0 +1,1058 @@
+# Square Integration Guide for the RBP Web Application
+
+## 1. Purpose
+
+This guide defines how **Square** should be integrated into the web application as the system of record for **payment collection and subscription lifecycle events**, while **Firebase / Firestore** remain the application source of truth for **membership access, entitlement state, and operational history**.
+
+The application already contains a working Square integration skeleton, including:
+
+- a checkout creation route
+- a webhook route with signature verification
+- a Square API helper
+- billing and membership lifecycle synchronization logic
+- admin plan management fields for Square mapping
+- a member-facing subscription page
+
+The goal of this guide is to describe how all of those pieces are supposed to operate together as one production-ready billing system.
+
+---
+
+## 2. Integration Objective
+
+Square is responsible for:
+
+- collecting payment
+- managing recurring subscription billing
+- issuing subscription lifecycle events
+- reporting payment success or failure
+
+The application is responsible for:
+
+- deciding which plans can be sold
+- determining which user is attempting to purchase
+- mapping Square plans back to internal plan codes
+- updating Firestore membership state
+- granting or revoking entitlements
+- recording billing history, audit logs, and notifications
+- communicating lifecycle changes to members and admins
+
+### Core design principle
+
+**Square owns billing truth. Firestore owns platform truth.**
+
+That means the app should never rely on live Square API calls to decide whether a user can access content or services. Square events must be translated into internal subscription and membership state in Firestore, and the rest of the platform should read from Firestore.
+
+---
+
+## 3. Current Application Components
+
+The current Square-related implementation spans the following application components.
+
+### API routes
+
+- `src/app/api/square/create-subscription-checkout/route.ts`
+- `src/app/api/square/webhooks/route.ts`
+
+### Server-side billing helpers
+
+- `src/lib/square.ts`
+- `src/lib/billing.ts`
+- `src/lib/membership-lifecycle.ts`
+- `src/lib/subscriptions.ts`
+
+### Admin UI
+
+- `src/app/admin/membership/plans/page.tsx`
+
+### Member UI
+
+- `src/app/membership/subscribe/page.tsx`
+
+### Supporting operational components
+
+- `src/lib/alerts.ts`
+- `src/lib/audit.ts`
+- analytics event logging
+- entitlement resolution and plan definitions in `src/lib/entitlements.ts`
+
+---
+
+## 4. Business Role of Square in the Platform
+
+Square supports the **paid membership layer** of the platform.
+
+The application contains these membership plan codes:
+
+| Internal Plan Code | Tier | Billing Cycle | Intended Role |
+|---|---|---|---|
+| `basic_free` | basic | free | no Square billing |
+| `standard_monthly` | standard | monthly | recurring paid plan |
+| `standard_annual` | standard | annual | recurring paid plan |
+| `premium_monthly` | premium | monthly | recurring paid plan |
+| `premium_annual` | premium | annual | recurring paid plan |
+
+### Important rule
+
+Only paid plans should be sold through Square. The application already enforces this by rejecting plans with billing cycle `free` from Square checkout.
+
+---
+
+## 5. End-to-End Architecture
+
+## 5.1 Logical architecture
+
+| Layer | Responsibility |
+|---|---|
+| Frontend | Member checkout initiation, admin plan management |
+| Firebase Auth | Identifies the logged-in user initiating purchase |
+| Firestore | Stores plans, subscriptions, billing history, user access state |
+| Square | Handles checkout, recurring billing, subscription events |
+| Backend API routes | Starts checkout and receives webhook events |
+| Lifecycle sync layer | Converts Square events into internal membership state |
+| Notifications / Email | Alerts members and admins about lifecycle events |
+| Analytics / Audit | Records commercial and operational history |
+
+## 5.2 Operating principle
+
+The integration should be treated as a **provider sync pipeline**:
+
+1. User chooses a plan in the app
+2. App validates the plan and starts Square checkout
+3. Square processes payment and subscription state
+4. Square sends webhook events to the app
+5. App verifies authenticity and idempotency
+6. App resolves the event to:
+   - the correct internal plan
+   - the correct internal user
+7. App updates Firestore
+8. Entitlements change automatically based on Firestore state
+9. Alerts, notifications, analytics, and audit logs are recorded
+
+---
+
+## 6. Environment Configuration
+
+The current code expects these Square environment variables:
+
+| Variable | Purpose |
+|---|---|
+| `SQUARE_ACCESS_TOKEN` | authenticates requests to Square |
+| `SQUARE_ENVIRONMENT` | chooses sandbox or production API base URL |
+| `SQUARE_LOCATION_ID` | default Square location for checkout |
+| `SQUARE_WEBHOOK_SIGNATURE_KEY` | verifies webhook signature authenticity |
+| `NEXT_PUBLIC_APP_URL` | used for redirect URLs |
+
+### Recommended environment model
+
+Use separate credentials and webhook endpoints for:
+
+- local development / sandbox
+- staging / sandbox
+- production / live
+
+### Recommendation
+
+Never reuse production Square credentials in development or staging. Subscription systems have a nasty habit of becoming expensive the moment someone gets casual.
+
+---
+
+## 7. Square Account Configuration
+
+Before the app can function correctly, Square must be configured with the corresponding billing objects.
+
+## 7.1 Required Square objects
+
+| Square Object | Why It Is Required |
+|---|---|
+| Location | checkout and subscription billing need a location context |
+| Customers | links a buyer to a reusable billing identity |
+| Subscription Plans | represents sellable plan families |
+| Subscription Plan Variations | represents monthly vs annual billing variants |
+| Webhook Subscription | sends lifecycle events back to the application |
+
+## 7.2 Recommended plan setup in Square
+
+Create Square plans and variations that match the internal plan model exactly.
+
+| Internal Plan Code | Square Plan / Variation Recommendation |
+|---|---|
+| `standard_monthly` | Standard plan, monthly variation |
+| `standard_annual` | Standard plan, annual variation |
+| `premium_monthly` | Premium plan, monthly variation |
+| `premium_annual` | Premium plan, annual variation |
+
+### Mapping rule
+
+The internal plan code should remain the application source of truth. Square IDs should only be stored as external references.
+
+---
+
+## 8. Firestore Data Model Involved in Square Integration
+
+Square does not operate in isolation. The billing workflow depends on multiple Firestore collections.
+
+## 8.1 `membership_plans`
+
+This collection controls what can be sold and how Square maps back into the app.
+
+### Required fields for paid plans
+
+| Field | Purpose |
+|---|---|
+| `code` | internal plan code |
+| `tier` | entitlement tier |
+| `billingCycle` | monthly or annual |
+| `amount` | display and internal reporting |
+| `currency` | currency code |
+| `active` | whether plan can be sold |
+| `promotionEligible` | whether promotions can interact with the plan |
+| `squareSubscriptionPlanVariationId` | key Square variation mapping |
+| `squareSubscriptionPlanId` | useful provider-level reference |
+| `squareLocationId` | optional location override |
+| `squareCatalogObjectVersion` | optional future sync support |
+
+### Operational rule
+
+A paid active plan must not be sellable unless `squareSubscriptionPlanVariationId` is present.
+
+The admin plan UI already enforces this at the application level.
+
+## 8.2 `users`
+
+The user document stores platform-facing subscription state and provider linkages.
+
+### Expected Square-related fields
+
+| Field | Purpose |
+|---|---|
+| `squareCustomerId` | links the Firebase user to the Square customer |
+| `squareSubscriptionId` | active provider subscription reference |
+| `squareSubscriptionStatus` | last normalized provider status |
+| `membershipPlanCode` | internal plan code |
+| `membershipTier` | entitlement tier |
+| `membershipStatus` | active, pending, canceled, etc. |
+| `billingCycle` | monthly or annual |
+| `lastPaymentStatus` | paid, failed, or pending |
+| `membershipExpiresAt` | current access end date |
+| `currentPromotionGrantId` | optional if promotions/grants elevate access |
+
+## 8.3 `subscriptions`
+
+This is the internal subscription ledger and should reflect the current provider-linked subscription state.
+
+### Recommended fields
+
+| Field | Purpose |
+|---|---|
+| `userId` | linked internal user |
+| `squareSubscriptionId` | provider subscription ID |
+| `squareCustomerId` | provider customer ID |
+| `squareLocationId` | provider location |
+| `membershipPlanId` | linked plan doc |
+| `membershipPlanCode` | linked plan code |
+| `membershipTier` | resolved tier |
+| `billingCycle` | resolved cycle |
+| `status` | internal normalized status |
+| `lastPaymentStatus` | internal payment state |
+| `chargedThroughDate` | provider-paid-through date |
+| `renewalDate` | expected renewal |
+| `canceledDate` | cancellation date |
+| `updatedAt` | latest sync time |
+| `provider` | `square` |
+| `providerMetadata` | raw provider metadata as needed |
+
+## 8.4 `billing_history`
+
+Every significant billing event should be written as an immutable history record.
+
+### Recommended fields
+
+| Field | Purpose |
+|---|---|
+| `userId` | linked internal user |
+| `squareSubscriptionId` | provider subscription reference |
+| `eventId` | Square webhook event ID |
+| `eventType` | provider event type |
+| `lifecycleType` | normalized internal lifecycle class |
+| `paymentStatus` | paid / failed / pending |
+| `metadata` | additional provider details |
+| `createdAt` | event write timestamp |
+
+## 8.5 `membership_history`
+
+Used to record changes to user membership state over time.
+
+## 8.6 `square_webhook_events`
+
+Used for idempotency protection.
+
+### Required fields
+
+| Field | Purpose |
+|---|---|
+| `eventId` | provider webhook event ID |
+| `eventType` | provider event type |
+| `lifecycleType` | normalized lifecycle class |
+| `squareSubscriptionId` | related subscription |
+| `userId` | resolved user if found |
+| `processedAt` | timestamp |
+
+---
+
+## 9. Plan Management Workflow
+
+The admin plan manager is the first operational dependency of the Square integration.
+
+## 9.1 Admin responsibilities
+
+Admins must be able to:
+
+- create plan records in Firestore
+- set pricing and activation state
+- assign Square variation IDs
+- assign Square plan IDs
+- optionally assign location IDs
+- activate or deactivate plans
+
+## 9.2 Validation rules
+
+For all paid plans:
+
+- `billingCycle` must not be `free`
+- `squareSubscriptionPlanVariationId` must be present before plan activation
+- plan code must match a defined entitlement plan
+- amount and billing cycle must align with the intended commercial offer
+
+## 9.3 Operational expectation
+
+The `membership_plans` collection is effectively the commercial catalog the app sells from. Square mappings must be treated as mandatory production configuration, not optional admin notes.
+
+---
+
+## 10. Member Checkout Workflow
+
+The current member-facing plan selection flow is implemented in `src/app/membership/subscribe/page.tsx`.
+
+## 10.1 User journey
+
+1. Authenticated member opens the subscription page
+2. App loads active plans from Firestore
+3. Member selects a plan
+4. App retrieves the Firebase ID token
+5. App calls `/api/square/create-subscription-checkout`
+6. Backend validates the plan
+7. Backend asks Square to create a checkout/payment link
+8. Backend returns the link URL
+9. Browser redirects the member to Square-hosted checkout
+
+## 10.2 What the frontend is responsible for
+
+- displaying only active plans
+- preventing checkout if user is not authenticated
+- sending authenticated request to backend
+- redirecting to Square upon successful response
+- displaying user-friendly failure messages
+
+## 10.3 What the backend checkout route is responsible for
+
+The checkout route currently performs these functions:
+
+- verifies user authentication
+- reads the requested plan from Firestore
+- builds a normalized `MembershipPlan` object
+- validates the plan for paid Square checkout
+- resolves the Square location ID
+- records analytics events for upgrade/checkout started
+- creates a Square payment link
+- returns the hosted checkout URL
+
+---
+
+## 11. Checkout Route Design
+
+## 11.1 Route
+
+`POST /api/square/create-subscription-checkout`
+
+## 11.2 Input contract
+
+```json
+{
+  "planId": "firestore-plan-id"
+}
+```
+
+## 11.3 Authentication model
+
+The route requires a valid Firebase-authenticated user and uses the backend auth context to resolve:
+
+- `userId`
+- `role`
+
+## 11.4 Current validation performed
+
+The route currently checks:
+
+- request is authenticated
+- `planId` exists in the request body
+- plan exists in Firestore
+- plan is active
+- plan is not free
+- plan has a Square subscription variation mapping
+- location can be resolved
+
+## 11.5 Recommended enhancement: create a pre-checkout session record
+
+Before calling Square, the route should write a `checkout_sessions` record.
+
+### Recommended fields
+
+| Field | Purpose |
+|---|---|
+| `userId` | requesting user |
+| `planId` | internal plan |
+| `membershipPlanCode` | normalized plan code |
+| `squareCustomerId` | linked provider customer if known |
+| `idempotencyKey` | provider request correlation |
+| `provider` | `square` |
+| `status` | initiated / redirected / completed / failed |
+| `createdAt` | traceability |
+
+This gives support and operations a reliable trail when payment and membership state diverge.
+
+---
+
+## 12. Square Customer Strategy
+
+This is the biggest operational requirement in the full design.
+
+## 12.1 Required behavior
+
+Every paying user should have a persistent `squareCustomerId` stored on their Firestore `users/{uid}` document.
+
+## 12.2 Why it matters
+
+The webhook processor resolves the user by searching `users` on `squareCustomerId`.
+
+If the user does not have a stored Square customer ID before billing events arrive, the app cannot reliably attach the subscription lifecycle to the correct member.
+
+## 12.3 Recommended implementation
+
+Before creating checkout:
+
+1. load the user document
+2. check if `squareCustomerId` exists
+3. if not, create or fetch a Square customer
+4. write `squareCustomerId` back to the user document
+5. include that customer ID in the Square checkout payload
+
+## 12.4 Recommended helper
+
+Create a dedicated helper such as:
+
+- `src/lib/square-customers.ts`
+
+### Recommended functions
+
+- `getOrCreateSquareCustomer(user)`
+- `findSquareCustomerByEmail(email)`
+- `persistSquareCustomerId(userId, squareCustomerId)`
+
+## 12.5 Operational rule
+
+No paid subscription flow should proceed without a reliable Square customer linkage.
+
+---
+
+## 13. Payment Link / Checkout Helper
+
+The current Square API helper lives in `src/lib/square.ts`.
+
+## 13.1 Current responsibility
+
+It:
+
+- chooses the correct API base URL by environment
+- injects Square authentication headers
+- creates a hosted Square payment link
+- verifies webhook signatures
+- resolves the location ID
+
+## 13.2 Current implementation notes
+
+The helper currently builds the payment link payload with:
+
+- `idempotency_key`
+- `quick_pay`
+- `checkout_options.subscription_plan_id`
+- optional `customer_id`
+- redirect URL
+- serialized metadata in `payment_note`
+
+## 13.3 Recommended production hardening
+
+This helper should be reviewed and tightened to ensure the request payload exactly matches the production Square subscription flow you intend to use.
+
+### Specific concerns to validate
+
+- the use of `subscription_plan_id` should be confirmed against the chosen Square API flow
+- the helper currently uses a hardcoded `quick_pay.price_money.amount = 100`
+- the plan variation ID and actual commercial price model must align cleanly
+- customer association must be fully supported and verified in sandbox
+- redirect URLs must be environment-aware and correct in production
+
+## 13.4 Design requirement
+
+The helper should not contain any hardcoded commercial value that can drift away from the plan model.
+
+---
+
+## 14. Webhook Integration Design
+
+The webhook route is the operational heart of the Square integration.
+
+## 14.1 Route
+
+`POST /api/square/webhooks`
+
+## 14.2 Route responsibilities
+
+The route must:
+
+- read the raw request body
+- determine the notification URL used for signature verification
+- read `x-square-hmacsha256-signature`
+- verify the webhook signature
+- parse the event JSON
+- pass the event to the billing processor
+- return success or error response
+
+## 14.3 Webhook origin handling
+
+The current implementation resolves the notification URL from:
+
+- `x-forwarded-proto`
+- `x-forwarded-host`
+- otherwise `request.nextUrl.origin`
+
+This is important because signature validation depends on the exact notification URL.
+
+## 14.4 Security requirement
+
+A webhook must never be processed unless the signature is valid.
+
+---
+
+## 15. Webhook Event Processing Workflow
+
+The billing event processor lives in `src/lib/billing.ts`.
+
+## 15.1 Processing sequence
+
+When a webhook event arrives, the processor currently:
+
+1. extracts the event ID
+2. checks `square_webhook_events/{eventId}` for prior processing
+3. rejects duplicates
+4. extracts the provider event type
+5. extracts the subscription payload
+6. resolves the Square subscription ID
+7. resolves Square customer ID if present
+8. normalizes previous and next membership statuses
+9. determines payment status if the event is invoice or payment related
+10. finds the matching internal plan by `squareSubscriptionPlanVariationId`
+11. finds the matching internal user by `squareCustomerId`
+12. derives plan code, membership tier, and billing cycle
+13. normalizes the lifecycle type
+14. calls the lifecycle synchronizer
+15. records the event as processed in `square_webhook_events`
+
+## 15.2 Idempotency rule
+
+Event idempotency must be mandatory. Webhook providers retry. That is not a bug. That is a personality trait.
+
+---
+
+## 16. Internal Lifecycle Normalization
+
+The lifecycle synchronizer is in `src/lib/membership-lifecycle.ts`.
+
+It normalizes provider events into stable internal lifecycle classes.
+
+## 16.1 Lifecycle types used by the application
+
+| Lifecycle Type | Meaning |
+|---|---|
+| `subscription_created` | first successful active subscription state |
+| `subscription_updated` | non-terminal subscription change |
+| `subscription_canceled` | cancellation state |
+| `subscription_reactivated` | reactivation or resumed access |
+| `subscription_expired` | unpaid, deactivated, or lapsed state |
+| `payment_succeeded` | successful payment event |
+| `payment_failed` | failed payment event |
+| `promotion_granted` | non-Square access grant |
+| `promotion_expired` | non-Square grant expiry |
+
+## 16.2 Status normalization
+
+Square status values are normalized into internal membership statuses such as:
+
+- `active`
+- `pending`
+- `canceled`
+- `paused`
+- `lapsed`
+- `unpaid`
+- `past_due`
+
+## 16.3 Why this matters
+
+The rest of the app should reason over normalized internal states, not provider-specific vocabulary.
+
+---
+
+## 17. Membership Synchronization Responsibilities
+
+The lifecycle synchronizer should centralize all writes required to keep the platform internally consistent.
+
+## 17.1 Collections to update during sync
+
+| Collection | Why It Must Be Updated |
+|---|---|
+| `subscriptions` | current provider-linked subscription state |
+| `users` | current membership status and access state |
+| `billing_history` | immutable billing event ledger |
+| `membership_history` | historical access-state transition log |
+| `audit_logs` | admin/system governance trail |
+
+## 17.2 User state updates expected
+
+The user document should reflect the current platform truth after sync.
+
+### Typical fields updated
+
+- `membershipPlanCode`
+- `membershipTier`
+- `membershipStatus`
+- `billingCycle`
+- `squareSubscriptionId`
+- `squareCustomerId`
+- `squareSubscriptionStatus`
+- `lastPaymentStatus`
+- `membershipExpiresAt`
+- `updatedAt`
+
+## 17.3 Entitlement rule
+
+After lifecycle sync completes, the rest of the platform should be able to determine access solely from the user document and related subscription/grant records.
+
+---
+
+## 18. Alerts, Notifications, Analytics, and Audit
+
+The Square integration is not complete unless billing changes create operational visibility.
+
+## 18.1 Member alerts
+
+The lifecycle layer already supports member alerts such as:
+
+- payment failed
+- subscription canceled
+- subscription reactivated
+- membership expiring / expired
+
+These alerts should create:
+
+- member notification records
+- email sends
+- analytics records
+
+## 18.2 Admin alerts
+
+Admin alerts should be generated for:
+
+- failed payments
+- billing anomalies
+- webhook-processing failures
+- email delivery failures related to membership alerts
+
+## 18.3 Audit logging
+
+Membership and billing changes should create audit entries that explain:
+
+- what changed
+- which user it affected
+- what the previous and next states were
+- whether the source was provider sync, admin action, or automated system behavior
+
+## 18.4 Analytics events
+
+The integration already logs events around upgrade and checkout start. Extend this to cover:
+
+- checkout link created
+- checkout abandoned if detectable
+- subscription activated
+- subscription renewed
+- payment failed
+- subscription canceled
+
+---
+
+## 19. Entitlements and Access Control
+
+Square should never directly gate content or services. The platform entitlement model should do that.
+
+## 19.1 Access flow
+
+1. Square event arrives
+2. Firestore user and subscription state are updated
+3. entitlement logic resolves the effective tier
+4. portal features, content, and service access respond accordingly
+
+## 19.2 Current entitlement model
+
+The application already separates:
+
+- membership tier
+- billing cycle
+- plan code
+- content and service access rules
+
+This is the correct design because:
+
+- both monthly and annual Standard resolve to `standard` entitlements
+- both monthly and annual Premium resolve to `premium` entitlements
+- pricing and lifecycle visibility still remain intact
+
+---
+
+## 20. Promotion and Grant Interaction with Square
+
+The codebase already includes a promotion/access-grant model. This matters because not all elevated access will originate from Square billing.
+
+## 20.1 Promotion architecture present in the app
+
+- `promotions`
+- `membership_access_grants`
+- grant expiry processing
+- lifecycle support for `promotion_granted` and `promotion_expired`
+
+## 20.2 Interaction rule
+
+When effective membership tier is calculated, promotional grants may temporarily elevate a user’s access above their paid subscription tier.
+
+### Example
+
+A user with a paid Standard subscription and an active promotional grant should receive the higher effective tier while the grant is active.
+
+## 20.3 Design implication
+
+The billing system should not assume Square is the only source of access. It is the primary paid source, but not the only one.
+
+---
+
+## 21. Failure Modes the Integration Must Handle
+
+A production billing integration must be designed around unpleasant reality, not best-case demos.
+
+## 21.1 Missing plan mapping
+
+### Failure
+A paid plan has no Square variation ID.
+
+### Required behavior
+- checkout request fails fast
+- admin sees explicit error
+- plan cannot be sold until mapping is fixed
+
+## 21.2 Missing location configuration
+
+### Failure
+Neither plan nor environment provides a location ID.
+
+### Required behavior
+- checkout request fails
+- no attempt is made to create a provider checkout link
+
+## 21.3 Missing Square customer linkage
+
+### Failure
+Webhook arrives but no user can be found by `squareCustomerId`.
+
+### Required behavior
+- event is still recorded in history / anomaly logs
+- event is flagged for admin investigation
+- user access is not silently mutated against the wrong member
+
+## 21.4 Duplicate webhook
+
+### Failure
+Square retries an already-processed event.
+
+### Required behavior
+- event is recognized from `square_webhook_events`
+- processing exits safely
+- no duplicate writes or duplicate alerts occur
+
+## 21.5 Out-of-order webhook arrival
+
+### Failure
+A later event arrives before an earlier state transition.
+
+### Required behavior
+- lifecycle sync should use status-aware logic and timestamps where possible
+- billing history remains immutable
+- current subscription/user state should reflect the latest valid known truth
+
+## 21.6 Payment failure
+
+### Failure
+Subscription charge fails.
+
+### Required behavior
+- `lastPaymentStatus` becomes failed
+- lifecycle class becomes `payment_failed`
+- member alert is generated
+- admin alert is generated
+- entitlement behavior follows your business rule for grace period vs immediate restriction
+
+## 21.7 Signature verification failure
+
+### Failure
+Webhook signature is invalid.
+
+### Required behavior
+- request is rejected with 401
+- no event processing occurs
+
+---
+
+## 22. Security Model
+
+## 22.1 Checkout security
+
+The checkout route must remain server-side and authenticated. The client should never call Square directly with secret credentials.
+
+## 22.2 Webhook security
+
+Webhook signature verification is mandatory.
+
+## 22.3 Secret management
+
+The following must remain server-only:
+
+- `SQUARE_ACCESS_TOKEN`
+- `SQUARE_WEBHOOK_SIGNATURE_KEY`
+
+## 22.4 Trust boundaries
+
+| Component | Trust Level |
+|---|---|
+| Member browser | untrusted |
+| App backend | trusted |
+| Square webhook with verified signature | trusted provider input |
+| Firestore user state after sync | internal source of truth |
+
+---
+
+## 23. Recommended Operational Dashboard and Admin Controls
+
+For production operation, admin tooling should extend beyond plan management.
+
+## 23.1 Recommended billing admin features
+
+| Feature | Why It Is Needed |
+|---|---|
+| webhook event log viewer | diagnose failed or unmatched events |
+| subscription lookup by Square ID | support and reconciliation |
+| user lookup by Square customer ID | debugging identity linkage |
+| manual resync action | recover from missed or broken syncs |
+| failed payment queue | focused operational handling |
+| payment anomaly report | detect mapping and sync issues |
+| plan mapping health check | confirm all active paid plans are sellable |
+
+## 23.2 Recommended manual operations
+
+- reprocess stored event if safe
+- repair missing user/customer linkage
+- manually apply or remove access override with audit trail
+- view member billing history from the member administration screen
+
+---
+
+## 24. Recommended Missing Pieces to Implement
+
+The current codebase is structurally strong but not fully complete.
+
+## 24.1 Highest-priority gaps
+
+### 1. Square customer creation and persistence
+This is required for reliable webhook reconciliation.
+
+### 2. Checkout session persistence
+This is required for traceability.
+
+### 3. Review and harden the payment link helper
+The current helper should be validated end to end in sandbox and adjusted so the payload matches the exact subscription mechanism you are committing to in production.
+
+### 4. Better unmatched-event handling
+When user lookup fails, the event should still be preserved and surfaced operationally.
+
+### 5. Billing reconciliation tooling
+Essential for support and recovery.
+
+---
+
+## 25. Recommended Implementation Sequence
+
+## Phase 1: provider configuration
+1. create Square sandbox account structures
+2. create plans and plan variations
+3. register webhook endpoint
+4. collect location, plan, and variation IDs
+
+## Phase 2: app mapping
+5. seed or update `membership_plans`
+6. ensure all paid active plans have Square variation mapping
+7. validate admin plan manager behavior
+
+## Phase 3: customer linkage
+8. implement `getOrCreateSquareCustomer()`
+9. persist `squareCustomerId` on user records
+10. pass customer ID into checkout
+
+## Phase 4: checkout hardening
+11. add `checkout_sessions`
+12. validate redirect flow
+13. ensure post-checkout UX handles success / cancel / pending states
+
+## Phase 5: webhook and lifecycle validation
+14. verify signature behavior in each environment
+15. test subscription create / update / cancel / fail paths
+16. verify user, subscription, history, alerts, analytics, and audit writes
+
+## Phase 6: operations tooling
+17. add event logs and reconciliation tools
+18. add failed-payment operations support
+19. add anomaly surfacing for unmatched events
+
+---
+
+## 26. End-to-End Example: Successful Subscription Purchase
+
+1. user logs in through Firebase Auth
+2. user opens subscription page
+3. app loads active paid plans from Firestore
+4. user chooses `standard_monthly`
+5. frontend sends authenticated request to `/api/square/create-subscription-checkout`
+6. backend validates the plan and resolves location
+7. backend creates or retrieves `squareCustomerId`
+8. backend writes `checkout_sessions` record
+9. backend asks Square to create hosted checkout
+10. user is redirected to Square
+11. user completes purchase
+12. Square creates/updates subscription state
+13. Square sends webhook to `/api/square/webhooks`
+14. app verifies signature
+15. app checks idempotency
+16. app resolves plan and user
+17. app normalizes lifecycle to `subscription_created` or `payment_succeeded`
+18. app updates:
+    - `subscriptions`
+    - `users`
+    - `billing_history`
+    - `membership_history`
+19. app generates analytics and audit records
+20. app sends confirmation/notification flows as configured
+21. entitlement checks now treat the user as Standard
+
+---
+
+## 27. End-to-End Example: Failed Renewal Payment
+
+1. Square attempts recurring renewal payment
+2. payment fails
+3. Square sends payment-related webhook
+4. app verifies signature and checks idempotency
+5. app resolves user and subscription
+6. lifecycle normalizes to `payment_failed`
+7. user document updates `lastPaymentStatus = failed`
+8. billing history records the failure
+9. membership history records state change if applicable
+10. member receives payment-failed alert
+11. admin receives operational alert
+12. entitlement behavior follows your configured rule for grace period or suspension
+
+---
+
+## 28. Testing and Validation Plan
+
+## 28.1 Sandbox test cases
+
+| Test Case | Expected Result |
+|---|---|
+| create Standard Monthly checkout | valid checkout URL returned |
+| create Premium Annual checkout | valid checkout URL returned |
+| try free plan checkout | rejected |
+| try inactive plan checkout | rejected |
+| try unmapped paid plan checkout | rejected |
+| successful subscription purchase | user becomes active at correct tier |
+| renewal payment success | payment history updated |
+| renewal payment failure | alerts and failed payment state recorded |
+| cancellation | user status changes to canceled |
+| duplicate webhook | ignored safely |
+| missing signature | rejected |
+| missing customer mapping | event captured for admin review |
+
+## 28.2 Data integrity checks
+
+After each scenario, verify the expected values in:
+
+- `users`
+- `subscriptions`
+- `billing_history`
+- `membership_history`
+- `square_webhook_events`
+- notifications / alerts logs
+- analytics / audit logs
+
+---
+
+## 29. Go-Live Checklist
+
+| Item | Required |
+|---|---|
+| Square production plans created | yes |
+| Square production variation IDs mapped in Firestore | yes |
+| production webhook configured | yes |
+| signature verification tested | yes |
+| `squareCustomerId` creation flow implemented | yes |
+| paid plans blocked without mapping | yes |
+| checkout helper validated against live intended flow | yes |
+| billing history writing verified | yes |
+| membership sync verified | yes |
+| admin failed-payment visibility available | strongly recommended |
+| unmatched webhook handling available | strongly recommended |
+| alert and email flow verified | yes |
+
+---
+
+## 30. Final Operating Model
+
+When implemented correctly, Square should function in this application as follows:
+
+- **Firestore plan records** define what can be sold
+- **member checkout UI** initiates a purchase request
+- **backend checkout logic** creates secure Square checkout links
+- **Square** collects payment and manages recurring billing
+- **Square webhooks** report lifecycle changes back to the app
+- **billing and lifecycle sync logic** converts provider events into internal state
+- **Firestore** becomes the authoritative operational record of membership
+- **entitlement logic** grants or removes access across the platform
+- **notifications, analytics, and audit** provide visibility and governance
+
+That is the complete intended model.
+
+Square is not just a payment button here. It is the external billing engine in a broader membership operating system, and it only works properly when identity, plan mapping, lifecycle sync, alerts, audit, and access control are all wired together as one pipeline.
+
+
