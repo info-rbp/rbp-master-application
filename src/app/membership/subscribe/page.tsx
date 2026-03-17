@@ -1,3 +1,5 @@
+"use client";
+
 
 import { MarketingHeader } from '@/components/marketing-header';
 import { MarketingFooter } from '@/components/marketing-footer';
