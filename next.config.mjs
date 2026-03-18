@@ -4,9 +4,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -38,7 +35,10 @@ const nextConfig = {
       },
     ]
   },
-  allowedDevOrigins: ["https://9000-firebase-studio-1773123432145.cluster-a6zx3cwnb5hnuwbgyxmofxpkfe.cloudworkstations.dev"],
+  allowedDevOrigins: [
+    "9000-firebase-studio-1773123432145.cluster-a6zx3cwnb5hnuwbgyxmofxpkfe.cloudworkstations.dev",
+    "6000-firebase-studio-1773123432145.cluster-a6zx3cwnb5hnuwbgyxmofxpkfe.cloudworkstations.dev",
+  ],
 };
 
 export default nextConfig;
