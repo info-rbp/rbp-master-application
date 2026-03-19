@@ -1,6 +1,6 @@
 'use server';
 
-import '@/lib/server-only';
+import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 import {
