@@ -1,4 +1,6 @@
 import * as admin from 'firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 function normalizePrivateKey(value: string): string {
   const trimmed = value.trim();
@@ -51,13 +53,20 @@ export function getAdminApp(): admin.app.App {
   });
 }
 
-export function getFirestore(): FirebaseFirestore.Firestore {
-  return getAdminApp().firestore();
-}
-
-export const firestore: FirebaseFirestore.Firestore = new Proxy({} as FirebaseFirestore.Firestore, {
+export const db = new Proxy({} as FirebaseFirestore.Firestore, {
   get(_target, prop, _receiver) {
-    const instance = getFirestore() as unknown as Record<PropertyKey, unknown>;
+    const instance = getFirestore(getAdminApp()) as unknown as Record<PropertyKey, unknown>;
+    const value = instance[prop];
+
+    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(instance) : value;
+  },
+});
+
+export const firestore = db;
+
+export const auth = new Proxy({} as ReturnType<typeof getAuth>, {
+  get(_target, prop, _receiver) {
+    const instance = getAuth(getAdminApp()) as unknown as Record<PropertyKey, unknown>;
     const value = instance[prop];
 
     return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(instance) : value;

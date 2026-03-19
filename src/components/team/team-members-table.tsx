@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { TeamMember } from '@/lib/team';
+import type { TeamMember } from '@/lib/team';
 import { Button } from '@/components/ui/button';
 import { removeMemberAction } from '@/app/settings/team/actions';
 
