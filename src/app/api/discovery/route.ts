@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllDiscoveryItems, DiscoveryItem } from '@/lib/discovery';
+import { getPublicDiscoveryItems, type DiscoveryItem } from '@/lib/discovery';
 import { z } from 'zod';
 
 const searchParamsSchema = z.object({
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
     const { query, contentType, category } = parsedParams.data;
 
-    const allItems = await getAllDiscoveryItems();
+    const allItems = await getPublicDiscoveryItems();
 
     let filteredItems = allItems;
 

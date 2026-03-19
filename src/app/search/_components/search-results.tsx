@@ -1,5 +1,5 @@
 
-import { DiscoveryItem } from "@/lib/definitions";
+import type { DiscoveryItem } from "@/lib/discovery";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface SearchResultsProps {
