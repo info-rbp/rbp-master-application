@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { awardBadge } from '@/lib/gamification/badges';
+import { completeOnboardingAction } from '@/app/portal/actions';
 
 const checklistItems = [
     { id: 'profile', label: 'Complete your profile' },
@@ -25,7 +25,7 @@ export function OnboardingChecklist({ userId }: { userId: string }) {
 
     const handleCompleteOnboarding = async () => {
         if (completedItems.length === checklistItems.length) {
-            const success = await awardBadge(userId, 'onboarding_complete');
+            const success = await completeOnboardingAction(userId);
             if (success) {
                 toast({ title: 'Onboarding Complete', description: 'You have earned a new badge!' });
             } else {

@@ -1,32 +1,39 @@
-
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { getAuth } from "firebase-admin/auth";
-import { SignJWT, importPKCS8 } from "jose";
-import { getAdminApp, firestore } from "@/firebase/server";
-import { getEffectiveMembershipTier, canAccessTool } from "@/lib/entitlements";
-import { getMembershipAccessGrantsForUser } from "@/lib/data";
-import { getToolAdapter } from "@/lib/tool-adapters";
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { getAuth } from 'firebase-admin/auth';
+import { SignJWT, importPKCS8 } from 'jose';
+import { getAdminApp, firestore } from '@/firebase/server';
+import { getEffectiveMembershipTier, canAccessTool } from '@/lib/entitlements';
+import { getMembershipAccessGrantsForUser } from '@/lib/data';
+import { getToolAdapter } from '@/lib/tool-adapters';
 
 async function ensureToolAccount(userId: string, toolKey: string) {
-    const adapter = getToolAdapter(toolKey);
-    if (!adapter) {
-        throw new Error(`No adapter found for tool: ${toolKey}`);
-    }
-    const tool = (await firestore.collection('tools_catalog').doc(toolKey).get()).data();
-    if (!tool) {
-        throw new Error(`Tool not found in catalog: ${toolKey}`);
-    }
-    return await adapter.ensureAccount(userId, tool as any);
+  const adapter = getToolAdapter(toolKey);
+  if (!adapter) {
+    throw new Error(`No adapter found for tool: ${toolKey}`);
+  }
+  const tool = (await firestore.collection('tools_catalog').doc(toolKey).get()).data();
+  if (!tool) {
+    throw new Error(`Tool not found in catalog: ${toolKey}`);
+  }
+  return adapter.ensureAccount(userId, tool as any);
 }
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: { toolKey: string } }) {
-  const { toolKey } = params;
-  const sessionCookie = (cookies()).get("rbp_session")?.value;
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ toolKey: string }> }) {
+  const { toolKey } = await params;
+  const sessionCookie = (await cookies()).get('rbp_session')?.value;
   if (!sessionCookie) {
-    return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+    return NextResponse.json({ error: 'not_authenticated' }, { status: 401 });
+  }
+
+  const privateKeyPem = process.env.TOOL_LAUNCH_PRIVATE_KEY;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!privateKeyPem || !appUrl) {
+    return NextResponse.json(
+      { error: 'Tool launch is not configured on this deployment.' },
+      { status: 500 },
+    );
   }
 
   const auth = getAuth(getAdminApp());
@@ -34,13 +41,13 @@ export async function POST(
   const uid = decoded.uid;
 
   const [userSnap, toolSnap, grants] = await Promise.all([
-    firestore.collection("users").doc(uid).get(),
-    firestore.collection("tools_catalog").doc(toolKey).get(),
+    firestore.collection('users').doc(uid).get(),
+    firestore.collection('tools_catalog').doc(toolKey).get(),
     getMembershipAccessGrantsForUser(uid),
   ]);
 
   if (!userSnap.exists || !toolSnap.exists) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const user = userSnap.data()!;
@@ -54,10 +61,10 @@ export async function POST(
   });
 
   const access = canAccessTool({
-      currentTier,
-      requiredTier: tool.requiredTier,
-      isAuthenticated: true,
-      accountStatus: user.accountStatus,
+    currentTier,
+    requiredTier: tool.requiredTier,
+    isAuthenticated: true,
+    accountStatus: user.accountStatus,
   });
 
   if (!access.allowed) {
@@ -65,9 +72,7 @@ export async function POST(
   }
 
   const account = await ensureToolAccount(uid, toolKey);
-
-  const privateKeyPem = process.env.TOOL_LAUNCH_PRIVATE_KEY!;
-  const privateKey = await importPKCS8(privateKeyPem, "RS256");
+  const privateKey = await importPKCS8(privateKeyPem, 'RS256');
 
   const token = await new SignJWT({
     email: user.email,
@@ -79,24 +84,24 @@ export async function POST(
     googleBrokerAllowed: true,
     googleScopes: tool.googleBrokerFeatures ?? [],
   })
-    .setProtectedHeader({ alg: "RS256", kid: "launch-key-1" })
-    .setIssuer(process.env.NEXT_PUBLIC_APP_URL)
+    .setProtectedHeader({ alg: 'RS256', kid: 'launch-key-1' })
+    .setIssuer(appUrl)
     .setAudience(`tool:${toolKey}`)
     .setSubject(uid)
     .setJti(crypto.randomUUID())
     .setIssuedAt()
-    .setExpirationTime("60s")
+    .setExpirationTime('60s')
     .sign(privateKey);
 
-  await firestore.collection("tool_launch_audit").add({
+  await firestore.collection('tool_launch_audit').add({
     userId: uid,
     toolKey,
     tenantId: account.tenantId,
-    result: "success",
+    result: 'success',
     createdAt: new Date().toISOString(),
   });
 
   return NextResponse.json({
-    redirectUrl: `${tool.baseUrl}/auth/launch?token=${encodeURIComponent(token)}`
+    redirectUrl: `${tool.baseUrl}/auth/launch?token=${encodeURIComponent(token)}`,
   });
 }
