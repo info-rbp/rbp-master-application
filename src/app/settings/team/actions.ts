@@ -1,7 +1,8 @@
 'use server';
 
 import { z } from 'zod';
-import { getUser } from '@/lib/auth';
+import { firestore } from '@/firebase/server';
+import { getServerAuthContext } from '@/lib/server-auth';
 import { inviteTeamMember, removeTeamMember } from '@/lib/team';
 
 const inviteSchema = z.object({
@@ -9,9 +10,23 @@ const inviteSchema = z.object({
     role: z.enum(['admin', 'member']),
 });
 
+async function getCurrentCompanyId() {
+    const auth = await getServerAuthContext();
+    if (!auth) return null;
+
+    const userDoc = await firestore.collection('users').doc(auth.userId).get();
+    if (!userDoc.exists) return null;
+
+    const userData = userDoc.data() as { companyId?: string; roles?: Record<string, string> } | undefined;
+    if (userData?.companyId) return userData.companyId;
+
+    const companyIds = Object.keys(userData?.roles ?? {});
+    return companyIds[0] ?? null;
+}
+
 export async function inviteMemberAction(formData: FormData) {
-    const user = await getUser();
-    if (!user) {
+    const companyId = await getCurrentCompanyId();
+    if (!companyId) {
         return { success: false, error: 'Not authenticated' };
     }
 
@@ -30,23 +45,23 @@ export async function inviteMemberAction(formData: FormData) {
     const { email, role } = validatedFields.data;
 
     try {
-        await inviteTeamMember(user.companyId, email, role);
+        await inviteTeamMember(companyId, email, role);
         return { success: true };
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to invite member' };
     }
 }
 
 export async function removeMemberAction(memberId: string) {
-    const user = await getUser();
-    if (!user) {
+    const companyId = await getCurrentCompanyId();
+    if (!companyId) {
         return { success: false, error: 'Not authenticated' };
     }
 
     try {
-        await removeTeamMember(user.companyId, memberId);
+        await removeTeamMember(companyId, memberId);
         return { success: true };
     } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to remove member' };
     }
 }
