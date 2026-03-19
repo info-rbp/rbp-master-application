@@ -1,3 +1,4 @@
+import 'server-only';
 
 import { flow } from 'genkit';
 import { ai } from './genkit';
