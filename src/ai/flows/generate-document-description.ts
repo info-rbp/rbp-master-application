@@ -1,4 +1,6 @@
 'use server';
+
+import 'server-only';
 /**
  * @fileOverview A Genkit flow for generating concise and informative descriptions for documents.
  *
