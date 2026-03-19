@@ -1,5 +1,7 @@
 'use server';
 
+import '@/lib/server-only';
+
 import { revalidatePath } from 'next/cache';
 import {
   generateDocumentDescription as genDescription,

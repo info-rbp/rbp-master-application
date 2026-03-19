@@ -1,5 +1,7 @@
+import '@/lib/server-only';
+
 import { NextRequest, NextResponse } from 'next/server';
-import { cert, getApps, initializeApp, applicationDefault } from 'firebase-admin/app';
+import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getStorage } from 'firebase-admin/storage';
 
 function ensureStorageAdminApp() {
@@ -30,6 +32,10 @@ export async function GET(req: NextRequest) {
   const filePath = searchParams.get('file');
   if (!filePath) {
     return new NextResponse('File path is required', { status: 400 });
+  }
+
+  if (!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) {
+    return NextResponse.json({ error: 'storage_bucket_not_configured' }, { status: 503 });
   }
 
   try {
