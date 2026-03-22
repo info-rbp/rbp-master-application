@@ -1,0 +1,3 @@
+[submodule "libs/rbp-marble"]
+	path = libs/rbp-marble
+	url = https://github.com/info-rbp/rbp-marble.git
