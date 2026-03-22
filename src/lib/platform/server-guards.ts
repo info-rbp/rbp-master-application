@@ -1,31 +1,16 @@
 import { redirect } from 'next/navigation';
-import { createNavigationContextFromSession } from './navigation-context';
-import { canAccessRoute, getDefaultLandingRoute, getRouteDefinition } from './route-access';
 import type { PlatformSessionResponse } from './types';
 import { resolveSessionResponse } from './session';
+import { getRouteAccess } from './route-access';
 
 export function evaluateRouteAuthorization(pathname: string, response: PlatformSessionResponse) {
-  const context = createNavigationContextFromSession(response.authenticated ? response.session : null, pathname);
-  const routeDefinition = getRouteDefinition(pathname);
-  const access = canAccessRoute(routeDefinition, context);
-
-  if (access.allowed) {
-    return { allowed: true as const, reason: 'authorized' as const, routeDefinition };
+  const access = getRouteAccess(pathname);
+  if (access.kind === 'public') return { allowed: true as const, reason: 'public' as const };
+  if (!response.authenticated) return { allowed: false as const, reason: 'unauthenticated' as const, redirectTo: access.loginPath ?? '/login' };
+  if ((access.kind === 'module' || access.kind === 'admin') && !response.session.enabledModules.includes(access.moduleKey!)) {
+    return { allowed: false as const, reason: 'access_denied' as const, redirectTo: '/access-denied' };
   }
-
-  if (access.reasonCodes.includes('unauthenticated')) {
-    return { allowed: false as const, reason: 'unauthenticated' as const, redirectTo: `/login?next=${pathname}`, routeDefinition };
-  }
-
-  if (!routeDefinition) {
-    return { allowed: false as const, reason: 'access_denied' as const, redirectTo: '/access-denied', routeDefinition };
-  }
-
-  if (routeDefinition.accessDeniedBehavior === 'redirect') {
-    return { allowed: false as const, reason: 'redirect' as const, redirectTo: getDefaultLandingRoute(context), routeDefinition };
-  }
-
-  return { allowed: false as const, reason: 'access_denied' as const, redirectTo: '/access-denied', routeDefinition };
+  return { allowed: true as const, reason: 'authorized' as const };
 }
 
 export async function requireSessionForPath(pathname: string) {

@@ -1,59 +1,23 @@
-import { getModuleByKey } from './module-registry';
-import { evaluateModuleAccess, hasModuleAccess } from './modules';
-import { canPermission } from './permissions';
-import { getAllRouteDefinitions, getRouteDefinition, listRoutesForModule } from './route-definitions';
-import type { NavigationContext, RouteDefinition } from './types';
+import type { ModuleDefinition } from './types';
 
-function hasTenantCapability(context: NavigationContext, capability: string) {
-  return Boolean(context.activeTenant?.settings?.[capability] || context.activeTenant?.securityPolicy?.[capability]);
+export type RouteAccess = {
+  kind: 'public' | 'authenticated' | 'module' | 'admin';
+  moduleKey?: ModuleDefinition['key'];
+  loginPath?: string;
+};
+
+const routeRules: Array<{ prefix: string; access: RouteAccess }> = [
+  { prefix: '/admin', access: { kind: 'admin', moduleKey: 'admin', loginPath: '/login?next=/admin' } },
+  { prefix: '/portal/support', access: { kind: 'module', moduleKey: 'support', loginPath: '/login?next=/portal/support' } },
+  { prefix: '/portal', access: { kind: 'authenticated', loginPath: '/login?next=/portal' } },
+  { prefix: '/settings', access: { kind: 'module', moduleKey: 'settings', loginPath: '/login?next=/settings/profile' } },
+  { prefix: '/dashboard', access: { kind: 'module', moduleKey: 'dashboard', loginPath: '/login?next=/dashboard' } },
+  { prefix: '/account', access: { kind: 'authenticated', loginPath: '/login?next=/account' } },
+  { prefix: '/forum', access: { kind: 'authenticated', loginPath: '/login?next=/forum' } },
+  { prefix: '/member-dashboard', access: { kind: 'authenticated', loginPath: '/login?next=/member-dashboard' } },
+];
+
+export function getRouteAccess(pathname: string): RouteAccess {
+  const match = routeRules.find((rule) => pathname.startsWith(rule.prefix));
+  return match?.access ?? { kind: 'public' };
 }
-
-export function canAccessRoute(routeDefinition: RouteDefinition | undefined, context: NavigationContext) {
-  if (!routeDefinition || !routeDefinition.isEnabled) {
-    return { allowed: false as const, reasonCodes: ['route_not_found'], routeDefinition };
-  }
-
-  const requiresAuth = routeDefinition.routeType !== 'public' && !routeDefinition.allowAnonymous;
-  if (requiresAuth && !context.session) {
-    return { allowed: false as const, reasonCodes: ['unauthenticated'], routeDefinition };
-  }
-
-  const requiredModulesMet = routeDefinition.requiredModules.every((moduleKey) => hasModuleAccess(context, moduleKey));
-  const requiredPermissionsMet = routeDefinition.requiredPermissions.every((permission) =>
-    canPermission(context.effectivePermissions, permission.resource, permission.action),
-  );
-  const featureFlagsMet = routeDefinition.requiredFeatureFlags.every((flag) => Boolean(context.featureFlags[flag]));
-  const tenantCapabilitiesMet = routeDefinition.requiredTenantCapabilities.every((capability) => hasTenantCapability(context, capability));
-  const moduleAccess = evaluateModuleAccess(getModuleByKey(routeDefinition.moduleKey), context);
-
-  const allowed = moduleAccess.accessible && requiredModulesMet && requiredPermissionsMet && featureFlagsMet && tenantCapabilitiesMet;
-  const reasonCodes = [
-    !moduleAccess.exists ? 'module_not_found' : null,
-    !moduleAccess.accessible ? moduleAccess.reasonCodes[0] ?? 'module_inaccessible' : null,
-    !requiredModulesMet ? 'required_module_missing' : null,
-    !requiredPermissionsMet ? 'missing_permission' : null,
-    !featureFlagsMet ? 'missing_feature_flag' : null,
-    !tenantCapabilitiesMet ? 'missing_tenant_capability' : null,
-  ].filter((value): value is string => Boolean(value));
-
-  return { allowed, reasonCodes, routeDefinition, moduleAccess };
-}
-
-export function getDefaultLandingRoute(context: NavigationContext) {
-  const preferred = getAllRouteDefinitions().find((routeDefinition) => {
-    if (!routeDefinition.isDefaultLanding) return false;
-    if (context.session && routeDefinition.routeType === 'public') return false;
-    return canAccessRoute(routeDefinition, context).allowed;
-  });
-
-  return preferred?.path ?? '/';
-}
-
-export function getVisibleRoutesForModule(moduleKey: RouteDefinition['moduleKey'], context: NavigationContext) {
-  return listRoutesForModule(moduleKey)
-    .filter((routeDefinition) => !routeDefinition.hideFromNav)
-    .filter((routeDefinition) => canAccessRoute(routeDefinition, context).allowed)
-    .sort((a, b) => a.order - b.order);
-}
-
-export { getAllRouteDefinitions, getRouteDefinition };

@@ -1,4 +1,4 @@
-import type { AuthenticatedPrincipal, Role, RoleAssignment, Tenant, UserIdentity, Workspace } from './types';
+import type { AuthenticatedPrincipal, ModuleDefinition, Role, RoleAssignment, Tenant, UserIdentity, Workspace } from './types';
 
 const now = '2026-03-22T10:00:00.000Z';
 
@@ -139,6 +139,20 @@ export const PLATFORM_ROLES: Role[] = [
   },
 ];
 
+export const PLATFORM_MODULES: ModuleDefinition[] = [
+  { key: 'dashboard', name: 'Dashboard', description: 'Platform home and operational summary.', category: 'core', route: '/dashboard', icon: 'LayoutDashboard', requiredPermissions: [{ resource: 'dashboard', action: 'read' }], requiredFeatureFlags: [], isHidden: false, isInternalOnly: false, isEnabledByDefault: true },
+  { key: 'customers', name: 'Customers', description: 'Customer relationship and account views.', category: 'operations', route: '/admin/crm', icon: 'Users', requiredPermissions: [{ resource: 'customer', action: 'read' }], requiredFeatureFlags: [], isHidden: false, isInternalOnly: true, isEnabledByDefault: true },
+  { key: 'applications', name: 'Applications', description: 'Application intake and workflow.', category: 'operations', route: '/admin/services/discovery-calls', icon: 'FileText', requiredPermissions: [{ resource: 'application', action: 'read' }], requiredFeatureFlags: [], isHidden: false, isInternalOnly: true, isEnabledByDefault: true },
+  { key: 'loans', name: 'Loans', description: 'Account/facility and lending servicing.', category: 'operations', route: '/admin/services/customisation-requests', icon: 'BadgeDollarSign', requiredPermissions: [{ resource: 'loan', action: 'read' }], requiredFeatureFlags: ['loan_variations'], isHidden: false, isInternalOnly: true, isEnabledByDefault: false },
+  { key: 'documents', name: 'Documents', description: 'Document access and lifecycle management.', category: 'service', route: '/portal/saved', icon: 'FileText', requiredPermissions: [{ resource: 'document', action: 'read' }], requiredFeatureFlags: [], isHidden: false, isInternalOnly: false, isEnabledByDefault: true },
+  { key: 'finance', name: 'Finance', description: 'Billing and finance operations.', category: 'operations', route: '/admin/membership/subscription-and-billing-oversight', icon: 'BadgeDollarSign', requiredPermissions: [{ resource: 'finance', action: 'read' }], requiredFeatureFlags: [], isHidden: false, isInternalOnly: true, isEnabledByDefault: true },
+  { key: 'support', name: 'Support', description: 'Support cases, tickets, and follow-up.', category: 'service', route: '/portal/support', icon: 'LifeBuoy', requiredPermissions: [{ resource: 'support_ticket', action: 'read' }], requiredFeatureFlags: [], isHidden: false, isInternalOnly: false, isEnabledByDefault: true },
+  { key: 'analytics', name: 'Analytics', description: 'Dashboards and reporting.', category: 'intelligence', route: '/admin/analytics', icon: 'LineChart', requiredPermissions: [{ resource: 'analytics', action: 'read' }], requiredFeatureFlags: ['analytics_embeds'], isHidden: false, isInternalOnly: false, isEnabledByDefault: true },
+  { key: 'knowledge', name: 'Knowledge', description: 'Knowledge center and operational documentation.', category: 'service', route: '/knowledge-center', icon: 'BookOpen', requiredPermissions: [{ resource: 'knowledge', action: 'read' }], requiredFeatureFlags: [], isHidden: false, isInternalOnly: false, isEnabledByDefault: true },
+  { key: 'settings', name: 'Settings', description: 'Profile, security, and tenant settings.', category: 'system', route: '/settings/profile', icon: 'Settings', requiredPermissions: [{ resource: 'settings', action: 'read' }], requiredFeatureFlags: [], isHidden: false, isInternalOnly: false, isEnabledByDefault: true },
+  { key: 'admin', name: 'Admin', description: 'Internal administrative console.', category: 'system', route: '/admin', icon: 'ShieldCheck', requiredPermissions: [{ resource: 'admin_user', action: 'read' }], requiredFeatureFlags: ['admin_console'], isHidden: false, isInternalOnly: true, isEnabledByDefault: true },
+];
+
 const seededUsers: Array<{ user: UserIdentity; roleAssignments: RoleAssignment[]; tenantIds: string[]; groups?: string[] }> = [
   {
     user: {
@@ -193,6 +207,9 @@ export function listPlatformRoles() {
   return PLATFORM_ROLES;
 }
 
+export function listModuleDefinitions() {
+  return PLATFORM_MODULES;
+}
 
 export function getTenantById(tenantId: string) {
   return PLATFORM_TENANTS.find((tenant) => tenant.id === tenantId);

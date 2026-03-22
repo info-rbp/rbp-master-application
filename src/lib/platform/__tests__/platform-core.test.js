@@ -2,14 +2,10 @@ require('ts-node/register/transpile-only');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { resolveEffectivePermissions } = require('../../../../.tmp-platform-tests/permissions');
-const { evaluateModuleAccess, evaluateEnabledModules } = require('../../../../.tmp-platform-tests/modules');
+const { evaluateEnabledModules, buildNavigation } = require('../../../../.tmp-platform-tests/modules');
 const { getTenantById, getWorkspacesForTenant } = require('../../../../.tmp-platform-tests/bootstrap');
 const { applyTenantSwitch, createPersistedSession, toSessionResponse } = require('../../../../.tmp-platform-tests/session');
 const { evaluateRouteAuthorization } = require('../../../../.tmp-platform-tests/server-guards');
-const { createNavigationContextFromSession } = require('../../../../.tmp-platform-tests/navigation-context');
-const { buildAdminNavigation, buildPublicNavigation, buildWorkspaceNavigation } = require('../../../../.tmp-platform-tests/navigation-builder');
-const { getModuleByKey, getAllModules } = require('../../../../.tmp-platform-tests/module-registry');
-const { canAccessRoute, getDefaultLandingRoute, getRouteDefinition } = require('../../../../.tmp-platform-tests/route-access');
 
 const principal = {
   user: {
@@ -33,11 +29,6 @@ const principal = {
   mfaVerified: true,
   lastAuthenticatedAt: '2026-03-22T10:00:00.000Z',
 };
-
-test('registry loading and lookup work deterministically', () => {
-  assert.ok(getAllModules().length >= 12);
-  assert.equal(getModuleByKey('dashboard').defaultLandingRoute, '/dashboard');
-});
 
 test('session response returns unauthenticated state correctly', async () => {
   const response = await toSessionResponse(null);
@@ -76,82 +67,48 @@ test('permission resolution combines multiple roles', () => {
   assert.ok(permissions.some((permission) => permission.resource === 'dashboard' && permission.actions.includes('read')));
 });
 
-test('module access evaluation respects disabled tenant modules and feature flags', () => {
+test('module access evaluation respects tenant modules and feature flags', () => {
+  const tenant = getTenantById('ten_acme_customer');
+  assert.ok(tenant);
+  const permissions = resolveEffectivePermissions({
+    roleAssignments: principal.roleAssignments,
+    activeTenantId: 'ten_acme_customer',
+    activeWorkspaceId: 'wrk_acme_service',
+  });
+  const modules = evaluateEnabledModules({
+    tenant,
+    workspace: getWorkspacesForTenant('ten_acme_customer')[0],
+    permissions,
+    internalUser: false,
+  });
+  assert.ok(modules.some((module) => module.key === 'support'));
+  assert.ok(!modules.some((module) => module.key === 'analytics'));
+  assert.ok(!modules.some((module) => module.key === 'admin'));
+});
+
+test('navigation generation mirrors enabled modules', () => {
   const tenant = getTenantById('ten_acme_customer');
   const permissions = resolveEffectivePermissions({
     roleAssignments: principal.roleAssignments,
     activeTenantId: 'ten_acme_customer',
     activeWorkspaceId: 'wrk_acme_service',
   });
-  const context = {
-    session: null,
-    activeTenant: tenant,
-    activeWorkspace: getWorkspacesForTenant('ten_acme_customer')[0],
-    effectivePermissions: permissions,
-    enabledModules: tenant.enabledModules,
-    featureFlags: tenant.featureFlags,
-    internalUser: false,
-  };
-  const analytics = evaluateModuleAccess(getModuleByKey('analytics'), context);
-  const admin = evaluateModuleAccess(getModuleByKey('admin'), context);
-  assert.equal(analytics.visible, false);
-  assert.ok(analytics.reasonCodes.includes('missing_feature_flag'));
-  assert.equal(admin.visible, false);
-  assert.ok(admin.reasonCodes.includes('internal_only'));
+  const modules = evaluateEnabledModules({ tenant, workspace: getWorkspacesForTenant('ten_acme_customer')[0], permissions, internalUser: false });
+  const navigation = buildNavigation(modules);
+  assert.ok(navigation.every((item) => item.visible));
+  assert.ok(navigation.some((item) => item.moduleKey === 'support'));
 });
 
-test('navigation generation differs for anonymous, workspace, and admin users', async () => {
-  const anonymousContext = createNavigationContextFromSession(null, '/');
-  assert.ok(buildPublicNavigation(anonymousContext).some((item) => item.moduleKey === 'services'));
-
-  const customerPersisted = createPersistedSession({
-    principal: {
-      ...principal,
-      availableTenantIds: ['ten_acme_customer'],
-      roleAssignments: [{ roleId: 'role_customer_user', tenantId: 'ten_acme_customer', workspaceId: 'wrk_acme_service', assignedAt: '2026-03-22T10:00:00.000Z' }],
-      defaultTenantId: 'ten_acme_customer',
-    },
-    auth: { provider: 'local' },
-    activeTenantId: 'ten_acme_customer',
-    activeWorkspaceId: 'wrk_acme_service',
-  });
-  const customerSessionResponse = await toSessionResponse(customerPersisted);
-  const customerContext = createNavigationContextFromSession(customerSessionResponse.session, '/portal');
-  assert.ok(buildWorkspaceNavigation(customerContext).some((item) => item.moduleKey === 'support'));
-  assert.ok(!buildWorkspaceNavigation(customerContext).some((item) => item.moduleKey === 'admin'));
-
-  const adminSessionResponse = await toSessionResponse(createPersistedSession({ principal, auth: { provider: 'local' } }));
-  const adminContext = createNavigationContextFromSession(adminSessionResponse.session, '/admin');
-  assert.ok(buildAdminNavigation(adminContext).some((item) => item.moduleKey === 'admin'));
+test('protected route behavior redirects unauthenticated users', () => {
+  const decision = evaluateRouteAuthorization('/admin', { authenticated: false });
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.redirectTo, '/login?next=/admin');
 });
 
-test('route access checks use route metadata and module access together', async () => {
-  const sessionResponse = await toSessionResponse(createPersistedSession({ principal, auth: { provider: 'local' } }));
-  const context = createNavigationContextFromSession(sessionResponse.session, '/admin/analytics');
-  const routeAccess = canAccessRoute(getRouteDefinition('/admin/analytics'), context);
-  assert.equal(routeAccess.allowed, true);
-});
-
-test('permission-aware route protection blocks inaccessible direct admin routes', async () => {
-  const customerPersisted = createPersistedSession({
-    principal: {
-      ...principal,
-      availableTenantIds: ['ten_acme_customer'],
-      roleAssignments: [{ roleId: 'role_customer_user', tenantId: 'ten_acme_customer', workspaceId: 'wrk_acme_service', assignedAt: '2026-03-22T10:00:00.000Z' }],
-      defaultTenantId: 'ten_acme_customer',
-    },
-    auth: { provider: 'local' },
-    activeTenantId: 'ten_acme_customer',
-    activeWorkspaceId: 'wrk_acme_service',
-  });
-  const response = await toSessionResponse(customerPersisted);
+test('access denied behavior triggers when module is unavailable', async () => {
+  const persisted = createPersistedSession({ principal, auth: { provider: 'local' }, activeTenantId: 'ten_acme_customer', activeWorkspaceId: 'wrk_acme_service' });
+  const response = await toSessionResponse(persisted);
   const decision = evaluateRouteAuthorization('/admin', response);
   assert.equal(decision.allowed, false);
   assert.equal(decision.redirectTo, '/access-denied');
-});
-
-test('default landing route resolves from accessible route metadata', async () => {
-  const response = await toSessionResponse(createPersistedSession({ principal, auth: { provider: 'local' } }));
-  const context = createNavigationContextFromSession(response.session, '/');
-  assert.equal(getDefaultLandingRoute(context), '/dashboard');
 });

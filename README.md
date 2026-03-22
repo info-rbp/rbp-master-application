@@ -95,15 +95,6 @@ Canonical auth/session/tenant/platform types live in:
 - `src/components/platform/auth-guard.tsx` – client-side access helper.
 - `src/app/admin/components/sidebar.tsx` – session-aware admin nav and logout.
 
-
-## Step 3 navigation registry
-
-The frontend navigation is now driven from the platform registry and route metadata instead of hardcoded layout arrays. See `docs/module-registry-navigation.md` for how modules, routes, access evaluation, and navigation builders work together.
-
-## Step 4 platform adapters
-
-The platform now includes a dedicated integration layer for Odoo, Frappe Lending, Marble, and n8n under `src/lib/platform/integrations/*` and `src/lib/platform/adapters/*`. Use `getPlatformAdapter()` / `getPlatformAdapters()` from `src/lib/platform/adapters/factory.ts` in server-side services so source-specific auth, retries, timeouts, tracing, error mapping, and mock-mode fallbacks stay centralized. Detailed setup and extension guidance lives in `docs/platform-adapters.md`.
-
 ## Tests
 
 Run:

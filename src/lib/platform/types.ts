@@ -64,121 +64,41 @@ export type RoleAssignment = {
   assignedBy?: string;
 };
 
-export type ModuleCategory =
-  | 'foundation'
-  | 'customer'
-  | 'finance'
-  | 'support'
-  | 'knowledge'
-  | 'services'
-  | 'operations'
-  | 'analytics'
-  | 'admin'
-  | 'marketing'
-  | 'hr'
-  | 'security';
-
-export type ModuleKey =
-  | 'home'
-  | 'dashboard'
-  | 'customers'
-  | 'applications'
-  | 'documents'
-  | 'finance'
-  | 'support'
-  | 'knowledge'
-  | 'services'
-  | 'analytics'
-  | 'settings'
-  | 'admin'
-  | 'membership'
-  | 'billing'
-  | 'offers'
-  | 'docushare'
-  | 'help'
-  | 'profile';
-
-export type NavigationGroupKey = 'primary' | 'workspace' | 'admin' | 'user' | 'public' | 'secondary';
-
 export type ModuleDefinition = {
-  key: ModuleKey;
+  key:
+    | 'dashboard'
+    | 'customers'
+    | 'applications'
+    | 'loans'
+    | 'documents'
+    | 'finance'
+    | 'support'
+    | 'analytics'
+    | 'knowledge'
+    | 'settings'
+    | 'admin';
   name: string;
   description: string;
-  category: ModuleCategory;
+  category: 'core' | 'operations' | 'service' | 'intelligence' | 'system';
   route: string;
   icon?: string;
-  order: number;
-  isEnabledByDefault: boolean;
-  isHidden: boolean;
-  isInternalOnly: boolean;
-  isBeta: boolean;
   requiredPermissions: Array<{ resource: string; action: string }>;
   requiredFeatureFlags: string[];
-  requiredTenantCapabilities: string[];
-  allowedWorkspaceTypes: string[];
-  children: ModuleKey[];
-  defaultLandingRoute: string;
-  navGroup: NavigationGroupKey;
-  tags: string[];
-  badges?: Array<{ key: string; label: string; variant?: 'info' | 'warning' | 'success' }>;
+  isHidden: boolean;
+  isInternalOnly: boolean;
+  isEnabledByDefault: boolean;
+  workspaceTypes?: string[];
 };
 
 export type NavigationItem = {
   id: string;
   label: string;
-  type: 'module' | 'route' | 'group' | 'action';
   route: string;
+  moduleKey: ModuleDefinition['key'];
   icon?: string;
-  moduleKey: ModuleKey;
+  type: 'route' | 'group' | 'action';
   visible: boolean;
-  disabled: boolean;
-  order: number;
-  badge?: string;
   children: NavigationItem[];
-  meta: {
-    isBeta?: boolean;
-    isExternal?: boolean;
-    tooltip?: string;
-    requiresAttention?: boolean;
-    count?: number;
-    navGroup?: NavigationGroupKey;
-  };
-};
-
-export type RouteDefinition = {
-  id: string;
-  path: string;
-  moduleKey: ModuleKey;
-  routeType: 'public' | 'authenticated' | 'tenant' | 'internal' | 'admin';
-  label: string;
-  requiredPermissions: Array<{ resource: string; action: string }>;
-  requiredFeatureFlags: string[];
-  requiredTenantCapabilities: string[];
-  requiredModules: ModuleKey[];
-  allowAnonymous: boolean;
-  hideFromNav: boolean;
-  parentRouteId?: string;
-  navGroup?: NavigationGroupKey;
-  isDefaultLanding: boolean;
-  isEnabled: boolean;
-  order: number;
-  icon?: string;
-  accessDeniedBehavior: 'redirect' | 'render_access_denied' | 'hide';
-  matchPrefixes?: string[];
-};
-
-export type ModuleAccessResult = {
-  moduleKey: ModuleKey;
-  exists: boolean;
-  enabledForTenant: boolean;
-  enabledByFeatureFlags: boolean;
-  allowedByPermissions: boolean;
-  allowedByWorkspace: boolean;
-  hidden: boolean;
-  internalOnly: boolean;
-  visible: boolean;
-  accessible: boolean;
-  reasonCodes: string[];
 };
 
 export type SecurityContext = {
@@ -199,23 +119,12 @@ export type PlatformSession = {
   roles: Role[];
   roleAssignments: RoleAssignment[];
   effectivePermissions: PermissionGrant[];
-  enabledModules: ModuleKey[];
+  enabledModules: ModuleDefinition['key'][];
   navigation: NavigationItem[];
   featureFlags: Record<string, boolean>;
   securityContext: SecurityContext;
   issuedAt: string;
   expiresAt: string;
-};
-
-export type NavigationContext = {
-  session: PlatformSession | null;
-  activeTenant?: Tenant;
-  activeWorkspace?: Workspace;
-  effectivePermissions: PermissionGrant[];
-  enabledModules: ModuleKey[];
-  featureFlags: Record<string, boolean>;
-  internalUser: boolean;
-  currentRoute?: string;
 };
 
 export type PlatformSessionResponse =

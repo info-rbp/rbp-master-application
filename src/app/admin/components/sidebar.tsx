@@ -24,51 +24,43 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import React from 'react';
+import { ADMIN_NAV_SECTIONS, ADMIN_TOP_LEVEL_LINKS, type AdminNavItem } from './admin-navigation';
 import { usePlatformSession } from '@/app/providers/platform-session-provider';
 import { TenantSwitcher } from '@/components/platform/tenant-switcher';
-import { createNavigationContextFromSession } from '@/lib/platform/navigation-context';
-import { buildAdminNavigation } from '@/lib/platform/navigation-builder';
-import type { NavigationItem } from '@/lib/platform/types';
 
-const isItemActive = (pathname: string, item: NavigationItem) => {
-  if (pathname === item.route) return true;
-  return item.children.some((child) => pathname.startsWith(child.route));
+const isItemActive = (pathname: string, item: AdminNavItem) => {
+  if (pathname === item.href) return true;
+  return (item.matchPrefixes ?? []).some((prefix) => pathname.startsWith(prefix));
 };
 
-const CollapsibleSidebarItem = ({ item }: { item: NavigationItem }) => {
+const CollapsibleSidebarItem = ({
+  title,
+  pathPrefix,
+  icon,
+  children,
+}: {
+  title: string;
+  pathPrefix: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) => {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = React.useState(pathname.startsWith(item.route));
-
-  if (item.children.length === 0) {
-    return (
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isItemActive(pathname, item)} tooltip={item.label}>
-          <Link href={item.route}><span>{item.label}</span></Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    );
-  }
+  const Icon = icon;
+  const [isOpen, setIsOpen] = React.useState(pathname.startsWith(pathPrefix));
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
       <CollapsibleTrigger asChild>
-        <SidebarMenuButton variant="outline" className="w-full justify-between" isActive={isItemActive(pathname, item)}>
+        <SidebarMenuButton variant="outline" className="w-full justify-between" isActive={pathname.startsWith(pathPrefix)}>
           <div className="flex items-center gap-2">
-            <span>{item.label}</span>
+            <Icon />
+            <span>{title}</span>
           </div>
           <ChevronDown className={cn('h-4 w-4 transform transition-transform', isOpen && 'rotate-180')} />
         </SidebarMenuButton>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <SidebarMenu className="ml-7 mt-1 border-l border-border py-1 pl-2 space-y-1">
-          {item.children.map((child) => (
-            <SidebarMenuItem key={child.id}>
-              <SidebarMenuButton asChild isActive={pathname === child.route || pathname.startsWith(child.route)} tooltip={child.label} variant="outline">
-                <Link href={child.route}><span>{child.label}</span></Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        <SidebarMenu className="ml-7 mt-1 border-l border-border py-1 pl-2 space-y-1">{children}</SidebarMenu>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -77,11 +69,16 @@ const CollapsibleSidebarItem = ({ item }: { item: NavigationItem }) => {
 export default function AdminSidebar() {
   const pathname = usePathname();
   const { session, logout } = usePlatformSession();
-  const context = React.useMemo(() => createNavigationContextFromSession(session, pathname), [session, pathname]);
-  const navigation = React.useMemo(() => buildAdminNavigation(context), [context]);
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const isVisible = (href: string) => {
+    if (!session) return false;
+    if (href.startsWith('/admin')) return session.enabledModules.includes('admin');
+    if (href.includes('analytics')) return session.enabledModules.includes('analytics');
+    return true;
   };
 
   return (
@@ -100,8 +97,38 @@ export default function AdminSidebar() {
           <TenantSwitcher />
         </div>
         <SidebarMenu>
-          {navigation.map((item) => (
-            <CollapsibleSidebarItem key={item.id} item={item} />
+          {ADMIN_TOP_LEVEL_LINKS.filter((item) => isVisible(item.href)).map((item) => {
+            const Icon = item.icon;
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton asChild isActive={isItemActive(pathname, item)} tooltip={item.title}>
+                  <Link href={item.href}>
+                    {Icon ? <Icon /> : null}
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+
+          {ADMIN_NAV_SECTIONS.map((section) => (
+            <SidebarMenuItem key={section.title}>
+              <CollapsibleSidebarItem icon={section.icon} title={section.title} pathPrefix={section.pathPrefix ?? section.items[0]?.href ?? '/admin'}>
+                {section.items.filter((item) => isVisible(item.href)).map((item) => {
+                  const ItemIcon = item.icon;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={isItemActive(pathname, item)} tooltip={item.title} variant="outline">
+                        <Link href={item.href}>
+                          {ItemIcon ? <ItemIcon /> : null}
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </CollapsibleSidebarItem>
+            </SidebarMenuItem>
           ))}
         </SidebarMenu>
       </SidebarContent>

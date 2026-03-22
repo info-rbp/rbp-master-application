@@ -2,9 +2,7 @@ import { cookies } from 'next/headers';
 import { PLATFORM_AUTH_FLOW_COOKIE, PLATFORM_SESSION_COOKIE, isExpired, seal, unseal } from './session-store';
 import { getTenantById, getWorkspacesForTenant } from './bootstrap';
 import { resolveRoles, resolveEffectivePermissions } from './permissions';
-import { evaluateEnabledModules } from './modules';
-import { buildPrimaryNavigation, buildWorkspaceNavigation, buildUserMenuNavigation, buildAdminNavigation } from './navigation-builder';
-import { createNavigationContextFromSession } from './navigation-context';
+import { buildNavigation, evaluateEnabledModules } from './modules';
 import { refreshTokens } from './auth/authentik';
 import type { AuthenticatedPrincipal, PersistedPlatformSession, PlatformSession, PlatformSessionResponse, RoleAssignment } from './types';
 
@@ -83,32 +81,7 @@ export async function buildPlatformSession(persisted: PersistedPlatformSession):
     roleAssignments: persisted.roleAssignments,
     effectivePermissions,
     enabledModules: enabledModules.map((module) => module.key),
-    navigation: (() => {
-      const baseSession = {
-        sessionId: persisted.sessionId,
-        user: persisted.user,
-        activeTenant: tenant,
-        activeWorkspace,
-        availableTenants,
-        availableWorkspaces,
-        roles,
-        roleAssignments: persisted.roleAssignments,
-        effectivePermissions,
-        enabledModules: enabledModules.map((module) => module.key),
-        navigation: [],
-        featureFlags: tenant.featureFlags,
-        securityContext: persisted.securityContext,
-        issuedAt: persisted.issuedAt,
-        expiresAt: persisted.expiresAt,
-      } as PlatformSession;
-      const context = createNavigationContextFromSession(baseSession);
-      return [
-        ...buildPrimaryNavigation(context),
-        ...buildWorkspaceNavigation(context),
-        ...buildAdminNavigation(context),
-        ...buildUserMenuNavigation(context),
-      ];
-    })(),
+    navigation: buildNavigation(enabledModules),
     featureFlags: tenant.featureFlags,
     securityContext: persisted.securityContext,
     issuedAt: persisted.issuedAt,
