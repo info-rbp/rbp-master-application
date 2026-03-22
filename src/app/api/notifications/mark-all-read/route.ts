@@ -5,15 +5,11 @@ import { fail, ok } from '@/lib/bff/utils/http';
 
 const service = new NotificationBffService();
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   const correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
   try {
     const context = await getBffRequestContext(request);
-    const { searchParams } = new URL(request.url);
-    const data = await service.listNotifications(context, {
-      status: (searchParams.get('status') as 'read' | 'unread' | null) ?? undefined,
-      limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined,
-    });
+    const data = await service.markAllRead(context);
     return ok(data, correlationId);
   } catch (error) {
     return fail(error, correlationId);
