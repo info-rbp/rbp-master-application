@@ -1,3 +1,7 @@
 [submodule "libs/rbp-marble"]
 	path = libs/rbp-marble
 	url = https://github.com/info-rbp/rbp-marble.git
+[submodule "libs/odoo"]
+	path = libs/odoo
+	url = https://github.com/info-rbp/odoo.git
+	branch = 19.0
