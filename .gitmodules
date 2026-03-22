@@ -9,3 +9,7 @@
 	path = libs/rpb-lending
 	url = https://github.com/info-rbp/rpb-lending.git
 	branch = develop
+[submodule "libs/rpb-n8n"]
+	path = libs/rpb-n8n
+	url = https://github.com/info-rbp/rpb-n8n.git
+	branch = master
