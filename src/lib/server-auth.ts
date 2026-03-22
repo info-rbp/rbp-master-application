@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 import * as admin from 'firebase-admin';
 import { firestore } from '@/firebase/server';
+import { getPersistedPlatformSession, resolveSessionResponse } from '@/lib/platform/session';
 
 export const AUTH_COOKIE_NAME = 'rbp_id_token';
 
@@ -12,6 +13,9 @@ export type AuthContext = {
   role: AuthRole;
   email?: string;
   emailVerified?: boolean;
+  tenantId?: string;
+  workspaceId?: string;
+  permissions?: Array<{ resource: string; actions: string[]; scope: string }>;
 };
 
 export class AuthorizationError extends Error {
@@ -43,19 +47,19 @@ async function getAuthContextFromIdToken(token: string): Promise<AuthContext | n
     const userDoc = await firestore.collection('users').doc(decoded.uid).get();
     const user = userDoc.data();
 
-    let role: AuthRole = 'member'; // Default role
+    let role: AuthRole = 'member';
 
     if (adminDoc.exists) {
-        role = 'admin';
+      role = 'admin';
     }
 
     if (user && user.role) {
-        role = user.role;
+      role = user.role;
     }
 
     return {
       userId: decoded.uid,
-      role: role,
+      role,
       email: decoded.email,
       emailVerified: Boolean(decoded.email_verified),
     };
@@ -64,17 +68,55 @@ async function getAuthContextFromIdToken(token: string): Promise<AuthContext | n
   }
 }
 
+function deriveRoleFromPlatformSession(session: Awaited<ReturnType<typeof getPersistedPlatformSession>>) {
+  if (!session) return null;
+  const response = session.roleAssignments.some((assignment) => !assignment.tenantId)
+    ? 'super_admin'
+    : session.roleAssignments.some((assignment) => assignment.roleId === 'role_tenant_admin')
+      ? 'admin'
+      : session.roleAssignments.some((assignment) => assignment.roleId === 'role_support_agent')
+        ? 'support'
+        : 'member';
+  return response as AuthRole;
+}
+
 export async function verifyIdToken(token: string) {
   return admin.auth().verifyIdToken(token);
 }
 
 export async function getRequestAuthContext(request: NextRequest): Promise<AuthContext | null> {
+  const sessionResponse = await resolveSessionResponse();
+  if (sessionResponse.authenticated) {
+    return {
+      userId: sessionResponse.session.user.id,
+      role: deriveRoleFromPlatformSession(await getPersistedPlatformSession()) ?? 'member',
+      email: sessionResponse.session.user.email,
+      emailVerified: true,
+      tenantId: sessionResponse.session.activeTenant.id,
+      workspaceId: sessionResponse.session.activeWorkspace?.id,
+      permissions: sessionResponse.session.effectivePermissions,
+    };
+  }
+
   const token = await getBearerToken(request);
   if (!token) return null;
   return getAuthContextFromIdToken(token);
 }
 
 export async function getServerAuthContext(): Promise<AuthContext | null> {
+  const sessionResponse = await resolveSessionResponse();
+  if (sessionResponse.authenticated) {
+    return {
+      userId: sessionResponse.session.user.id,
+      role: deriveRoleFromPlatformSession(await getPersistedPlatformSession()) ?? 'member',
+      email: sessionResponse.session.user.email,
+      emailVerified: true,
+      tenantId: sessionResponse.session.activeTenant.id,
+      workspaceId: sessionResponse.session.activeWorkspace?.id,
+      permissions: sessionResponse.session.effectivePermissions,
+    };
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   if (!token) return null;
@@ -86,7 +128,7 @@ export async function requireAdminServerContext() {
   if (!auth) {
     throw new AuthorizationError('Unauthorized', 401);
   }
-  if (auth.role !== 'admin') {
+  if (auth.role !== 'admin' && auth.role !== 'super_admin') {
     throw new AuthorizationError('Forbidden', 403);
   }
 
@@ -98,7 +140,7 @@ export async function requireAdminRequestContext(request: NextRequest) {
   if (!auth) {
     throw new AuthorizationError('Unauthorized', 401);
   }
-  if (auth.role !== 'admin') {
+  if (auth.role !== 'admin' && auth.role !== 'super_admin') {
     throw new AuthorizationError('Forbidden', 403);
   }
 

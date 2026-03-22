@@ -1,9 +1,6 @@
-
 import { NextResponse } from 'next/server';
-import { getRequestAuthContext } from '@/lib/server-auth';
+import { resolveSessionResponse } from '@/lib/platform/session';
 
-export async function GET(request: Request) {
-  const authContext = await getRequestAuthContext(new (require('next/server').NextRequest)(request));
-
-  return NextResponse.json(authContext);
+export async function GET() {
+  return NextResponse.json(await resolveSessionResponse());
 }

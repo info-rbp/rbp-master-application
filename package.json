@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "optimize-images": "TS_NODE_PROJECT=tsconfig-node.json node -r ts-node/register src/lib/optimize-images.ts"
+    "optimize-images": "TS_NODE_PROJECT=tsconfig-node.json node -r ts-node/register src/lib/optimize-images.ts",
+    "test:platform": "node scripts/run-platform-tests.cjs"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.30.1",
