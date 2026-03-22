@@ -5,3 +5,7 @@
 	path = libs/odoo
 	url = https://github.com/info-rbp/odoo.git
 	branch = 19.0
+[submodule "libs/rpb-lending"]
+	path = libs/rpb-lending
+	url = https://github.com/info-rbp/rpb-lending.git
+	branch = develop
