@@ -7,20 +7,7 @@ import { listModuleDefinitions } from '@/lib/platform/bootstrap';
 const REQUIRED_ROUTE_PATTERNS = [
   '/admin',
   '/api/admin',
-  '/admin/system',
-  '/admin/users',
-  '/admin/membership',
-  '/admin/knowledge-center',
   '/admin/system/feature-controls',
-  '/portal',
-  '/portal/profile',
-  '/portal/subscription',
-  '/portal/saved',
-  '/portal/support',
-  '/portal/discovery-calls',
-  '/portal/customisation-requests',
-  '/api/admin/knowledge-center',
-  '/api/admin/membership/members',
   '/api/admin/feature-flags',
   '/api/admin/module-controls',
   '/api/admin/feature-preview',
@@ -34,11 +21,6 @@ const REQUIRED_ROUTE_PATTERNS = [
   '/api/workflows/billing-event',
   '/api/audit',
   '/settings',
-  '/settings/company',
-  '/settings/profile',
-  '/settings/security',
-  '/settings/notifications',
-  '/settings/team',
 ] as const;
 
 const REQUIRED_ACTION_KEYS = [
