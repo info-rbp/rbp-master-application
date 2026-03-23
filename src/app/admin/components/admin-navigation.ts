@@ -91,6 +91,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
       { title: 'Roles & Permissions', href: '/admin/system/roles-and-permissions', icon: ShieldCheck },
       { title: 'Settings', href: '/admin/system/settings', icon: Settings },
       { title: 'Platform Contract', href: '/admin/system/platform-contract', icon: FileText },
+      { title: 'Feature Controls', href: '/admin/system/feature-controls', icon: ShieldCheck },
       { title: 'Notifications', href: '/admin/notifications', icon: Bell },
       { title: 'Analytics', href: '/admin/analytics', icon: LineChart },
       { title: 'Audit Logs', href: '/admin/audit-logs', icon: ShieldCheck },

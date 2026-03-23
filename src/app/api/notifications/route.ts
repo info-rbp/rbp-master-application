@@ -1,50 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import {
-  getUnreadNotificationCount,
-  listNotificationsForActor,
-  markAllNotificationsReadForActor,
-  markNotificationRead,
-} from '@/lib/notifications';
-import { getRequestAuthContext } from '@/lib/server-auth';
-import { readJsonBody } from '@/lib/http';
+import { NextRequest } from 'next/server';
+import { NotificationBffService } from '@/lib/bff/services/notification-bff-service';
+import { getBffRequestContext } from '@/lib/bff/utils/request-context';
+import { fail, ok } from '@/lib/bff/utils/http';
+
+const service = new NotificationBffService();
 
 export async function GET(request: NextRequest) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
+  try {
+    const context = await getBffRequestContext(request);
+    const { searchParams } = new URL(request.url);
+    const data = await service.listNotifications(context, {
+      status: (searchParams.get('status') as 'read' | 'unread' | null) ?? undefined,
+      limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined,
+    });
+    return ok(data, correlationId);
+  } catch (error) {
+    return fail(error, correlationId);
   }
-
-  const notifications = await listNotificationsForActor({ userId: auth.userId, role: auth.role });
-  const unreadCount = await getUnreadNotificationCount({ userId: auth.userId, role: auth.role });
-  return NextResponse.json({ notifications, unreadCount });
-}
-
-export async function PATCH(request: NextRequest) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const parsed = await readJsonBody<{ mode?: 'single' | 'all'; notificationId?: string }>(request);
-  if (!parsed.ok) {
-    return parsed.response;
-  }
-
-  const body = parsed.data;
-
-  if (body.mode === 'single' && body.notificationId) {
-    const notifications = await listNotificationsForActor({ userId: auth.userId, role: auth.role });
-    if (!notifications.find((item) => item.id === body.notificationId)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    await markNotificationRead(body.notificationId);
-    return NextResponse.json({ ok: true });
-  }
-
-  if (body.mode === 'all') {
-    await markAllNotificationsReadForActor({ userId: auth.userId, role: auth.role });
-    return NextResponse.json({ ok: true });
-  }
-
-  return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 }
