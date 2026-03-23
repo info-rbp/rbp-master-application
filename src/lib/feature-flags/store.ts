@@ -11,6 +11,11 @@ type FeatureFlagStoreState = {
 };
 const emptyState = (): FeatureFlagStoreState => ({ assignments: [], rolloutRules: [], moduleRules: [] });
 
+/**
+ * Legacy JSON control-plane store kept only for migration/import tooling.
+ * Runtime feature evaluation and admin mutations must use the repository
+ * abstraction returned by `getControlPlaneRepository()`.
+ */
 export class FeatureFlagStore {
   constructor(private readonly filePath = process.env.RBP_FEATURE_FLAG_STORE_PATH ?? path.join(process.cwd(), '.rbp-data', 'feature-flags-store.json')) {}
   private async ensureFile() { await mkdir(path.dirname(this.filePath), { recursive: true }); try { await readFile(this.filePath, 'utf8'); } catch { await writeFile(this.filePath, JSON.stringify(emptyState(), null, 2), 'utf8'); } }

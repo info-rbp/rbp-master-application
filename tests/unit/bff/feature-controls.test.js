@@ -31,6 +31,13 @@ async function makeContext(kind = 'internal') {
   return { correlationId: 'feature-test-correlation', session, internalUser: kind === 'internal' };
 }
 
+async function makeAdminConsoleContext() {
+  const principal = resolvePrincipalFromBootstrap({ email: 'admin@rbp.local' });
+  const persisted = createPersistedSession({ principal, auth: { provider: 'local' }, activeTenantId: 'ten_rbp_internal', activeWorkspaceId: 'wrk_internal_admin' });
+  const session = await buildPlatformSession(persisted);
+  return { correlationId: 'feature-test-correlation', session, internalUser: true };
+}
+
 test.beforeEach(async () => {
   process.env.NODE_ENV = 'test';
   resetControlPlaneRepositoryForTests();
