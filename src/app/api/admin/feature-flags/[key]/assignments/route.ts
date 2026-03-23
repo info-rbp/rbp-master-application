@@ -1,5 +1,7 @@
 import { AuditService } from '@/lib/audit/service';
+import { requireActionPolicyAccess } from '@/lib/access/evaluators';
 import { FeatureFlagService } from '@/lib/feature-flags/service';
+import { toFeatureControlApiError } from '@/lib/feature-flags/http-errors';
 import { readJsonBody } from '@/lib/http';
 import { NotificationService } from '@/lib/notifications-center/service';
 import { fail, ok } from '@/lib/bff/utils/http';
@@ -18,7 +20,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { key } = await params;
     const body = await readJsonBody<any>(request);
     if (!body.ok) return body.response;
-    requirePermission(context, 'feature_flags', 'manage');
+    await requireActionPolicyAccess('admin.feature_assignment.create', context);
     if (key.startsWith('feature.kill_switch') && !context.internalUser) throw new BffApiError('forbidden', 'Only internal operators may manage kill switches.', 403);
     if (key.startsWith('feature.kill_switch')) requirePermission(context, 'kill_switch', 'manage');
     const created = await service.saveAssignment({ ...body.data, flagKey: key, createdBy: context.session.user.id, updatedBy: context.session.user.id });
@@ -28,6 +30,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     return ok(created, correlationId);
   } catch (error) {
-    return fail(error, correlationId);
+    return fail(toFeatureControlApiError(error), correlationId);
   }
 }

@@ -11,11 +11,7 @@ export async function GET(request: NextRequest) {
     const context = await getBffRequestContext(request);
     correlationId = context.correlationId;
     requirePermission(context, 'feature_flags', 'read');
-    const flagKey = request.nextUrl.searchParams.get('flagKey') ?? undefined;
-    const catalog = await service.getCatalog();
-    const assignments = await service.getAssignments(flagKey);
-    const rolloutRules = await service.getRolloutRules(flagKey);
-    return ok({ ...catalog, assignments, rolloutRules }, correlationId);
+    return ok(await service.getRecentChanges(context, Number(request.nextUrl.searchParams.get('limit') ?? '20')), correlationId);
   } catch (error) {
     return fail(error, correlationId);
   }

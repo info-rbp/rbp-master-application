@@ -13,7 +13,7 @@ export class DocumentUploadWorkflowService extends WorkflowOrchestrationService 
   private readonly hooks = new WorkflowTaskNotificationHooks();
 
   async registerUpload(context: BffRequestContext, input: DocumentUploadCommandDto): Promise<DocumentUploadResultDto> {
-    requireWorkflowAccess(context, { moduleKey: 'documents', resource: 'document', action: 'create' });
+    await requireWorkflowAccess(context, 'documents.upload');
     const command: WorkflowCommand<DocumentUploadCommandDto> = { commandId: `cmd_${crypto.randomUUID()}`, workflowType: 'document_upload', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, initiatedBy: context.session.user.id, relatedEntityType: input.ownerEntityType, relatedEntityId: input.ownerEntityId, payload: input, idempotencyKey: input.idempotencyKey, correlationId: context.correlationId, requestedAt: new Date().toISOString() };
     const existing = await this.registerCommand(command);
     if (existing) {
