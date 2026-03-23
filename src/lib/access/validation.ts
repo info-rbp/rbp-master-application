@@ -7,13 +7,7 @@ import { listModuleDefinitions } from '@/lib/platform/bootstrap';
 const REQUIRED_ROUTE_PATTERNS = [
   '/admin',
   '/api/admin',
-  '/admin/system',
-  '/admin/users',
-  '/admin/membership',
-  '/admin/knowledge-center',
   '/admin/system/feature-controls',
-  '/api/admin/knowledge-center',
-  '/api/admin/membership/members',
   '/api/admin/feature-flags',
   '/api/admin/module-controls',
   '/api/admin/feature-preview',
