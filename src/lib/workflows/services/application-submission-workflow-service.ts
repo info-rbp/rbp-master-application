@@ -73,8 +73,8 @@ export class ApplicationSubmissionWorkflowService extends WorkflowOrchestrationS
     sourceRefs.push(...automation.instance.sourceSystemRefs);
 
     const task = await this.executeStep(instance, { stepKey: 'create_review_task', stepType: 'internal_task', sequence: 5, run: async () => {
-      const createdTask = await this.hooks.createTask({ workflowInstanceId: instance.id, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, title: `Review application ${input.applicationId}`, queue: 'credit_review', relatedEntityType: 'application', relatedEntityId: input.applicationId, correlationId: context.correlationId });
-      await this.hooks.createNotification({ workflowInstanceId: instance.id, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, title: `Application ${input.applicationId} submitted`, severity: 'info', relatedEntityType: 'application', relatedEntityId: input.applicationId, correlationId: context.correlationId });
+      const createdTask = await this.hooks.createTask({ workflowInstanceId: instance.id, title: `Review application ${input.applicationId}`, queue: 'credit_review' });
+      await this.hooks.createNotification({ workflowInstanceId: instance.id, title: `Application ${input.applicationId} submitted`, severity: 'info' });
       return { output: { taskId: createdTask.id }, status: warnings.length > 0 ? 'partially_completed' : 'completed' };
     } });
 

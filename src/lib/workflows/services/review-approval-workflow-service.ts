@@ -24,7 +24,7 @@ export class ReviewApprovalWorkflowService extends WorkflowOrchestrationService 
 
     const instance = await this.createWorkflowInstance(command, { reviewType: input.reviewType, requestedReviewers: input.requestedReviewers ?? [] });
     await this.executeStep(instance, { stepKey: 'validate_review_scope', stepType: 'validation', sequence: 1, run: async () => ({ output: { reviewType: input.reviewType }, status: 'queued' }) });
-    const task = await this.executeStep(instance, { stepKey: 'assign_reviewer', stepType: 'internal_task', sequence: 2, run: async () => ({ output: await this.hooks.createTask({ workflowInstanceId: instance.id, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, title: `Review ${input.relatedEntityType} ${input.relatedEntityId}`, queue: 'approvals', relatedEntityType: input.relatedEntityType, relatedEntityId: input.relatedEntityId, correlationId: context.correlationId }), status: 'waiting_internal' }) });
+    const task = await this.executeStep(instance, { stepKey: 'assign_reviewer', stepType: 'internal_task', sequence: 2, run: async () => ({ output: await this.hooks.createTask({ workflowInstanceId: instance.id, title: `Review ${input.relatedEntityType} ${input.relatedEntityId}`, queue: 'approvals' }), status: 'waiting_internal' }) });
     await this.completeWorkflow(instance, { approvalState: 'pending_review', taskId: (task.output as any)?.id }, 'waiting_internal');
     return { success: true, workflowInstanceId: instance.id, status: 'waiting_internal', nextStep: 'assign_reviewer', warnings: [], errors: [], sourceRefs: instance.sourceSystemRefs, meta: { correlationId: context.correlationId }, approvalState: 'pending_review', lastAction: 'start', nextRequiredActor: 'reviewer' };
   }

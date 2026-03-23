@@ -10,9 +10,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const context = await getBffRequestContext(request);
     const { id, action } = await params;
-    const payload = await request.json().catch(() => ({}));
-    const data = await service.runAction(context, id, action, payload);
-    return ok(data, correlationId, data.warnings);
+    const data = await service.runAction(context, id, action);
+    return ok(data, correlationId);
   } catch (error) {
     return fail(error, correlationId);
   }

@@ -38,7 +38,7 @@ export class DocumentUploadWorkflowService extends WorkflowOrchestrationService 
     });
 
     const task = await this.executeStep(instance, { stepKey: 'create_review_task', stepType: 'internal_task', sequence: 4, run: async () => {
-      const task = await this.hooks.createTask({ workflowInstanceId: instance.id, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, title: `Review ${input.documentType} for ${input.ownerEntityType} ${input.ownerEntityId}`, queue: 'document_review', relatedEntityType: input.ownerEntityType, relatedEntityId: input.ownerEntityId, correlationId: context.correlationId });
+      const task = await this.hooks.createTask({ workflowInstanceId: instance.id, title: `Review ${input.documentType} for ${input.ownerEntityType} ${input.ownerEntityId}`, queue: 'document_review' });
       return { output: { taskId: task.id }, status: 'waiting_internal' };
     } });
 
