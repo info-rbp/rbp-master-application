@@ -105,6 +105,71 @@ test('percentage rollout returns bucket details and stable reasoning', async () 
   assert.ok(result.reasonCodes.includes('rollout_match'));
 });
 
+
+
+test('disabled rollout rules are ignored by runtime evaluation', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const featureContext = buildFeatureEvaluationContext(context);
+  await service.saveRolloutRule({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'disabled', reason: 'disabled rollout', enabled: false, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  const result = await service.evaluateFlag('feature.search.enabled', featureContext);
+  assert.equal(result.source, 'definition_default');
+  assert.equal(result.enabled, true);
+});
+
+test('kill switch conflict beats rollout for the paired runtime feature', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const featureContext = buildFeatureEvaluationContext(context);
+  await service.saveRolloutRule({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'wave-1', reason: 'broad rollout', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  await service.saveAssignment({ flagKey: 'feature.kill_switch.search', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'incident', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  const result = await service.evaluateFlag('feature.search.enabled', featureContext);
+  assert.equal(result.enabled, false);
+  assert.ok(result.reasonCodes.includes('conflict_detected'));
+  assert.ok(result.conflictsDetected.includes('feature.kill_switch.search'));
+});
+
+test('preview matches runtime evaluation for the same live context', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const featureContext = buildFeatureEvaluationContext(context);
+  await service.saveRolloutRule({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'consistent', reason: 'preview parity', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  const runtime = await service.evaluateFlag('feature.search.enabled', featureContext);
+  const preview = await service.preview({ ...featureContext, includeReasoning: true, includeBucketDetails: true, featureKeys: ['feature.search.enabled'] }, { tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions });
+  assert.equal(preview.evaluatedFlags[0].enabled, runtime.enabled);
+  assert.equal(preview.evaluatedFlags[0].source, runtime.source);
+  assert.deepEqual(preview.evaluatedFlags[0].reasonCodes, runtime.reasonCodes);
+  assert.deepEqual(preview.evaluatedFlags[0].bucketResult, runtime.bucketResult);
+});
+
+test('preview explains missing rollout identity when bucket target cannot be built', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const featureContext = buildFeatureEvaluationContext(context);
+  await service.saveRolloutRule({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'user', salt: 'needs-user', reason: 'target user only', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  const preview = await service.preview({ ...featureContext, userId: undefined, includeReasoning: true, includeBucketDetails: true, featureKeys: ['feature.search.enabled'] }, { tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions });
+  assert.ok(preview.evaluatedFlags[0].reasonCodes.includes('rollout_identity_missing'));
+  assert.equal(preview.evaluatedFlags[0].bucketResult, undefined);
+});
+
+test('previewed modules use the same simulated rollout runtime state as previewed flags', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext('customer');
+  const featureContext = buildFeatureEvaluationContext(context);
+  const baseline = await service.preview({ ...featureContext, includeReasoning: true, includeBucketDetails: true, featureKeys: ['feature.analytics.enabled'] }, { tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions });
+  const baselineAnalytics = baseline.evaluatedModules.find((item) => item.moduleKey === 'analytics');
+  assert.ok(baselineAnalytics);
+  assert.equal(baselineAnalytics.enabled, false);
+  assert.ok(baselineAnalytics.reasonCodes.includes('flag:feature.analytics.enabled'));
+
+  const simulated = await service.preview({ ...featureContext, includeReasoning: true, includeBucketDetails: true, featureKeys: ['feature.analytics.enabled'] }, { tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions, proposedRolloutRules: [{ id: 'preview-rule', flagKey: 'feature.analytics.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'analytics-preview', enabled: true, reason: 'preview', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: 'preview', updatedBy: 'preview', metadata: {}, version: 1 }] });
+  const simulatedFlag = simulated.evaluatedFlags.find((item) => item.flagKey === 'feature.analytics.enabled');
+  const simulatedAnalytics = simulated.evaluatedModules.find((item) => item.moduleKey === 'analytics');
+  assert.equal(simulatedFlag.enabled, true);
+  assert.ok(simulatedAnalytics);
+  assert.ok(simulatedAnalytics.reasonCodes.every((code) => code !== 'flag:feature.analytics.enabled'));
+});
+
 test('assignment persistence supports versioned update and disable', async () => {
   const service = new FeatureFlagService();
   const context = await makeContext();
@@ -232,7 +297,7 @@ test('control-plane diagnostics surface conflicts, stale rules, and kill switche
 });
 
 test('console data exposes summaries and recent audit changes for operators', async () => {
-  const context = await makeContext();
+  const context = await makeAdminConsoleContext();
   const service = new FeatureFlagService();
   const bff = new FeatureControlsBffService();
   await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: false, reason: 'tenant off', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });

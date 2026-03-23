@@ -3,7 +3,7 @@ import { AuditService } from '@/lib/audit/service';
 import { getTenantById, getWorkspacesForTenant } from '@/lib/platform/bootstrap';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
 import type { FeatureFlagAssignment, PercentageRolloutRule, PreviewEvaluationContext } from '@/lib/feature-flags/types';
-import { canPermission } from '@/lib/platform/permissions';
+import { evaluateSubFeatureAccess, toAccessContext } from '@/lib/access/evaluators';
 
 export class FeatureControlsBffService {
   private readonly flags = new FeatureFlagService();
@@ -56,12 +56,12 @@ export class FeatureControlsBffService {
       moduleSummaries,
       diagnostics,
       recentChanges,
-      auditVisible: canPermission(context.session.effectivePermissions, 'admin_user', 'read') && context.internalUser,
+      auditVisible: evaluateSubFeatureAccess('admin.audit_history', toAccessContext(context)).result.allowed,
     };
   }
 
   async getRecentChanges(context: BffRequestContext, limit = 20) {
-    if (!context.internalUser || !canPermission(context.session.effectivePermissions, 'admin_user', 'read')) return [];
+    if (!evaluateSubFeatureAccess('admin.audit_history', toAccessContext(context)).result.allowed) return [];
     const query = await this.audit.query({ tenantId: context.session.activeTenant.id, limit } as any);
     return query.items.filter((item) =>
       item.eventType.startsWith('feature.')
