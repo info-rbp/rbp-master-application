@@ -39,3 +39,17 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return ok(updated, correlationId);
   } catch (error) { return fail(toFeatureControlApiError(error), correlationId); }
 }
+
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
+  try {
+    const context = await getBffRequestContext(request);
+    correlationId = context.correlationId;
+    requirePermission(context, 'module_controls', 'manage');
+    const { id } = await params;
+    const updated = await service.disableModuleRule(id, { updatedBy: context.session.user.id });
+    await audit.record({ eventType: 'module.control.disabled', action: 'disable', category: 'configuration', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, actorType: 'user', actorId: context.session.user.id, actorDisplay: context.session.user.displayName, subjectEntityType: 'module_control', subjectEntityId: id, sourceSystem: 'platform', correlationId, outcome: 'success', severity: 'warning', metadata: { moduleKey: updated.moduleKey, enabled: updated.enabled, visible: updated.visible }, sensitivity: 'internal' });
+    return ok(updated, correlationId);
+  } catch (error) { return fail(error, correlationId); }
+}

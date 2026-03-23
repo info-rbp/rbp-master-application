@@ -34,8 +34,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     correlationId = context.correlationId;
     await requireActionPolicyAccess('admin.feature_assignment.disable', context);
     const { id } = await params;
-    const expectedVersion = request.nextUrl.searchParams.get('expectedVersion');
-    const updated = await service.disableAssignment(id, { updatedBy: context.session.user.id, expectedVersion: expectedVersion ? Number(expectedVersion) : undefined });
+    const updated = await service.disableAssignment(id, { updatedBy: context.session.user.id });
     await audit.record({ eventType: 'feature.assignment.disabled', action: 'disable', category: 'configuration', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, actorType: 'user', actorId: context.session.user.id, actorDisplay: context.session.user.displayName, subjectEntityType: 'feature_flag_assignment', subjectEntityId: id, sourceSystem: 'platform', correlationId, outcome: 'success', severity: 'warning', metadata: { flagKey: updated.flagKey }, sensitivity: 'internal' });
     return ok(updated, correlationId);
   } catch (error) {
