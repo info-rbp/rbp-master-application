@@ -13,7 +13,7 @@ export function evaluateEnabledModules(input: {
     if (module.isInternalOnly && !input.internalUser) return false;
     const tenantEnabled = input.tenant.enabledModules.includes(module.key) || module.isEnabledByDefault;
     if (!tenantEnabled) return false;
-    const featureFlagsEnabled = module.requiredFeatureFlags.every((flag) => Boolean(input.tenant.featureFlags[flag]));
+    const featureFlagsEnabled = module.requiredFeatureFlags.every((flag) => Boolean((input.tenant.featureFlags ?? {})[flag]));
     if (!featureFlagsEnabled) return false;
     if (input.workspace && module.workspaceTypes?.length && !module.workspaceTypes.includes(input.workspace.workspaceType)) {
       return false;

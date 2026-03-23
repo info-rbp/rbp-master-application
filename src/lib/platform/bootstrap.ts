@@ -68,7 +68,7 @@ export const PLATFORM_ROLES: Role[] = [
     isSystemRole: true,
     status: 'active',
     permissionGrants: [
-      { resource: '*', actions: ['read', 'create', 'update', 'delete', 'approve', 'assign', 'manage', 'export'], scope: 'platform' },
+      { resource: '*', actions: ['read', 'create', 'update', 'delete', 'approve', 'assign', 'manage', 'export', 'preview'], scope: 'platform' },
     ],
   },
   {
@@ -91,6 +91,11 @@ export const PLATFORM_ROLES: Role[] = [
       { resource: 'knowledge', actions: ['read', 'update'], scope: 'tenant' },
       { resource: 'settings', actions: ['read', 'manage'], scope: 'tenant' },
       { resource: 'admin_user', actions: ['read', 'manage'], scope: 'tenant' },
+      { resource: 'feature_flags', actions: ['read', 'manage'], scope: 'platform' },
+      { resource: 'module_controls', actions: ['read', 'manage'], scope: 'platform' },
+      { resource: 'rollout', actions: ['preview', 'manage'], scope: 'platform' },
+      { resource: 'kill_switch', actions: ['manage'], scope: 'platform' },
+      { resource: 'release_controls', actions: ['manage'], scope: 'platform' },
     ],
   },
   {

@@ -6,6 +6,7 @@ const modules = [
   { title: 'Roles & Permissions', href: '/admin/system/roles-and-permissions', description: 'Visibility into admin role model and publish permissions.' },
   { title: 'Settings', href: '/admin/system/settings', description: 'Platform-level operational settings and links to existing modules.' },
   { title: 'Platform Contract', href: '/admin/system/platform-contract', description: 'Canonical entity model, tenancy rules, role capabilities, and integration mapping guidance.' },
+  { title: 'Feature Controls', href: '/admin/system/feature-controls', description: 'Feature flags, module rollout rules, kill switches, and rollout preview controls.' },
   { title: 'Notifications', href: '/admin/notifications', description: 'Operational notifications and member announcements.' },
   { title: 'Analytics', href: '/admin/analytics', description: 'Operational metrics and platform analytics.' },
   { title: 'Audit Logs', href: '/admin/audit-logs', description: 'Administrative audit history and key operational events.' },

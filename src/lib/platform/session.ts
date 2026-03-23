@@ -2,7 +2,8 @@ import { cookies } from 'next/headers';
 import { PLATFORM_AUTH_FLOW_COOKIE, PLATFORM_SESSION_COOKIE, isExpired, seal, unseal } from './session-store';
 import { getTenantById, getWorkspacesForTenant } from './bootstrap';
 import { resolveRoles, resolveEffectivePermissions } from './permissions';
-import { buildNavigation, evaluateEnabledModules } from './modules';
+import { buildNavigation } from './modules';
+import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
 import { refreshTokens } from './auth/authentik';
 import type { AuthenticatedPrincipal, PersistedPlatformSession, PlatformSession, PlatformSessionResponse, RoleAssignment } from './types';
 
@@ -51,6 +52,8 @@ export function createPersistedSession(input: {
   };
 }
 
+const featureFlags = new FeatureFlagService();
+
 export async function buildPlatformSession(persisted: PersistedPlatformSession): Promise<PlatformSession | null> {
   const tenant = getTenantById(persisted.activeTenantId);
   if (!tenant) return null;
@@ -63,12 +66,28 @@ export async function buildPlatformSession(persisted: PersistedPlatformSession):
     activeWorkspaceId: activeWorkspace?.id,
   });
   const roles = resolveRoles(filterAssignmentsForActiveContext(persisted.roleAssignments, tenant.id, activeWorkspace?.id));
-  const enabledModules = evaluateEnabledModules({
-    tenant,
-    workspace: activeWorkspace,
-    permissions: effectivePermissions,
-    internalUser: tenant.tenantType === 'internal' || persisted.availableTenantIds.includes('ten_rbp_internal'),
-  });
+  const internalUser = tenant.tenantType === 'internal' || persisted.availableTenantIds.includes('ten_rbp_internal');
+  const provisionalSession = {
+    sessionId: persisted.sessionId,
+    user: persisted.user,
+    activeTenant: tenant,
+    activeWorkspace,
+    availableTenants,
+    availableWorkspaces,
+    roles,
+    roleAssignments: persisted.roleAssignments,
+    effectivePermissions,
+    enabledModules: [],
+    navigation: [],
+    featureFlags: {},
+    securityContext: persisted.securityContext,
+    issuedAt: persisted.issuedAt,
+    expiresAt: persisted.expiresAt,
+  } as PlatformSession;
+  const featureContext = buildFeatureEvaluationContext({ session: provisionalSession, internalUser, correlationId: persisted.sessionId });
+  const evaluatedFlags = await featureFlags.getEffectiveFlags(featureContext);
+  provisionalSession.featureFlags = evaluatedFlags;
+  const evaluatedModules = await featureFlags.getEffectiveModules({ tenant, workspace: activeWorkspace, permissions: effectivePermissions, internalUser, featureContext: { ...featureContext, enabledModules: [] } });
 
   return {
     sessionId: persisted.sessionId,
@@ -80,9 +99,9 @@ export async function buildPlatformSession(persisted: PersistedPlatformSession):
     roles,
     roleAssignments: persisted.roleAssignments,
     effectivePermissions,
-    enabledModules: enabledModules.map((module) => module.key),
-    navigation: buildNavigation(enabledModules),
-    featureFlags: tenant.featureFlags,
+    enabledModules: evaluatedModules.map((module) => module.moduleKey as any),
+    navigation: buildNavigation((await import('./bootstrap')).listModuleDefinitions().filter((module) => evaluatedModules.some((item) => item.moduleKey === module.key && item.visible && item.enabled))),
+    featureFlags: evaluatedFlags,
     securityContext: persisted.securityContext,
     issuedAt: persisted.issuedAt,
     expiresAt: persisted.expiresAt,
