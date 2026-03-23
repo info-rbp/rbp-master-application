@@ -52,8 +52,6 @@ export function createPersistedSession(input: {
   };
 }
 
-const featureFlags = new FeatureFlagService();
-
 export async function buildPlatformSession(persisted: PersistedPlatformSession): Promise<PlatformSession | null> {
   const tenant = getTenantById(persisted.activeTenantId);
   if (!tenant) return null;
@@ -85,6 +83,7 @@ export async function buildPlatformSession(persisted: PersistedPlatformSession):
     expiresAt: persisted.expiresAt,
   } as PlatformSession;
   const featureContext = buildFeatureEvaluationContext({ session: provisionalSession, internalUser, correlationId: persisted.sessionId });
+  const featureFlags = new FeatureFlagService();
   const evaluatedFlags = await featureFlags.getEffectiveFlags(featureContext);
   provisionalSession.featureFlags = evaluatedFlags;
   const evaluatedModules = await featureFlags.getEffectiveModules({ tenant, workspace: activeWorkspace, permissions: effectivePermissions, internalUser, featureContext: { ...featureContext, enabledModules: [] } });

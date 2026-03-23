@@ -1,10 +1,12 @@
 import type { Customer360Dto } from '@/lib/bff/dto/customer-360';
 import { normalizeStatus } from '@/lib/bff/utils/status';
+import { requireActionPolicyAccess } from '@/lib/access/evaluators';
 import { BffApiError, requireModule, requirePermission, type BffRequestContext } from '@/lib/bff/utils/request-context';
 import { adapterContext, buildQuickAction, buildTimelineEvent, getAdapters, makeTask, tryOrWarn } from './shared';
 
 export class Customer360BffService {
   async getCustomer360(id: string, context: BffRequestContext): Promise<Customer360Dto> {
+    await requireActionPolicyAccess('customers.customer360.view', context);
     requireModule(context, 'customers');
     requirePermission(context, 'customer', 'read');
     const adapters = getAdapters();

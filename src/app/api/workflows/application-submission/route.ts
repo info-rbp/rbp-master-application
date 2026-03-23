@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getBffRequestContext } from '@/lib/bff/utils/request-context';
 import { ok, fail } from '@/lib/bff/utils/http';
+import { requireRoutePolicyAccess } from '@/lib/access/evaluators';
 import { ApplicationSubmissionWorkflowService } from '@/lib/workflows/services/application-submission-workflow-service';
 import { WorkflowError } from '@/lib/workflows/utils/errors';
 
@@ -12,6 +13,7 @@ export async function POST(request: NextRequest) {
   const correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
   try {
     const context = await getBffRequestContext(request);
+    await requireRoutePolicyAccess('/api/workflows/application-submission', context);
     const body = schema.parse(await request.json());
     const data = await service.submit(context, body);
     return ok(data, correlationId, data.warnings);

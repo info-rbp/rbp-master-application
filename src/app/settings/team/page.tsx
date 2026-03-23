@@ -3,6 +3,7 @@ import { getCompany } from '@/lib/company';
 import { getServerAuthContext } from '@/lib/server-auth';
 import { TeamMembersTable } from '@/components/team/team-members-table';
 import { InviteMemberForm } from '@/components/team/invite-member-form';
+import { requireSessionForPath } from '@/lib/platform/server-guards';
 
 async function getCurrentCompanyId() {
     const auth = await getServerAuthContext();
@@ -19,6 +20,7 @@ async function getCurrentCompanyId() {
 }
 
 export default async function TeamManagementPage() {
+    await requireSessionForPath('/settings/team');
     const companyId = await getCurrentCompanyId();
     if (!companyId) {
         return <div>Not logged in</div>;

@@ -1,4 +1,4 @@
-import { BffApiError, requirePermission, type BffRequestContext } from '@/lib/bff/utils/request-context';
+import { BffApiError, type BffRequestContext } from '@/lib/bff/utils/request-context';
 import type { WarningDto } from '@/lib/bff/dto/common';
 import { canAccessTaskModule } from '@/lib/tasks/access';
 import { InternalTaskProvider } from '@/lib/tasks/providers/internal-task-provider';
@@ -8,7 +8,9 @@ import { MarbleTaskProvider } from '@/lib/tasks/providers/marble-task-provider';
 import { OdooTaskProvider } from '@/lib/tasks/providers/odoo-task-provider';
 import type { TaskActionResult, TaskListResponse, TaskProvider, TaskQuery, TaskRecord, TaskSummary } from '@/lib/tasks/types';
 import { AuditService } from '@/lib/audit/service';
+import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
 import { NotificationService } from '@/lib/notifications-center/service';
+import { requireActionPolicyAccess } from '@/lib/access/evaluators';
 import { getTaskStore } from '@/lib/tasks/store';
 import { ReviewApprovalWorkflowService } from '@/lib/workflows/services/review-approval-workflow-service';
 
@@ -34,9 +36,12 @@ function buildSummary(items: TaskRecord[], userId: string): TaskSummary {
   };
 }
 
+const taskActionPolicies: Record<string, string> = { assign: 'tasks.assign', complete: 'tasks.complete', approve: 'workflows.review.approve', reject: 'tasks.reject', request_info: 'tasks.request_info', escalate: 'tasks.escalate' };
+
 export class TaskService {
   private readonly providers: TaskProvider[] = [new InternalTaskProvider(), new WorkflowTaskProvider(), new LendingTaskProvider(), new MarbleTaskProvider(), new OdooTaskProvider()];
   private readonly audit = new AuditService();
+  private readonly featureFlags = new FeatureFlagService();
   private readonly notifications = new NotificationService();
   private readonly store = getTaskStore();
   private readonly reviewApproval = new ReviewApprovalWorkflowService();
@@ -62,7 +67,9 @@ export class TaskService {
   }
 
   async listTasks(context: BffRequestContext, filters: Record<string, unknown> = {}): Promise<TaskListResponse> {
-    requirePermission(context, 'dashboard', 'read');
+    const killSwitch = await this.featureFlags.evaluateFlag('feature.kill_switch.tasks', buildFeatureEvaluationContext(context));
+    if (killSwitch.enabled) throw new BffApiError('tasks_kill_switch_active', 'Tasks are temporarily disabled by kill switch.', 503);
+    await requireActionPolicyAccess('tasks.list', context);
     const query = this.buildQuery(context, filters);
     const warnings: WarningDto[] = [];
     const providerResults = await Promise.all(this.providers.map(async (provider) => {
@@ -95,7 +102,7 @@ export class TaskService {
   }
 
   async getTaskById(context: BffRequestContext, taskId: string) {
-    requirePermission(context, 'dashboard', 'read');
+    await requireActionPolicyAccess('tasks.list', context);
     for (const provider of this.providers) {
       const task = await provider.getTaskById(taskId, { tenantId: context.session.activeTenant.id, userId: context.session.user.id, internalUser: context.internalUser, correlationId: context.correlationId });
       if (task && canAccessTaskModule(context, task.moduleKey)) return task;
@@ -108,6 +115,9 @@ export class TaskService {
     if (!task) throw new BffApiError('task_not_found', 'Task not found.', 404);
     const provider = this.providers.find((entry) => entry.supportsAction(task, action, { tenantId: context.session.activeTenant.id, userId: context.session.user.id, internalUser: context.internalUser, correlationId: context.correlationId }));
     if (!provider) throw new BffApiError('task_action_unsupported', 'This task action is not supported.', 400, { taskId, action });
+
+    const actionPolicyKey = taskActionPolicies[action];
+    if (actionPolicyKey) await requireActionPolicyAccess(actionPolicyKey, context);
 
     let result: TaskActionResult;
     if (task.id.startsWith('workflow:') && ['approve', 'reject', 'complete'].includes(action)) {

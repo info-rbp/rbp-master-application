@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getBffRequestContext } from '@/lib/bff/utils/request-context';
 import { ok, fail } from '@/lib/bff/utils/http';
+import { requireRoutePolicyAccess } from '@/lib/access/evaluators';
 import { ReviewApprovalWorkflowService } from '@/lib/workflows/services/review-approval-workflow-service';
 import { WorkflowError } from '@/lib/workflows/utils/errors';
 
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const context = await getBffRequestContext(request);
     const body = schema.parse(await request.json());
     const { id } = await params;
+    await requireRoutePolicyAccess(`/api/workflows/review-approval/${id}/action`, context);
     const data = await service.act(context, id, body);
     return ok(data, correlationId, data.warnings);
   } catch (error) {

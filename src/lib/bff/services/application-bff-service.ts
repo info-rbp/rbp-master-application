@@ -1,10 +1,12 @@
 import type { ApplicationDetailDto } from '@/lib/bff/dto/application-detail';
 import { normalizeStatus } from '@/lib/bff/utils/status';
+import { requireActionPolicyAccess } from '@/lib/access/evaluators';
 import { BffApiError, requireModule, requirePermission, type BffRequestContext } from '@/lib/bff/utils/request-context';
 import { adapterContext, buildQuickAction, buildTimelineEvent, getAdapters, tryOrWarn } from './shared';
 
 export class ApplicationBffService {
   async getApplication(id: string, context: BffRequestContext): Promise<ApplicationDetailDto> {
+    await requireActionPolicyAccess('applications.detail.view', context);
     requireModule(context, 'applications');
     requirePermission(context, 'application', 'read');
     const adapters = getAdapters();

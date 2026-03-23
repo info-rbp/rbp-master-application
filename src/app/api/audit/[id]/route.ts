@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { getBffRequestContext } from '@/lib/bff/utils/request-context';
 import { fail, ok } from '@/lib/bff/utils/http';
 import { AuditQueryService } from '@/lib/audit/query-service';
+import { requireRoutePolicyAccess } from '@/lib/access/evaluators';
 
 const service = new AuditQueryService();
 
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const context = await getBffRequestContext(request);
     const { id } = await params;
+    await requireRoutePolicyAccess(`/api/audit/${id}`, context);
     const data = await service.getById(context, id);
     return ok(data, correlationId);
   } catch (error) {
