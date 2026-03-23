@@ -1,19 +1,19 @@
-import { canPermission } from '@/lib/platform/permissions';
 import type { ModuleDefinition } from '@/lib/platform/types';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
+import { evaluateActionPolicyAccess, toAccessContext } from '@/lib/access/evaluators';
 
-const modulePermissions: Record<ModuleDefinition['key'], { resource: string; action: string; internalOnly?: boolean }> = {
-  dashboard: { resource: 'dashboard', action: 'read' },
-  customers: { resource: 'customer', action: 'read', internalOnly: true },
-  applications: { resource: 'application', action: 'read', internalOnly: true },
-  loans: { resource: 'loan', action: 'read', internalOnly: true },
-  documents: { resource: 'document', action: 'read' },
-  finance: { resource: 'finance', action: 'read', internalOnly: true },
-  support: { resource: 'support_ticket', action: 'read' },
-  analytics: { resource: 'analytics', action: 'read' },
-  knowledge: { resource: 'knowledge', action: 'read' },
-  settings: { resource: 'settings', action: 'read' },
-  admin: { resource: 'admin_user', action: 'read', internalOnly: true },
+const modulePermissions: Record<ModuleDefinition['key'], { actionPolicyKey: string; internalOnly?: boolean }> = {
+  dashboard: { actionPolicyKey: 'tasks.list' },
+  customers: { actionPolicyKey: 'search.query.customers', internalOnly: true },
+  applications: { actionPolicyKey: 'search.query.applications', internalOnly: true },
+  loans: { actionPolicyKey: 'search.query.loans', internalOnly: true },
+  documents: { actionPolicyKey: 'search.query.documents' },
+  finance: { actionPolicyKey: 'search.query.finance', internalOnly: true },
+  support: { actionPolicyKey: 'search.query.support' },
+  analytics: { actionPolicyKey: 'tasks.list' },
+  knowledge: { actionPolicyKey: 'tasks.list' },
+  settings: { actionPolicyKey: 'tasks.list' },
+  admin: { actionPolicyKey: 'admin.audit.view', internalOnly: true },
 };
 
 export function canAccessTaskModule(context: BffRequestContext, moduleKey: ModuleDefinition['key']) {
@@ -21,5 +21,5 @@ export function canAccessTaskModule(context: BffRequestContext, moduleKey: Modul
   if (!rule) return false;
   if (rule.internalOnly && !context.internalUser) return false;
   if (!context.session.enabledModules.includes(moduleKey)) return false;
-  return canPermission(context.session.effectivePermissions, rule.resource, rule.action);
+  return evaluateActionPolicyAccess(rule.actionPolicyKey, toAccessContext(context)).result.allowed;
 }

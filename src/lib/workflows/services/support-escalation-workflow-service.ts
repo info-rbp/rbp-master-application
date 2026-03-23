@@ -13,7 +13,7 @@ export class SupportEscalationWorkflowService extends WorkflowOrchestrationServi
   private readonly hooks = new WorkflowTaskNotificationHooks();
 
   async escalate(context: BffRequestContext, input: SupportEscalationCommandDto): Promise<SupportEscalationResultDto> {
-    requireWorkflowAccess(context, { moduleKey: 'support', resource: 'support_ticket', action: 'assign' });
+    await requireWorkflowAccess(context, 'support.escalate');
     const command: WorkflowCommand<SupportEscalationCommandDto> = { commandId: `cmd_${crypto.randomUUID()}`, workflowType: 'support_escalation', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, initiatedBy: context.session.user.id, relatedEntityType: 'support_ticket', relatedEntityId: input.ticketId, payload: input, idempotencyKey: input.idempotencyKey, correlationId: context.correlationId, requestedAt: new Date().toISOString() };
     const existing = await this.registerCommand(command);
     if (existing) {

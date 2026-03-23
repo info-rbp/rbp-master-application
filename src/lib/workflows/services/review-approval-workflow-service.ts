@@ -13,7 +13,7 @@ export class ReviewApprovalWorkflowService extends WorkflowOrchestrationService 
   private readonly hooks = new WorkflowTaskNotificationHooks();
 
   async start(context: BffRequestContext, input: ReviewApprovalStartCommandDto): Promise<ReviewApprovalResultDto> {
-    requireWorkflowAccess(context, { moduleKey: input.relatedEntityType === 'invoice' ? 'finance' : input.relatedEntityType === 'support_ticket' ? 'support' : input.relatedEntityType === 'loan' ? 'loans' : 'applications', resource: input.relatedEntityType === 'invoice' ? 'finance' : input.relatedEntityType === 'support_ticket' ? 'support_ticket' : input.relatedEntityType, action: 'read' });
+    await requireWorkflowAccess(context, 'workflows.review.start');
     const command: WorkflowCommand<ReviewApprovalStartCommandDto> = { commandId: `cmd_${crypto.randomUUID()}`, workflowType: 'review_approval', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, initiatedBy: context.session.user.id, relatedEntityType: input.relatedEntityType, relatedEntityId: input.relatedEntityId, payload: input, idempotencyKey: input.idempotencyKey, correlationId: context.correlationId, requestedAt: new Date().toISOString() };
     const existing = await this.registerCommand(command);
     if (existing) {
@@ -30,7 +30,7 @@ export class ReviewApprovalWorkflowService extends WorkflowOrchestrationService 
   }
 
   async act(context: BffRequestContext, workflowId: string, input: ReviewApprovalActionCommandDto): Promise<ReviewApprovalResultDto> {
-    requireWorkflowAccess(context, { moduleKey: 'applications', resource: 'application', action: input.action === 'approve' || input.action === 'reject' ? 'approve' : 'update' });
+    await requireWorkflowAccess(context, input.action === 'approve' ? 'workflows.review.approve' : input.action === 'reject' ? 'workflows.review.reject' : 'workflows.review.request_more_info');
     const status = await this.getStatus(workflowId);
     if (!status) throw new WorkflowError({ code: 'workflow_not_found', message: 'Workflow was not found.', status: 404, category: 'validation_failure' });
     const instance = status.workflow;
