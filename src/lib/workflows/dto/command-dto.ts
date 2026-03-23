@@ -1,0 +1,6 @@
+export type ApplicationSubmissionCommandDto = { applicationId: string; idempotencyKey?: string; submitOptions?: Record<string, unknown> };
+export type DocumentUploadCommandDto = { ownerEntityType: 'application' | 'customer' | 'loan' | 'support_ticket'; ownerEntityId: string; documentType: string; storageReference: string; fileName: string; classificationHints?: string[]; idempotencyKey?: string };
+export type SupportEscalationCommandDto = { ticketId: string; escalationReason: string; severity: 'low' | 'medium' | 'high' | 'critical'; targetQueue?: string; idempotencyKey?: string };
+export type BillingEventCommandDto = { eventType: 'invoice_issued' | 'invoice_overdue' | 'payment_received' | 'payment_failed'; relatedEntityType: 'invoice' | 'account'; relatedEntityId: string; eventPayload: Record<string, unknown>; idempotencyKey?: string };
+export type ReviewApprovalStartCommandDto = { relatedEntityType: 'application' | 'loan' | 'invoice' | 'support_ticket'; relatedEntityId: string; reviewType: string; requestedReviewers?: string[]; idempotencyKey?: string };
+export type ReviewApprovalActionCommandDto = { action: 'approve' | 'reject' | 'request_more_information' | 'assign' | 'escalate' | 'cancel'; comment?: string; assigneeId?: string; idempotencyKey?: string };
