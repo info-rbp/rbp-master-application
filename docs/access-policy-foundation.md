@@ -35,8 +35,10 @@ Each route policy declares:
 For new protected pages or APIs:
 
 1. add a route policy entry
-2. enforce it in the route handler or page guard via `requireRoutePolicyAccess(...)` or `requireSessionForPath(...)`
+2. enforce it in the route handler or page/section guard via `requireRoutePolicyAccess(...)` or `requireSessionForPath(...)`
 3. add a test proving unauthenticated/unauthorised access is blocked
+
+Nested route families such as `/admin/system`, `/admin/membership`, `/admin/knowledge-center`, `/portal/*`, and `/settings/*` should use section layouts where possible so direct URL access is checked against the specific route policy rather than only a broader parent route.
 
 ## Action policy model
 
