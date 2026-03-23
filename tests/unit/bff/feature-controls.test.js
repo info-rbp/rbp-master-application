@@ -341,6 +341,11 @@ test('control-plane access policies enforce preview and admin route protection',
   assert.equal(internalRoute.result.allowed, true);
   const customerRoute = evaluateRoutePolicyAccess('/api/admin/feature-controls/recent-changes', toAccessContext(customerContext));
   assert.equal(customerRoute.result.allowed, false);
+
+  const knowledgeRoute = evaluateRoutePolicyAccess('/api/admin/knowledge-center/article-1', toAccessContext(internalContext));
+  assert.equal(knowledgeRoute.result.allowed, true);
+  const membershipRoute = evaluateRoutePolicyAccess('/api/admin/membership/members/member-1', toAccessContext(internalContext));
+  assert.equal(membershipRoute.result.allowed, true);
 });
 
 test('feature-control error mapping converts version conflicts into API-safe errors', () => {
