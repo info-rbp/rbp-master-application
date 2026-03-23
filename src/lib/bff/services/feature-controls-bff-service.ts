@@ -3,6 +3,7 @@ import { AuditService } from '@/lib/audit/service';
 import { getTenantById, getWorkspacesForTenant } from '@/lib/platform/bootstrap';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
 import type { FeatureFlagAssignment, PercentageRolloutRule, PreviewEvaluationContext } from '@/lib/feature-flags/types';
+import { canPermission } from '@/lib/platform/permissions';
 
 export class FeatureControlsBffService {
   private readonly flags = new FeatureFlagService();
@@ -27,5 +28,45 @@ export class FeatureControlsBffService {
     const workspace = input.workspaceId ? getWorkspacesForTenant(tenant.id).find((item) => item.id === input.workspaceId) : context.session.activeWorkspace;
     const featureContext: PreviewEvaluationContext = { ...buildFeatureEvaluationContext({ session: context.session, internalUser: context.internalUser, correlationId: context.correlationId, currentModule: input.currentModule, currentRoute: input.currentRoute }), tenantId: tenant.id, workspaceId: workspace?.id, userId: input.userId ?? context.session.user.id, roleCodes: input.roleCodes ?? context.session.roles.map((role) => role.code), featureKeys: input.featureKeys, includeReasoning: input.includeReasoning ?? true, includeBucketDetails: input.includeBucketDetails ?? true };
     return this.flags.preview(featureContext, { proposedAssignments: input.proposedAssignments, proposedRolloutRules: input.proposedRolloutRules, tenant, workspace, permissions: context.session.effectivePermissions });
+  }
+
+  async getConsoleData(context: BffRequestContext) {
+    const featureContext = buildFeatureEvaluationContext({ session: context.session, internalUser: context.internalUser, correlationId: context.correlationId });
+    const [catalog, assignments, rolloutRules, moduleRules, evaluations, modules, flagSummaries, moduleSummaries, diagnostics, recentChanges] = await Promise.all([
+      this.flags.getFeatureCatalog(),
+      this.flags.listAssignments(),
+      this.flags.listRolloutRules(),
+      this.flags.listModuleRules(),
+      this.flags.evaluateFlags((await this.flags.getFeatureCatalog()).map((item) => item.flagKey), featureContext),
+      this.flags.getEffectiveModules({ tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions, internalUser: context.internalUser, featureContext }),
+      this.flags.getFlagOperationalSummaries(featureContext),
+      this.flags.getModuleOperationalSummaries({ tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions, internalUser: context.internalUser, featureContext }),
+      this.flags.getControlPlaneDiagnostics(featureContext),
+      this.getRecentChanges(context),
+    ]);
+
+    return {
+      catalog,
+      assignments,
+      rolloutRules,
+      moduleRules,
+      evaluations,
+      modules,
+      flagSummaries,
+      moduleSummaries,
+      diagnostics,
+      recentChanges,
+      auditVisible: canPermission(context.session.effectivePermissions, 'admin_user', 'read') && context.internalUser,
+    };
+  }
+
+  async getRecentChanges(context: BffRequestContext, limit = 20) {
+    if (!context.internalUser || !canPermission(context.session.effectivePermissions, 'admin_user', 'read')) return [];
+    const query = await this.audit.query({ tenantId: context.session.activeTenant.id, limit } as any);
+    return query.items.filter((item) =>
+      item.eventType.startsWith('feature.')
+      || item.eventType.startsWith('module.')
+      || item.eventType.startsWith('access.')
+    );
   }
 }

@@ -1,10 +1,12 @@
 import type { LoanDetailDto } from '@/lib/bff/dto/loan-detail';
 import { normalizeStatus } from '@/lib/bff/utils/status';
+import { requireActionPolicyAccess } from '@/lib/access/evaluators';
 import { BffApiError, requireModule, requirePermission, type BffRequestContext } from '@/lib/bff/utils/request-context';
 import { adapterContext, buildQuickAction, buildTimelineEvent, getAdapters, tryOrWarn } from './shared';
 
 export class LoanBffService {
   async getLoan(id: string, context: BffRequestContext): Promise<LoanDetailDto> {
+    await requireActionPolicyAccess('loans.detail.view', context);
     requireModule(context, 'loans');
     requirePermission(context, 'loan', 'read');
     const adapters = getAdapters();

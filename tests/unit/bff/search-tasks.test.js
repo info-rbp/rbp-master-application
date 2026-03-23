@@ -14,6 +14,7 @@ const { getAuditStore, resetAuditStoreForTests } = require('../../../src/lib/aud
 const { getNotificationStore, resetNotificationStoreForTests } = require('../../../src/lib/notifications-center/store');
 const { ReviewApprovalWorkflowService } = require('../../../src/lib/workflows/services/review-approval-workflow-service');
 const { WorkflowTaskNotificationHooks } = require('../../../src/lib/workflows/services/task-notification-hooks');
+const { validateAccessDefinitions, assertAccessDefinitions } = require('../../../src/lib/access/validation');
 
 async function makeContext(kind = 'internal') {
   const principal = resolvePrincipalFromBootstrap({ email: kind === 'customer' ? 'member@rbp.local' : 'admin@rbp.local' });
@@ -21,6 +22,11 @@ async function makeContext(kind = 'internal') {
   const session = await buildPlatformSession(persisted);
   return { correlationId: 'search-task-correlation', session, internalUser: kind !== 'customer' };
 }
+
+test('access definition registry validates successfully', () => {
+  assert.equal(validateAccessDefinitions().valid, true);
+  assert.doesNotThrow(() => assertAccessDefinitions());
+});
 
 test.beforeEach(async () => {
   process.env.RBP_TASK_STORE_PATH = `${process.cwd()}/.rbp-data/test-task-store.json`;
@@ -105,4 +111,16 @@ test('workflow review task action routes through approval workflow', { concurren
   const result = await service.performAction(context, workflowTask.id, 'approve', { comment: 'Approved in task inbox' });
   assert.equal(result.success, true);
   assert.equal(result.meta.workflowStatus, 'completed');
+});
+
+test('customer users cannot view internal workflow status or perform high-risk task actions', { concurrency: false }, async () => {
+  const review = new ReviewApprovalWorkflowService();
+  const internalContext = await makeContext();
+  const started = await review.start(internalContext, { relatedEntityType: 'application', relatedEntityId: 'app-1', reviewType: 'credit_approval', idempotencyKey: 'review-protected-1' });
+  const service = new TaskService();
+  const customerContext = await makeContext('customer');
+  const list = await service.listTasks(internalContext, { assignment: 'all', pageSize: 20 });
+  const workflowTask = list.items.find((item) => item.id === `workflow:${started.workflowInstanceId}`);
+  assert.ok(workflowTask);
+  await assert.rejects(() => service.performAction(customerContext, workflowTask.id, 'approve', { comment: 'nope' }), /Action access denied|workflow_permission_denied/);
 });

@@ -7,6 +7,7 @@ import { canAccessSearchEntity, listAccessibleSearchEntityTypes } from '@/lib/se
 import { rankSearchItems } from '@/lib/search/ranking';
 import type { SearchProvider, SearchQuery, SearchResponse, SearchSuggestion } from '@/lib/search/types';
 import { AuditService } from '@/lib/audit/service';
+import { requireActionPolicyAccess } from '@/lib/access/evaluators';
 import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
 
 function parseList(value: string | null) {
@@ -45,6 +46,7 @@ export class SearchService {
   }
 
   async search(context: BffRequestContext, searchParams: URLSearchParams): Promise<SearchResponse> {
+    await requireActionPolicyAccess('search.query', context);
     const killSwitch = await this.featureFlags.evaluateFlag('feature.kill_switch.search', buildFeatureEvaluationContext(context));
     if (killSwitch.enabled) throw new BffApiError('search_kill_switch_active', 'Search is temporarily disabled by kill switch.', 503);
     const query = this.buildQuery(context, searchParams);

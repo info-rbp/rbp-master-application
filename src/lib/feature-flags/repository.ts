@@ -1,6 +1,13 @@
-import type { FeatureFlagAssignment, FeatureScopeType, ModuleEnablementRule } from '@/lib/feature-flags/types';
+import type { FeatureFlagAssignment, FeatureScopeType, ModuleEnablementRule, PercentageRolloutRule } from '@/lib/feature-flags/types';
 
 export type AssignmentListFilters = {
+  flagKey?: string;
+  scopeType?: FeatureScopeType;
+  scopeId?: string;
+  enabled?: boolean;
+};
+
+export type RolloutRuleListFilters = {
   flagKey?: string;
   scopeType?: FeatureScopeType;
   scopeId?: string;
@@ -14,25 +21,12 @@ export type ModuleRuleListFilters = {
   enabled?: boolean;
 };
 
-export type CreateFeatureFlagAssignmentInput = Omit<FeatureFlagAssignment, 'createdAt' | 'updatedAt' | 'version'> & {
-  createdAt?: string;
-  updatedAt?: string;
-  version?: number;
-};
-
-export type UpdateFeatureFlagAssignmentInput = Partial<Omit<FeatureFlagAssignment, 'id' | 'createdAt' | 'createdBy'>> & {
-  expectedVersion?: number;
-};
-
-export type CreateModuleEnablementRuleInput = Omit<ModuleEnablementRule, 'createdAt' | 'updatedAt' | 'version'> & {
-  createdAt?: string;
-  updatedAt?: string;
-  version?: number;
-};
-
-export type UpdateModuleEnablementRuleInput = Partial<Omit<ModuleEnablementRule, 'id' | 'createdAt' | 'createdBy'>> & {
-  expectedVersion?: number;
-};
+export type CreateFeatureFlagAssignmentInput = Omit<FeatureFlagAssignment, 'createdAt' | 'updatedAt' | 'version'> & { createdAt?: string; updatedAt?: string; version?: number; };
+export type UpdateFeatureFlagAssignmentInput = Partial<Omit<FeatureFlagAssignment, 'id' | 'createdAt' | 'createdBy'>> & { expectedVersion?: number; };
+export type CreatePercentageRolloutRuleInput = Omit<PercentageRolloutRule, 'createdAt' | 'updatedAt' | 'version'> & { createdAt?: string; updatedAt?: string; version?: number; };
+export type UpdatePercentageRolloutRuleInput = Partial<Omit<PercentageRolloutRule, 'id' | 'createdAt' | 'createdBy'>> & { expectedVersion?: number; };
+export type CreateModuleEnablementRuleInput = Omit<ModuleEnablementRule, 'createdAt' | 'updatedAt' | 'version'> & { createdAt?: string; updatedAt?: string; version?: number; };
+export type UpdateModuleEnablementRuleInput = Partial<Omit<ModuleEnablementRule, 'id' | 'createdAt' | 'createdBy'>> & { expectedVersion?: number; };
 
 export interface FeatureFlagAssignmentRepository {
   listAssignments(filters?: AssignmentListFilters): Promise<FeatureFlagAssignment[]>;
@@ -42,6 +36,15 @@ export interface FeatureFlagAssignmentRepository {
   disableAssignment(id: string, input: { updatedBy: string; expectedVersion?: number }): Promise<FeatureFlagAssignment>;
   listAssignmentsForFlag(flagKey: string, filters?: Omit<AssignmentListFilters, 'flagKey'>): Promise<FeatureFlagAssignment[]>;
   listAssignmentsForScope(scopeType: FeatureScopeType, scopeId: string): Promise<FeatureFlagAssignment[]>;
+}
+
+export interface PercentageRolloutRuleRepository {
+  listRolloutRules(filters?: RolloutRuleListFilters): Promise<PercentageRolloutRule[]>;
+  getRolloutRuleById(id: string): Promise<PercentageRolloutRule | null>;
+  createRolloutRule(input: CreatePercentageRolloutRuleInput): Promise<PercentageRolloutRule>;
+  updateRolloutRule(id: string, patch: UpdatePercentageRolloutRuleInput): Promise<PercentageRolloutRule>;
+  disableRolloutRule(id: string, input: { updatedBy: string; expectedVersion?: number }): Promise<PercentageRolloutRule>;
+  listRolloutRulesForFlag(flagKey: string, filters?: Omit<RolloutRuleListFilters, 'flagKey'>): Promise<PercentageRolloutRule[]>;
 }
 
 export interface ModuleEnablementRuleRepository {
@@ -54,6 +57,6 @@ export interface ModuleEnablementRuleRepository {
   listRulesForScope(scopeType: FeatureScopeType, scopeId: string): Promise<ModuleEnablementRule[]>;
 }
 
-export interface ControlPlaneRepository extends FeatureFlagAssignmentRepository, ModuleEnablementRuleRepository {
+export interface ControlPlaneRepository extends FeatureFlagAssignmentRepository, PercentageRolloutRuleRepository, ModuleEnablementRuleRepository {
   reset?(): Promise<void>;
 }

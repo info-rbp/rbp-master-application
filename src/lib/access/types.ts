@@ -25,6 +25,7 @@ export type CapabilityKey =
   | 'workflows.review.approve'
   | 'workflows.review.reject'
   | 'workflows.review.request_more_info'
+  | 'workflows.status.view'
   | 'tasks.view'
   | 'tasks.assign.execute'
   | 'tasks.complete.execute'

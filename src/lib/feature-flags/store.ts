@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { getTestControlPlaneRepository, resetTestControlPlaneRepository } from '@/lib/feature-flags/in-memory-repository';
 import type { ControlPlaneRepository } from '@/lib/feature-flags/repository';
-import type { FeatureFlagAssignment, ModuleEnablementRule } from '@/lib/feature-flags/types';
+import type { FeatureFlagAssignment, ModuleEnablementRule, PercentageRolloutRule } from '@/lib/feature-flags/types';
 
 type FeatureFlagStoreState = {
   assignments: FeatureFlagAssignment[];
@@ -35,6 +35,10 @@ export function getControlPlaneRepository() {
     controlPlaneRepository = new FirestoreControlPlaneRepository();
   }
   return controlPlaneRepository;
+}
+
+export function getLegacyFeatureFlagStoreForMigration(filePath = process.env.RBP_FEATURE_FLAG_STORE_PATH) {
+  return new FeatureFlagStore(filePath);
 }
 
 export function setControlPlaneRepository(repository: ControlPlaneRepository | null) {

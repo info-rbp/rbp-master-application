@@ -25,6 +25,7 @@ const capabilityRequirements: Record<CapabilityKey, { moduleKey?: string; featur
   'workflows.review.approve': { moduleKey: 'applications', internalOnly: true, permissions: [{ resource: 'application', action: 'approve' }] },
   'workflows.review.reject': { moduleKey: 'applications', internalOnly: true, permissions: [{ resource: 'application', action: 'approve' }] },
   'workflows.review.request_more_info': { moduleKey: 'applications', internalOnly: true, permissions: [{ resource: 'application', action: 'update' }] },
+  'workflows.status.view': { moduleKey: 'applications', internalOnly: true, permissions: [{ resource: 'application', action: 'read' }] },
   'tasks.view': { moduleKey: 'dashboard', permissions: [{ resource: 'dashboard', action: 'read' }] },
   'tasks.assign.execute': { moduleKey: 'dashboard', permissions: [{ resource: 'dashboard', action: 'manage' }] },
   'tasks.complete.execute': { moduleKey: 'dashboard', permissions: [{ resource: 'dashboard', action: 'update' }] },

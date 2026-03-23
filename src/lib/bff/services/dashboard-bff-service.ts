@@ -2,10 +2,12 @@ import type { DashboardDto } from '@/lib/bff/dto/dashboard';
 import { requireModule, requirePermission, type BffRequestContext } from '@/lib/bff/utils/request-context';
 import { adapterContext, buildQuickAction, buildTimelineEvent, getAdapters, tryOrWarn } from './shared';
 import { normalizeStatus } from '@/lib/bff/utils/status';
+import { requireActionPolicyAccess } from '@/lib/access/evaluators';
 import { getUnreadNotificationCount, listNotificationsForActor } from '@/lib/notifications';
 
 export class DashboardBffService {
   async getDashboard(context: BffRequestContext): Promise<DashboardDto> {
+    await requireActionPolicyAccess('dashboard.view', context);
     requireModule(context, 'dashboard');
     requirePermission(context, 'dashboard', 'read');
     const adapters = getAdapters();

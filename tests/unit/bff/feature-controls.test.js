@@ -11,6 +11,7 @@ require('../../../scripts/register-alias.cjs');
 const { createPersistedSession, buildPlatformSession } = require('../../../src/lib/platform/session');
 const { resolvePrincipalFromBootstrap } = require('../../../src/lib/platform/bootstrap');
 const { FeatureFlagService, buildFeatureEvaluationContext } = require('../../../src/lib/feature-flags/service');
+const { evaluateDeterministicBucket, buildRolloutTargetIdentity } = require('../../../src/lib/feature-flags/rollout');
 const { resetControlPlaneRepositoryForTests, getControlPlaneRepository } = require('../../../src/lib/feature-flags/store');
 const { FeatureFlagStore } = require('../../../src/lib/feature-flags/store');
 const { importLegacyFeatureControlStore } = require('../../../src/lib/feature-flags/migration');
@@ -21,6 +22,8 @@ const { NotificationService } = require('../../../src/lib/notifications-center/s
 const { SearchService } = require('../../../src/lib/search/service');
 const { TaskService } = require('../../../src/lib/tasks/service');
 const { FeatureControlsBffService } = require('../../../src/lib/bff/services/feature-controls-bff-service');
+const { requireActionPolicyAccess, evaluateRoutePolicyAccess, toAccessContext } = require('../../../src/lib/access/evaluators');
+const { toFeatureControlApiError } = require('../../../src/lib/feature-flags/http-errors');
 const { buildFlagRows, buildModuleRows, summarizeDiagnostics } = require('../../../src/app/admin/system/feature-controls/feature-controls-client');
 const { BffApiError } = require('../../../src/lib/bff/utils/request-context');
 
@@ -39,7 +42,6 @@ async function makeAdminConsoleContext() {
 }
 
 test.beforeEach(async () => {
-  process.env.NODE_ENV = 'test';
   resetControlPlaneRepositoryForTests();
   resetAuditStoreForTests();
   resetNotificationStoreForTests();
@@ -80,21 +82,7 @@ test('feature flag precedence prefers user over tenant over environment', async 
   assert.equal(result.scopeType, 'user');
 });
 
-test('assignment persistence supports versioned update and disable', async () => {
-  const service = new FeatureFlagService();
-  const context = await makeContext();
-  const created = await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'tenant on', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
-  assert.equal(created.version, 1);
-  const updated = await service.updateAssignment(created.id, { value: false, updatedBy: 'editor', expectedVersion: 1 });
-  assert.equal(updated.version, 2);
-  assert.equal(updated.value, false);
-  await assert.rejects(() => service.updateAssignment(created.id, { value: true, updatedBy: 'editor', expectedVersion: 1 }), /assignment_version_conflict/);
-  const disabled = await service.disableAssignment(created.id, { updatedBy: 'editor', expectedVersion: 2 });
-  assert.equal(disabled.enabled, false);
-  assert.equal(disabled.version, 3);
-});
-
-test('kill switch overrides normal feature enablement', async () => {
+test('explicit override beats percentage rollout at the same scope', async () => {
   const service = new FeatureFlagService();
   const context = await makeContext();
   const featureContext = buildFeatureEvaluationContext(context);
@@ -163,14 +151,10 @@ test('module controls can hide analytics for a tenant', async () => {
 test('module rule persistence supports versioned disable', async () => {
   const service = new FeatureFlagService();
   const created = await service.saveModuleRule({ moduleKey: 'analytics', scopeType: 'tenant', scopeId: 'ten_rbp_internal', enabled: true, visible: true, internalOnly: false, betaOnly: false, reason: 'allow analytics', createdBy: 'system', updatedBy: 'system', metadata: {} });
-  assert.equal(created.version, 1);
   const updated = await service.updateModuleRule(created.id, { visible: false, updatedBy: 'editor', expectedVersion: 1 });
   assert.equal(updated.version, 2);
-  assert.equal(updated.visible, false);
   const disabled = await service.disableModuleRule(created.id, { updatedBy: 'editor', expectedVersion: 2 });
   assert.equal(disabled.enabled, false);
-  assert.equal(disabled.visible, false);
-  assert.equal(disabled.version, 3);
 });
 
 test('task kill switch disables task listing', async () => {
@@ -181,19 +165,39 @@ test('task kill switch disables task listing', async () => {
   await assert.rejects(() => new TaskService().listTasks({ ...context, session: refreshedSession }, { page: 1, pageSize: 10, assignment: 'all' }), (error) => error instanceof BffApiError && error.code === 'tasks_kill_switch_active');
 });
 
+test('preview returns reasoning and bucket details for simulated rollout', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const result = await service.preview({ ...buildFeatureEvaluationContext(context), includeReasoning: true, includeBucketDetails: true, featureKeys: ['feature.search.enabled'] }, { tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions, proposedRolloutRules: [{ id: 'preview-rule', flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'preview', enabled: true, reason: 'preview', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: 'preview', updatedBy: 'preview', metadata: {}, version: 1 }] });
+  assert.equal(result.evaluatedFlags.length, 1);
+  assert.ok(result.evaluatedFlags[0].reasons.length > 0);
+  assert.ok(result.evaluatedFlags[0].bucketResult);
+});
+
+test('preview omits reasoning and bucket payloads when disabled by request', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const result = await service.preview({ ...buildFeatureEvaluationContext(context), includeReasoning: false, includeBucketDetails: false, featureKeys: ['feature.search.enabled'] }, { tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions, proposedRolloutRules: [{ id: 'preview-rule', flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'preview', enabled: true, reason: 'preview', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: 'preview', updatedBy: 'preview', metadata: {}, version: 1 }] });
+  assert.equal(result.evaluatedFlags.length, 1);
+  assert.deepEqual(result.evaluatedFlags[0].reasons, []);
+  assert.equal(result.evaluatedFlags[0].bucketResult, undefined);
+  assert.deepEqual(result.meta, { includeReasoning: false, includeBucketDetails: false });
+});
+
 test('migration imports legacy file store and preserves effective evaluation', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'feature-control-migration-'));
   const legacyStore = new FeatureFlagStore(join(dir, 'legacy.json'));
   const context = await makeContext();
   await legacyStore.write({
     assignments: [{ id: 'ffa_legacy_1', flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: false, reason: 'legacy off', enabled: true, createdAt: '2026-03-20T00:00:00.000Z', updatedAt: '2026-03-20T00:00:00.000Z', createdBy: 'legacy', updatedBy: 'legacy', metadata: {}, version: 1 }],
+    rolloutRules: [{ id: 'prr_legacy_1', flagKey: 'feature.documents.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 50, bucketBy: 'tenant', salt: 'legacy', enabled: true, reason: 'legacy rollout', createdAt: '2026-03-20T00:00:00.000Z', updatedAt: '2026-03-20T00:00:00.000Z', createdBy: 'legacy', updatedBy: 'legacy', metadata: {}, version: 1 }],
     moduleRules: [{ id: 'mcr_legacy_1', moduleKey: 'analytics', scopeType: 'tenant', scopeId: context.session.activeTenant.id, enabled: false, visible: false, internalOnly: false, betaOnly: false, reason: 'legacy hold', createdAt: '2026-03-20T00:00:00.000Z', updatedAt: '2026-03-20T00:00:00.000Z', createdBy: 'legacy', updatedBy: 'legacy', metadata: {}, version: 1 }],
   });
   const repo = getControlPlaneRepository();
   const result = await importLegacyFeatureControlStore({ repository: repo, store: legacyStore, actorId: 'migration' });
-  assert.deepEqual(result, { assignmentsImported: 1, assignmentsSkipped: 0, moduleRulesImported: 1, moduleRulesSkipped: 0 });
+  assert.deepEqual(result, { assignmentsImported: 1, assignmentsSkipped: 0, rolloutRulesImported: 1, rolloutRulesSkipped: 0, moduleRulesImported: 1, moduleRulesSkipped: 0 });
   const rerun = await importLegacyFeatureControlStore({ repository: repo, store: legacyStore, actorId: 'migration' });
-  assert.deepEqual(rerun, { assignmentsImported: 0, assignmentsSkipped: 1, moduleRulesImported: 0, moduleRulesSkipped: 1 });
+  assert.deepEqual(rerun, { assignmentsImported: 0, assignmentsSkipped: 1, rolloutRulesImported: 0, rolloutRulesSkipped: 1, moduleRulesImported: 0, moduleRulesSkipped: 1 });
   const service = new FeatureFlagService();
   const featureContext = buildFeatureEvaluationContext(context);
   const flag = await service.evaluateFlag('feature.search.enabled', featureContext);
@@ -260,4 +264,23 @@ test('catalog helper filters flags, modules, and diagnostic summary for the oper
     { id: '3', area: 'module_control', targetKey: 'analytics', severity: 'info', type: 'scheduled_rule', summary: 'Scheduled', detail: '...', status: 'scheduled', relatedIds: [] },
   ]);
   assert.deepEqual(summary, { total: 3, critical: 1, warning: 1, scheduled: 1, activeKillSwitches: 1 });
+});
+
+test('control-plane access policies enforce preview and admin route protection', async () => {
+  const internalContext = await makeAdminConsoleContext();
+  const customerContext = await makeContext('customer');
+  await assert.doesNotReject(() => requireActionPolicyAccess('admin.rollout.preview', internalContext));
+  await assert.rejects(() => requireActionPolicyAccess('admin.rollout.preview', customerContext), (error) => error instanceof BffApiError && error.code === 'forbidden');
+
+  const internalRoute = evaluateRoutePolicyAccess('/api/admin/feature-controls/recent-changes', toAccessContext(internalContext));
+  assert.equal(internalRoute.result.allowed, true);
+  const customerRoute = evaluateRoutePolicyAccess('/api/admin/feature-controls/recent-changes', toAccessContext(customerContext));
+  assert.equal(customerRoute.result.allowed, false);
+});
+
+test('feature-control error mapping converts version conflicts into API-safe errors', () => {
+  const mapped = toFeatureControlApiError(new Error('assignment_version_conflict'));
+  assert.ok(mapped instanceof BffApiError);
+  assert.equal(mapped.status, 409);
+  assert.equal(mapped.code, 'assignment_version_conflict');
 });

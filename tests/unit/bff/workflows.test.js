@@ -115,3 +115,10 @@ test('workflow status query enforces tenant scope', async () => {
   const customerContext = await makeContext('customer');
   await assert.rejects(() => new WorkflowStatusQueryService().getWorkflowStatus(customerContext, result.workflowInstanceId), (error) => error instanceof WorkflowError && error.code === 'workflow_forbidden');
 });
+
+test('workflow status access is blocked for customer operators before tenant data is returned', async () => {
+  const service = new ApplicationSubmissionWorkflowService();
+  const result = await service.submit(await makeContext(), { applicationId: 'app-1', idempotencyKey: 'scope-cap-1' });
+  const customerContext = await makeContext('customer');
+  await assert.rejects(() => new WorkflowStatusQueryService().getWorkflowStatus(customerContext, result.workflowInstanceId), (error) => error instanceof WorkflowError && error.code === 'workflow_permission_denied');
+});
