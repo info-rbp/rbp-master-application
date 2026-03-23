@@ -33,7 +33,7 @@ test.beforeEach(async () => {
   await getWorkflowStore().reset();
 });
 
-test('audit service records immutable audit events and supports querying', { concurrency: false }, async () => {
+test('audit service records immutable audit events and supports querying', async () => {
   const audit = new AuditService();
   const recorded = await audit.record({ eventType: 'auth.login.succeeded', action: 'login', category: 'authentication', tenantId: 'ten_rbp_internal', actorType: 'user', actorId: 'usr_jane_admin', relatedEntityRefs: [], sourceSystem: 'platform', correlationId: 'corr-1', outcome: 'success', severity: 'info', metadata: { token: 'secret', keep: 'ok' }, sensitivity: 'internal' });
   const fetched = await audit.getById(recorded.id);
@@ -42,7 +42,7 @@ test('audit service records immutable audit events and supports querying', { con
   assert.equal(list.items.length, 1);
 });
 
-test('notification service creates, deduplicates, and updates read state', { concurrency: false }, async () => {
+test('notification service creates, deduplicates, and updates read state', async () => {
   const notifications = new NotificationService();
   const created = await notifications.create({ tenantId: 'ten_rbp_internal', recipientType: 'user', recipientId: 'usr_jane_admin', notificationType: 'approval.requested', category: 'workflow', title: 'Approval requested', body: 'Please review', severity: 'warning', sourceSystem: 'platform', sourceEventType: 'approval.started', actions: [], channels: ['in_app'], metadata: { correlationId: 'corr-1' }, sourceRefs: [], dedupeKey: 'approval:1' });
   const duplicate = await notifications.create({ tenantId: 'ten_rbp_internal', recipientType: 'user', recipientId: 'usr_jane_admin', notificationType: 'approval.requested', category: 'workflow', title: 'Approval requested', body: 'Please review', severity: 'warning', sourceSystem: 'platform', sourceEventType: 'approval.started', actions: [], channels: ['in_app'], metadata: { correlationId: 'corr-1' }, sourceRefs: [], dedupeKey: 'approval:1' });
@@ -54,7 +54,7 @@ test('notification service creates, deduplicates, and updates read state', { con
   assert.equal(updated.summary.unread, 0);
 });
 
-test('notification preferences can be read and updated', { concurrency: false }, async () => {
+test('notification preferences can be read and updated', async () => {
   const notifications = new NotificationService();
   const prefs = await notifications.getPreferences('usr_jane_admin', 'ten_rbp_internal');
   assert.equal(prefs[0].channelPreferences.in_app, true);
@@ -62,7 +62,7 @@ test('notification preferences can be read and updated', { concurrency: false },
   assert.equal(updated.channelPreferences.email, true);
 });
 
-test('workflow integration creates audit records and notifications', { concurrency: false }, async () => {
+test('workflow integration creates audit records and notifications', async () => {
   const workflow = new ApplicationSubmissionWorkflowService();
   const context = await makeContext();
   const result = await workflow.submit(context, { applicationId: 'app-1', idempotencyKey: 'audit-workflow-1' });
@@ -74,7 +74,7 @@ test('workflow integration creates audit records and notifications', { concurren
   assert.ok(status.events.length >= 1);
 });
 
-test('audit query access is restricted to internal admin users', { concurrency: false }, async () => {
+test('audit query access is restricted to internal admin users', async () => {
   const audit = new AuditService();
   await audit.record({ eventType: 'tenant.switched', action: 'switch_tenant', category: 'tenancy', tenantId: 'ten_rbp_internal', actorType: 'user', actorId: 'usr_jane_admin', relatedEntityRefs: [], sourceSystem: 'platform', correlationId: 'corr-3', outcome: 'success', severity: 'info', metadata: {}, sensitivity: 'internal' });
   const queryService = new AuditQueryService();

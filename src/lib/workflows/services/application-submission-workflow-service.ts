@@ -1,6 +1,5 @@
 import { getPlatformAdapters } from '@/lib/platform/adapters/factory';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
-import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
 import type { ApplicationSubmissionCommandDto } from '@/lib/workflows/dto/command-dto';
 import type { ApplicationSubmissionResultDto } from '@/lib/workflows/dto/workflow-dto';
 import type { WorkflowCommand } from '@/lib/workflows/types';
@@ -12,11 +11,8 @@ import { WorkflowTaskNotificationHooks } from './task-notification-hooks';
 export class ApplicationSubmissionWorkflowService extends WorkflowOrchestrationService {
   private readonly adapters = getPlatformAdapters();
   private readonly hooks = new WorkflowTaskNotificationHooks();
-  private readonly flags = new FeatureFlagService();
 
   async submit(context: BffRequestContext, input: ApplicationSubmissionCommandDto): Promise<ApplicationSubmissionResultDto> {
-    const featureContext = buildFeatureEvaluationContext({ session: context.session, internalUser: context.internalUser, correlationId: context.correlationId, currentModule: 'workflows' });
-    if ((await this.flags.evaluateFlag('feature.kill_switch.workflows', featureContext)).enabled || !(await this.flags.evaluateFlag('feature.workflows.enabled', featureContext)).enabled) throw new WorkflowError({ code: 'workflow_disabled', message: 'Workflow execution is currently disabled.', status: 503, category: 'workflow_state_conflict' });
     requireWorkflowAccess(context, { moduleKey: 'applications', resource: 'application', action: 'update' });
     const command: WorkflowCommand<ApplicationSubmissionCommandDto> = {
       commandId: `cmd_${crypto.randomUUID()}`,
@@ -55,8 +51,6 @@ export class ApplicationSubmissionWorkflowService extends WorkflowOrchestrationS
 
     let decisionSummary: Record<string, unknown> | undefined;
     try {
-      const marbleEnabled = await this.flags.evaluateFlag('feature.integration.marble.evaluation_enabled', featureContext);
-      if (!marbleEnabled.enabled) throw new WorkflowError({ code: 'marble_disabled', message: 'Marble evaluation is disabled by rollout controls.', status: 503, category: 'workflow_state_conflict' });
       const risk = await this.executeStep(instance, { stepKey: 'evaluate_risk', stepType: 'adapter_call', sequence: 3, sourceSystem: 'marble', run: async () => {
         const result = await this.adapters.marble.evaluateSubject({ subjectId: input.applicationId, subjectType: 'application' }, { correlationId: context.correlationId, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, actingUserId: context.session.user.id });
         decisionSummary = { decisionId: result.data.id, outcome: result.data.outcome, reasonCodes: result.data.reasonCodes };
@@ -69,19 +63,18 @@ export class ApplicationSubmissionWorkflowService extends WorkflowOrchestrationS
       await this.store.saveInstance(instance);
     }
 
-    const n8nEnabled = await this.flags.evaluateFlag('feature.integration.n8n.workflow_dispatch_enabled', featureContext);
-    const automation = n8nEnabled.enabled ? await this.executeStep(instance, { stepKey: 'trigger_automation', stepType: 'automation', sequence: 4, sourceSystem: 'n8n', run: async () => {
+    const automation = await this.executeStep(instance, { stepKey: 'trigger_automation', stepType: 'automation', sequence: 4, sourceSystem: 'n8n', run: async () => {
       const response = await this.adapters.n8n.triggerWorkflow('application-submission', { applicationId: input.applicationId }, { correlationId: context.correlationId, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, actingUserId: context.session.user.id });
       return { output: { executionId: response.data.executionId, accepted: response.data.accepted }, sourceRefs: [{ sourceSystem: 'n8n', sourceRecordType: 'execution', sourceRecordId: response.data.executionId ?? 'pending', syncedAt: response.meta.receivedAt }], status: response.data.accepted ? 'waiting_internal' : 'partially_completed' };
     } }).catch((error) => {
       warnings.push({ code: 'automation_failed', message: error instanceof Error ? error.message : 'Automation trigger failed.' });
       return { instance, output: undefined };
-    }) : { instance, output: undefined };
+    });
     sourceRefs.push(...automation.instance.sourceSystemRefs);
 
     const task = await this.executeStep(instance, { stepKey: 'create_review_task', stepType: 'internal_task', sequence: 5, run: async () => {
-      const createdTask = await this.hooks.createTask({ workflowInstanceId: instance.id, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, title: `Review application ${input.applicationId}`, queue: 'credit_review', relatedEntityType: 'application', relatedEntityId: input.applicationId, correlationId: context.correlationId });
-      await this.hooks.createNotification({ workflowInstanceId: instance.id, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, title: `Application ${input.applicationId} submitted`, severity: 'info', relatedEntityType: 'application', relatedEntityId: input.applicationId, correlationId: context.correlationId });
+      const createdTask = await this.hooks.createTask({ workflowInstanceId: instance.id, title: `Review application ${input.applicationId}`, queue: 'credit_review' });
+      await this.hooks.createNotification({ workflowInstanceId: instance.id, title: `Application ${input.applicationId} submitted`, severity: 'info' });
       return { output: { taskId: createdTask.id }, status: warnings.length > 0 ? 'partially_completed' : 'completed' };
     } });
 

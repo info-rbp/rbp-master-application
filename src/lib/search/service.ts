@@ -7,7 +7,6 @@ import { canAccessSearchEntity, listAccessibleSearchEntityTypes } from '@/lib/se
 import { rankSearchItems } from '@/lib/search/ranking';
 import type { SearchProvider, SearchQuery, SearchResponse, SearchSuggestion } from '@/lib/search/types';
 import { AuditService } from '@/lib/audit/service';
-import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
 
 function parseList(value: string | null) {
   return value ? value.split(',').map((item) => item.trim()).filter(Boolean) : undefined;
@@ -16,7 +15,6 @@ function parseList(value: string | null) {
 export class SearchService {
   private readonly providers: SearchProvider[] = [new OdooSearchProvider(), new LendingSearchProvider(), new MarbleSearchProvider(), new InternalSearchProvider()];
   private readonly audit = new AuditService();
-  private readonly flags = new FeatureFlagService();
 
   buildQuery(context: BffRequestContext, searchParams: URLSearchParams): SearchQuery {
     const query = (searchParams.get('q') ?? '').trim();
@@ -45,9 +43,6 @@ export class SearchService {
   }
 
   async search(context: BffRequestContext, searchParams: URLSearchParams): Promise<SearchResponse> {
-    const featureContext = buildFeatureEvaluationContext({ session: context.session, internalUser: context.internalUser, correlationId: context.correlationId, currentModule: 'search' });
-    if ((await this.flags.evaluateFlag('feature.kill_switch.search', featureContext)).enabled) throw new BffApiError('search_kill_switch_active', 'Search is temporarily disabled by an emergency control.', 503);
-    if (!(await this.flags.evaluateFlag('feature.search.enabled', featureContext)).enabled) throw new BffApiError('search_feature_disabled', 'Search is not enabled for the current context.', 403);
     const query = this.buildQuery(context, searchParams);
     const accessibleTypes = listAccessibleSearchEntityTypes(context);
     const finalEntityTypes = query.entityTypes?.length ? query.entityTypes.filter((item) => accessibleTypes.includes(item)) : accessibleTypes;

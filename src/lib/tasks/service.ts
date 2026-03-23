@@ -8,7 +8,6 @@ import { MarbleTaskProvider } from '@/lib/tasks/providers/marble-task-provider';
 import { OdooTaskProvider } from '@/lib/tasks/providers/odoo-task-provider';
 import type { TaskActionResult, TaskListResponse, TaskProvider, TaskQuery, TaskRecord, TaskSummary } from '@/lib/tasks/types';
 import { AuditService } from '@/lib/audit/service';
-import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
 import { NotificationService } from '@/lib/notifications-center/service';
 import { getTaskStore } from '@/lib/tasks/store';
 import { ReviewApprovalWorkflowService } from '@/lib/workflows/services/review-approval-workflow-service';
@@ -38,7 +37,6 @@ function buildSummary(items: TaskRecord[], userId: string): TaskSummary {
 export class TaskService {
   private readonly providers: TaskProvider[] = [new InternalTaskProvider(), new WorkflowTaskProvider(), new LendingTaskProvider(), new MarbleTaskProvider(), new OdooTaskProvider()];
   private readonly audit = new AuditService();
-  private readonly flags = new FeatureFlagService();
   private readonly notifications = new NotificationService();
   private readonly store = getTaskStore();
   private readonly reviewApproval = new ReviewApprovalWorkflowService();
@@ -64,9 +62,6 @@ export class TaskService {
   }
 
   async listTasks(context: BffRequestContext, filters: Record<string, unknown> = {}): Promise<TaskListResponse> {
-    const featureContext = buildFeatureEvaluationContext({ session: context.session, internalUser: context.internalUser, correlationId: context.correlationId, currentModule: 'tasks' });
-    if ((await this.flags.evaluateFlag('feature.kill_switch.tasks', featureContext)).enabled) throw new BffApiError('tasks_kill_switch_active', 'Tasks are temporarily disabled by an emergency control.', 503);
-    if (!(await this.flags.evaluateFlag('feature.tasks.enabled', featureContext)).enabled) throw new BffApiError('tasks_feature_disabled', 'Tasks are not enabled for the current context.', 403);
     requirePermission(context, 'dashboard', 'read');
     const query = this.buildQuery(context, filters);
     const warnings: WarningDto[] = [];

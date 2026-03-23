@@ -9,14 +9,8 @@ export async function GET(request: NextRequest) {
   const correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
   try {
     const context = await getBffRequestContext(request);
-    const { searchParams } = new URL(request.url);
-    const data = await service.getSummary(context, {
-      status: searchParams.get('status') ?? undefined,
-      priority: searchParams.get('priority') ?? undefined,
-      sourceSystem: searchParams.get('sourceSystem') ?? undefined,
-      assignment: searchParams.get('assignment') ?? undefined,
-    });
-    return ok(data, correlationId);
+    const data = await service.listTasks(context, { limit: 10 });
+    return ok(data.summary, correlationId);
   } catch (error) {
     return fail(error, correlationId);
   }

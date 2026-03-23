@@ -3,19 +3,14 @@ import type { CreateNotificationInput, Notification, NotificationListDto, Notifi
 import { RecipientResolver } from '@/lib/notifications-center/recipient-resolver';
 import { NotificationChannelDispatcher } from '@/lib/notifications-center/channel-dispatcher';
 import { AuditService } from '@/lib/audit/service';
-import { FeatureFlagService } from '@/lib/feature-flags/service';
 
 export class NotificationService {
   private readonly store = getNotificationStore();
   private readonly resolver = new RecipientResolver();
   private readonly dispatcher = new NotificationChannelDispatcher();
   private readonly audit = new AuditService();
-  private readonly flags = new FeatureFlagService();
 
   async create(input: CreateNotificationInput): Promise<Notification[]> {
-    const featureContext = { environment: process.env.NODE_ENV ?? 'development', tenantId: input.tenantId, workspaceId: input.workspaceId, userId: input.recipientId, roleCodes: [], enabledModules: [], currentModule: 'notifications', isInternalUser: input.tenantId === 'ten_rbp_internal', correlationId: String(input.metadata.correlationId ?? crypto.randomUUID()) } as const;
-    if ((await this.flags.evaluateFlag('feature.kill_switch.notifications', featureContext as any)).enabled) return [];
-    if (!(await this.flags.evaluateFlag('feature.notifications.enabled', featureContext as any)).enabled) return [];
     const recipients = await this.resolver.resolve({ tenantId: input.tenantId, workspaceId: input.workspaceId, recipientType: input.recipientType, recipientId: input.recipientId, recipientScope: input.recipientScope });
     const created: Notification[] = [];
     for (const recipient of recipients) {

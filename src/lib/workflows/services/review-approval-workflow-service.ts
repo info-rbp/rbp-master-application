@@ -1,6 +1,5 @@
 import { getPlatformAdapters } from '@/lib/platform/adapters/factory';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
-import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
 import type { ReviewApprovalActionCommandDto, ReviewApprovalStartCommandDto } from '@/lib/workflows/dto/command-dto';
 import type { ReviewApprovalResultDto } from '@/lib/workflows/dto/workflow-dto';
 import type { WorkflowCommand } from '@/lib/workflows/types';
@@ -12,11 +11,8 @@ import { WorkflowTaskNotificationHooks } from './task-notification-hooks';
 export class ReviewApprovalWorkflowService extends WorkflowOrchestrationService {
   private readonly adapters = getPlatformAdapters();
   private readonly hooks = new WorkflowTaskNotificationHooks();
-  private readonly flags = new FeatureFlagService();
 
   async start(context: BffRequestContext, input: ReviewApprovalStartCommandDto): Promise<ReviewApprovalResultDto> {
-    const featureContext = buildFeatureEvaluationContext({ session: context.session, internalUser: context.internalUser, correlationId: context.correlationId, currentModule: 'workflows' });
-    if ((await this.flags.evaluateFlag('feature.kill_switch.workflows', featureContext)).enabled || !(await this.flags.evaluateFlag('feature.workflows.enabled', featureContext)).enabled) throw new WorkflowError({ code: 'workflow_disabled', message: 'Workflow execution is currently disabled.', status: 503, category: 'workflow_state_conflict' });
     requireWorkflowAccess(context, { moduleKey: input.relatedEntityType === 'invoice' ? 'finance' : input.relatedEntityType === 'support_ticket' ? 'support' : input.relatedEntityType === 'loan' ? 'loans' : 'applications', resource: input.relatedEntityType === 'invoice' ? 'finance' : input.relatedEntityType === 'support_ticket' ? 'support_ticket' : input.relatedEntityType, action: 'read' });
     const command: WorkflowCommand<ReviewApprovalStartCommandDto> = { commandId: `cmd_${crypto.randomUUID()}`, workflowType: 'review_approval', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, initiatedBy: context.session.user.id, relatedEntityType: input.relatedEntityType, relatedEntityId: input.relatedEntityId, payload: input, idempotencyKey: input.idempotencyKey, correlationId: context.correlationId, requestedAt: new Date().toISOString() };
     const existing = await this.registerCommand(command);
@@ -28,14 +24,12 @@ export class ReviewApprovalWorkflowService extends WorkflowOrchestrationService 
 
     const instance = await this.createWorkflowInstance(command, { reviewType: input.reviewType, requestedReviewers: input.requestedReviewers ?? [] });
     await this.executeStep(instance, { stepKey: 'validate_review_scope', stepType: 'validation', sequence: 1, run: async () => ({ output: { reviewType: input.reviewType }, status: 'queued' }) });
-    const task = await this.executeStep(instance, { stepKey: 'assign_reviewer', stepType: 'internal_task', sequence: 2, run: async () => ({ output: await this.hooks.createTask({ workflowInstanceId: instance.id, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, title: `Review ${input.relatedEntityType} ${input.relatedEntityId}`, queue: 'approvals', relatedEntityType: input.relatedEntityType, relatedEntityId: input.relatedEntityId, correlationId: context.correlationId }), status: 'waiting_internal' }) });
+    const task = await this.executeStep(instance, { stepKey: 'assign_reviewer', stepType: 'internal_task', sequence: 2, run: async () => ({ output: await this.hooks.createTask({ workflowInstanceId: instance.id, title: `Review ${input.relatedEntityType} ${input.relatedEntityId}`, queue: 'approvals' }), status: 'waiting_internal' }) });
     await this.completeWorkflow(instance, { approvalState: 'pending_review', taskId: (task.output as any)?.id }, 'waiting_internal');
     return { success: true, workflowInstanceId: instance.id, status: 'waiting_internal', nextStep: 'assign_reviewer', warnings: [], errors: [], sourceRefs: instance.sourceSystemRefs, meta: { correlationId: context.correlationId }, approvalState: 'pending_review', lastAction: 'start', nextRequiredActor: 'reviewer' };
   }
 
   async act(context: BffRequestContext, workflowId: string, input: ReviewApprovalActionCommandDto): Promise<ReviewApprovalResultDto> {
-    const featureContext = buildFeatureEvaluationContext({ session: context.session, internalUser: context.internalUser, correlationId: context.correlationId, currentModule: 'workflows' });
-    if ((await this.flags.evaluateFlag('feature.kill_switch.workflows', featureContext)).enabled || !(await this.flags.evaluateFlag('feature.workflows.enabled', featureContext)).enabled) throw new WorkflowError({ code: 'workflow_disabled', message: 'Workflow execution is currently disabled.', status: 503, category: 'workflow_state_conflict' });
     requireWorkflowAccess(context, { moduleKey: 'applications', resource: 'application', action: input.action === 'approve' || input.action === 'reject' ? 'approve' : 'update' });
     const status = await this.getStatus(workflowId);
     if (!status) throw new WorkflowError({ code: 'workflow_not_found', message: 'Workflow was not found.', status: 404, category: 'validation_failure' });

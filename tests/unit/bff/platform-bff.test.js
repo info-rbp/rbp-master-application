@@ -14,7 +14,7 @@ const { BffApiError } = require('../../../src/lib/bff/utils/request-context');
 const { normalizeStatus } = require('../../../src/lib/bff/utils/status');
 const sessionModule = require('../../../src/lib/platform/session');
 const adaptersFactory = require('../../../src/lib/platform/adapters/factory');
-const { NotificationService } = require('../../../src/lib/notifications-center/service');
+const notificationsModule = require('../../../src/lib/notifications');
 const { createPersistedSession, buildPlatformSession } = require('../../../src/lib/platform/session');
 const { resolvePrincipalFromBootstrap } = require('../../../src/lib/platform/bootstrap');
 
@@ -40,7 +40,8 @@ test('session service returns canonical unauthenticated shape', async (t) => {
 });
 
 test('dashboard service aggregates workspace data', async (t) => {
-  t.mock.method(NotificationService.prototype, 'listForUser', async () => ({ items: [], summary: { total: 0, unread: 0, highSeverity: 0 }, pagination: { limit: 10, total: 0 } }));
+  t.mock.method(notificationsModule, 'listNotificationsForActor', async () => ([]));
+  t.mock.method(notificationsModule, 'getUnreadNotificationCount', async () => 0);
   const service = new DashboardBffService();
   const data = await service.getDashboard(await makeContext());
   assert.equal(data.tenantSummary.tenantId, 'ten_rbp_internal');
@@ -80,7 +81,8 @@ test('task inbox service normalizes tasks across sources', async () => {
 });
 
 test('notification service returns UI-ready notification list', async (t) => {
-  t.mock.method(NotificationService.prototype, 'listForUser', async () => ({ items: [{ id: 'n1', notificationType: 'system', category: 'system', title: 'Hello', body: 'World', severity: 'warning', status: 'unread' }], summary: { total: 1, unread: 1, highSeverity: 1 }, pagination: { limit: 50, total: 1 } }));
+  t.mock.method(notificationsModule, 'listNotificationsForActor', async () => ([{ id: 'n1', audienceType: 'direct', type: 'system', title: 'Hello', message: 'World', severity: 'warning', read: false, createdAt: '2026-03-22T00:00:00.000Z', metadata: {} }]));
+  t.mock.method(notificationsModule, 'getUnreadNotificationCount', async () => 1);
   const service = new NotificationBffService();
   const data = await service.listNotifications(await makeContext());
   assert.equal(data.summary.unread, 1);

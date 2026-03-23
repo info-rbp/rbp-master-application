@@ -1,6 +1,5 @@
 import { getPlatformAdapters } from '@/lib/platform/adapters/factory';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
-import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
 import type { DocumentUploadCommandDto } from '@/lib/workflows/dto/command-dto';
 import type { DocumentUploadResultDto } from '@/lib/workflows/dto/workflow-dto';
 import type { WorkflowCommand } from '@/lib/workflows/types';
@@ -12,11 +11,8 @@ import { WorkflowTaskNotificationHooks } from './task-notification-hooks';
 export class DocumentUploadWorkflowService extends WorkflowOrchestrationService {
   private readonly adapters = getPlatformAdapters();
   private readonly hooks = new WorkflowTaskNotificationHooks();
-  private readonly flags = new FeatureFlagService();
 
   async registerUpload(context: BffRequestContext, input: DocumentUploadCommandDto): Promise<DocumentUploadResultDto> {
-    const featureContext = buildFeatureEvaluationContext({ session: context.session, internalUser: context.internalUser, correlationId: context.correlationId, currentModule: 'workflows' });
-    if ((await this.flags.evaluateFlag('feature.kill_switch.workflows', featureContext)).enabled || !(await this.flags.evaluateFlag('feature.workflows.enabled', featureContext)).enabled) throw new WorkflowError({ code: 'workflow_disabled', message: 'Workflow execution is currently disabled.', status: 503, category: 'workflow_state_conflict' });
     requireWorkflowAccess(context, { moduleKey: 'documents', resource: 'document', action: 'create' });
     const command: WorkflowCommand<DocumentUploadCommandDto> = { commandId: `cmd_${crypto.randomUUID()}`, workflowType: 'document_upload', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, initiatedBy: context.session.user.id, relatedEntityType: input.ownerEntityType, relatedEntityId: input.ownerEntityId, payload: input, idempotencyKey: input.idempotencyKey, correlationId: context.correlationId, requestedAt: new Date().toISOString() };
     const existing = await this.registerCommand(command);
@@ -42,7 +38,7 @@ export class DocumentUploadWorkflowService extends WorkflowOrchestrationService 
     });
 
     const task = await this.executeStep(instance, { stepKey: 'create_review_task', stepType: 'internal_task', sequence: 4, run: async () => {
-      const task = await this.hooks.createTask({ workflowInstanceId: instance.id, tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, title: `Review ${input.documentType} for ${input.ownerEntityType} ${input.ownerEntityId}`, queue: 'document_review', relatedEntityType: input.ownerEntityType, relatedEntityId: input.ownerEntityId, correlationId: context.correlationId });
+      const task = await this.hooks.createTask({ workflowInstanceId: instance.id, title: `Review ${input.documentType} for ${input.ownerEntityType} ${input.ownerEntityId}`, queue: 'document_review' });
       return { output: { taskId: task.id }, status: 'waiting_internal' };
     } });
 
