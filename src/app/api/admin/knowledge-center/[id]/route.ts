@@ -5,14 +5,14 @@ import {
   unpublishKnowledgeArticle,
   updateKnowledgeArticle,
 } from '@/lib/data';
-import { AuthorizationError, requireAdminRequestContext } from '@/lib/server-auth';
+import { AuthorizationError, requireAdminActionRequestContext } from '@/lib/server-auth';
 import { normalizeKnowledgeSlug, parseTagInput } from '@/lib/knowledge-center';
 import { readJsonBody } from '@/lib/http';
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   let auth;
   try {
-    auth = await requireAdminRequestContext(request);
+    auth = await requireAdminActionRequestContext(request, 'admin.knowledge.manage');
   } catch (error) {
     const status = error instanceof AuthorizationError ? error.status : 401;
     return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
@@ -49,7 +49,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   let auth;
   try {
-    auth = await requireAdminRequestContext(request);
+    auth = await requireAdminActionRequestContext(request, 'admin.knowledge.manage');
   } catch (error) {
     const status = error instanceof AuthorizationError ? error.status : 401;
     return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
@@ -73,7 +73,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   let auth;
   try {
-    auth = await requireAdminRequestContext(request);
+    auth = await requireAdminActionRequestContext(request, 'admin.knowledge.manage');
   } catch (error) {
     const status = error instanceof AuthorizationError ? error.status : 401;
     return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });

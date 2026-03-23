@@ -36,6 +36,7 @@ export type CapabilityKey =
   | 'search.finance.query'
   | 'search.support.query'
   | 'search.workflows.query'
+  | 'admin.console.view'
   | 'admin.feature_flags.read'
   | 'admin.feature_flags.manage'
   | 'admin.module_controls.read'
@@ -43,6 +44,12 @@ export type CapabilityKey =
   | 'admin.rollout.preview'
   | 'admin.audit.view'
   | 'admin.kill_switch.manage'
+  | 'admin.knowledge.view'
+  | 'admin.knowledge.manage'
+  | 'admin.membership.view'
+  | 'admin.membership.manage'
+  | 'admin.membership.notes.manage'
+  | 'admin.membership.override.manage'
   | 'settings.profile.view'
   | 'settings.team.manage';
 

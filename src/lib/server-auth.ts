@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import * as admin from 'firebase-admin';
 import { firestore } from '@/firebase/server';
 import { getPersistedPlatformSession, resolveSessionResponse } from '@/lib/platform/session';
+import { evaluateActionPolicyAccess } from '@/lib/access/evaluators';
 
 export const AUTH_COOKIE_NAME = 'rbp_id_token';
 
@@ -132,6 +133,48 @@ export async function requireAdminServerContext() {
     throw new AuthorizationError('Forbidden', 403);
   }
 
+  return auth;
+}
+
+
+function buildPlatformAccessContext(sessionResponse: Awaited<ReturnType<typeof resolveSessionResponse>>) {
+  if (!sessionResponse.authenticated) return null;
+  const session = sessionResponse.session;
+  const internalUser = session.activeTenant.tenantType === 'internal' || session.availableTenants.some((tenant) => tenant.tenantType === 'internal');
+  return {
+    environment: process.env.NODE_ENV ?? 'development',
+    tenantId: session.activeTenant.id,
+    workspaceId: session.activeWorkspace?.id,
+    userId: session.user.id,
+    roleCodes: session.roles.map((role) => role.code),
+    enabledModules: session.enabledModules as string[],
+    effectiveFlags: session.featureFlags,
+    effectivePermissions: session.effectivePermissions,
+    internalUser,
+    correlationId: session.sessionId,
+  };
+}
+
+export async function requireAdminActionRequestContext(request: NextRequest, actionKey: string) {
+  const sessionResponse = await resolveSessionResponse();
+  if (sessionResponse.authenticated) {
+    const accessContext = buildPlatformAccessContext(sessionResponse);
+    if (!accessContext || !evaluateActionPolicyAccess(actionKey, accessContext).result.allowed) {
+      throw new AuthorizationError('Forbidden', 403);
+    }
+
+    return {
+      userId: sessionResponse.session.user.id,
+      role: deriveRoleFromPlatformSession(await getPersistedPlatformSession()) ?? 'member',
+      email: sessionResponse.session.user.email,
+      emailVerified: true,
+      tenantId: sessionResponse.session.activeTenant.id,
+      workspaceId: sessionResponse.session.activeWorkspace?.id,
+      permissions: sessionResponse.session.effectivePermissions,
+    } satisfies AuthContext;
+  }
+
+  const auth = await requireAdminRequestContext(request);
   return auth;
 }
 
