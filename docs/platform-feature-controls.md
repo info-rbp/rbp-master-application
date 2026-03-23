@@ -2,27 +2,67 @@
 
 ## Architecture
 
-The control-plane rollout system now has five active layers:
+The Sprint 1 hardening rollout system is split into five layers:
 
-1. **Definitions** in `src/lib/feature-flags/definitions.ts` keep the flag catalog, default values, release stages, dependencies, conflicts, and kill-switch designation in code.
-2. **Durable persistence** stores explicit assignments, percentage rollout rules, and module enablement rules through the repository interfaces under `src/lib/feature-flags/repository.ts`, with Firestore selected as the normal runtime implementation.
-3. **Deterministic evaluation** in `src/lib/feature-flags/service.ts` applies precedence, release-stage gating, dependency/conflict checks, and percentage rollout bucketing.
-4. **Preview / simulation** flows through `FeatureControlsBffService` and `/api/admin/feature-preview`, including support for unsaved rollout-rule simulation.
-5. **Integration** continues through session bootstrap, admin APIs/UI, navigation, and backend feature checks so the frontend only consumes evaluated state.
+1. **Definitions** in `src/lib/feature-flags/definitions.ts` define canonical flags, release stages, scope support, dependencies, conflicts, and kill switch status.
+2. **Persistence** uses repository interfaces in `src/lib/feature-flags/repository.ts` with a Firestore-backed runtime implementation in `src/lib/feature-flags/firestore-repository.ts`. The legacy JSON file store remains only as a migration import source in `src/lib/feature-flags/store.ts`.
+3. **Evaluation** in `src/lib/feature-flags/service.ts` resolves effective flags and modules for a session-aware context using explicit precedence while remaining storage-agnostic.
+4. **Admin control surfaces** in `src/app/api/admin/**` and `src/app/admin/system/feature-controls/**` expose protected operator APIs and the existing internal admin UI.
+5. **Integration** flows through `src/lib/platform/session.ts`, search/tasks/workflow services, notifications, and navigation so the backend stays the source of truth.
 
-## Durable runtime collections
+## Durable runtime data model
+
+### Feature flag assignments
+
+Persisted in Firestore collection:
 
 - `platform_control_plane/runtime/feature_flag_assignments`
-- `platform_control_plane/runtime/percentage_rollout_rules`
+
+Fields:
+
+- `id`
+- `flagKey`
+- `scopeType`
+- `scopeId`
+- `value`
+- `enabled`
+- `reason`
+- `releaseStage?`
+- `startsAt?`
+- `endsAt?`
+- `createdAt`
+- `updatedAt`
+- `createdBy`
+- `updatedBy`
+- `metadata`
+- `version`
+
+### Module enablement rules
+
+Persisted in Firestore collection:
+
 - `platform_control_plane/runtime/module_enablement_rules`
 
-## Runtime persistence selection
+Fields:
 
-- `FeatureFlagService` reads and writes runtime state only through `getControlPlaneRepository()`.
-- In normal runtime, `getControlPlaneRepository()` returns `FirestoreControlPlaneRepository`.
-- In tests, the repository is swapped to the in-memory implementation.
-- The legacy JSON `FeatureFlagStore` remains migration-only and is used through `getLegacyFeatureFlagStoreForMigration()` or explicit test setup.
-- Runtime evaluation, preview, kill-switch checks, module evaluation, and admin list/detail APIs should not read the JSON store.
+- `id`
+- `moduleKey`
+- `scopeType`
+- `scopeId`
+- `enabled`
+- `visible`
+- `internalOnly`
+- `betaOnly`
+- `defaultLanding?`
+- `startsAt?`
+- `endsAt?`
+- `reason`
+- `createdAt`
+- `updatedAt`
+- `createdBy`
+- `updatedBy`
+- `metadata`
+- `version`
 
 ## Deterministic bucketing strategy
 
@@ -124,150 +164,73 @@ Existing admin APIs remain, with rollout additions:
 - `DELETE /api/admin/feature-flags/rollout-rules/:id`
 - `GET /api/admin/feature-preview`
 - `POST /api/admin/feature-preview`
-- `GET /api/admin/feature-controls/diagnostics`
-- `GET /api/admin/feature-controls/recent-changes`
 
 ## Admin UI usage
 
 The feature-controls admin screen now supports:
 
-- viewing rollout-capable flags
-- creating percentage rollout rules
-- selecting `bucketBy`
-- optional salt input
-- previewing target contexts
-- simulating an unsaved rollout rule
-- seeing bucket details and reason codes in the preview output
+## Validation and concurrency
 
-## Validation rules
+- `FeatureFlagService` validates flag existence, supported scopes, target identifiers where bootstrap lookup is available, value shape, and activation windows.
+- Kill switches and high-risk module changes require a reason.
+- Repositories enforce optimistic concurrency with a `version` field.
+- Firestore writes use transactions for updates and disables to prevent silent overwrite of concurrent admin edits.
 
-- rollout percentage must be an integer in `0..100`
-- scope must be supported by the flag
-- scope identifiers must be valid where bootstrap lookup is available
-- `startsAt <= endsAt`
-- a reason is required for rollout changes
-- release-stage and kill-switch safeguards remain enforced by evaluation
+## Migration from the legacy JSON store
 
-## Salt guidance
+The old file-backed store remains readable only to support a controlled migration.
 
-- Keep salt empty to preserve the current cohort definition.
-- Change salt only when you intentionally want a new deterministic cohort cut.
-- Treat salt changes like user-impacting rollout changes and audit them carefully.
-
-## Migration / local bootstrap
-
-Legacy JSON import remains available:
+### Run migration
 
 ```bash
 npm run migrate:feature-controls
 ```
 
-The importer now supports assignments, percentage rollout rules, and module rules, while remaining idempotent by id. The JSON store is not runtime truth after migration.
+Useful environment variables:
 
-## Safe rollout guidance
+- `RBP_FEATURE_FLAG_STORE_PATH` — path to the legacy JSON file.
+- `RBP_CONTROL_PLANE_COLLECTION` — override the Firestore root collection name.
+- `RBP_MIGRATION_ACTOR_ID` — actor id recorded for migrated writes and audit.
 
-- Start with tenant or workspace rollout before broader user/composite targeting.
-- Use preview before saving high-risk changes.
-- Keep kill switches available for emergency rollback.
-- Prefer changing percentage before changing salt; changing salt intentionally reshuffles cohorts.
+### Migration behavior
+
+- Reads assignments and module rules from the legacy JSON file.
+- Validates each record against current definitions and module registry.
+- Preserves ids, timestamps, actor metadata, and version when present.
+- Skips records whose ids are already present in Firestore, making reruns safe.
+- Emits `feature.control_plane.migrated` audit metadata through the migration script.
+
+### Verification after migration
+
+Recommended checks:
+
+1. Compare imported counts from the script output with the legacy JSON file counts.
+2. Use the admin feature-control page or preview API to confirm known tenant/workspace evaluations.
+3. Verify kill switch and module visibility behavior for a known sample tenant.
+4. Review audit logs for the migration event and any follow-up mutations.
+
+## Admin API and UI behavior
+
+- Existing feature/module admin routes continue to work, now backed by durable Firestore persistence.
+- Update and disable flows accept version-aware writes so conflicting edits can be surfaced instead of silently overwritten.
+- The existing admin UI continues to consume the same API shapes; no redesign was introduced in Sprint 1.
+- Session bootstrap, navigation visibility, feature preview, and module evaluation now read the durable repository path.
 
 ## Rollback guidance
 
-- Disable or reduce the percentage rollout rule.
-- Apply an explicit assignment override for emergency scoped disable.
-- Use a kill switch if immediate broad shutdown is required.
-- Avoid falling back to legacy JSON reads for runtime truth.
+- Critical changes should generate audit events.
+- Kill switch changes may also notify privileged operators.
+- Search and task services now re-check kill switches against the durable repository on execution, minimizing stale session behavior.
+- Other file-backed stores still exist in unrelated subsystems such as audit and notifications; they remain out of scope for this sprint.
 
-## Sprint 4 operator console
+## Rollback guidance
 
-Sprint 4 turns the feature-controls page from a raw utility screen into an operator console with clearer information architecture and embedded diagnostics.
+- Because definitions remain code-defined, rollback is primarily a matter of restoring the previous application build and, if necessary, re-importing legacy JSON state into the target environment.
+- Runtime control-plane truth should remain in Firestore after cutover; avoid running dual writes.
+- If Firestore data must be reverted, restore affected documents from backup/export rather than falling back to the legacy JSON path for runtime reads.
 
-### Information architecture
+## Sprint 2 intentionally deferred
 
-The admin surface is now organized into six operational sections:
-
-1. **Overview** for active kill switches, diagnostics, and recent control-plane changes.
-2. **Flags** for catalog search/filtering, flag detail, explainability, runtime rules, and embedded audit history.
-3. **Modules** for module control search/filtering, effective-state detail, blockers, runtime rules, and audit history.
-4. **Preview** for context-based simulation and unsaved rollout comparison.
-5. **Diagnostics** for stale, conflicting, or dangerous configuration.
-6. **Recent changes** for control-plane audit visibility inside the same workflow.
-
-### Diagnostics model
-
-Sprint 4 surfaces backend-owned diagnostics for:
-
-- conflicting assignments at the same scope
-- conflicting rollout rules at the same scope
-- expired rules
-- scheduled future rules
-- disabled overrides left in storage
-- dependency blockers
-- conflict blockers
-- deprecated flags with active overrides
-- active kill switches
-- module rules that are visible while disabled
-
-The UI treats these as actionable operator issues rather than hidden metadata.
-
-### Explainability in the UI
-
-For feature detail and preview flows, the console now highlights:
-
-- effective enabled/disabled state
-- winning source and scope
-- explicit reason codes and structured reasons
-- rollout bucket details when relevant
-- dependency and conflict blockers
-- kill-switch status
-- override counts and last modified metadata
-
-### High-risk mutation guidance
-
-The operator workflow for risky changes is now:
-
-1. inspect diagnostics first
-2. preview impact for the target context
-3. confirm high-risk mutations such as kill switches, broad rollout jumps, and module disable/hide actions
-4. record a reason before save
-5. verify effective state and audit history after the change
-
-### Audit visibility
-
-Recent control-plane audit entries are embedded in the overview, flag detail, module detail, and recent-changes section so operators can answer "who changed this?" without leaving the console.
-
-### Operator rollout / rollback workflow
-
-Recommended sequence:
-
-- search for the feature or module in the catalog
-- inspect diagnostics and effective state
-- run preview for the affected tenant/workspace/user
-- save the change with a reason
-- verify the post-save effective state and audit record
-- disable the specific assignment or rollout rule for rollback before escalating to a kill switch
-
-### Deferred after Sprint 4
-
-Still intentionally deferred:
-
-- automated blast-radius estimation beyond preview
-- threshold-crossing notifications for rollout expansion
-- multi-step draft workflows for very large coordinated control-plane changes
-- historical diff visualization beyond the audit summaries already stored
-
-## Final verification path
-
-Focused validation for the control-plane subsystem:
-
-```bash
-TS_NODE_COMPILER_OPTIONS='{"module":"commonjs","moduleResolution":"node"}' node --test tests/unit/bff/feature-controls.test.js
-```
-
-Additional hygiene check:
-
-```bash
-git diff --check
-```
-
-Broader repository-wide TypeScript validation may still report unrelated legacy issues outside the control-plane files; treat those separately from this subsystem’s verification path.
+- Deterministic percentage rollout bucketing.
+- Deeper route-level controls built on the same repository abstraction.
+- More advanced cache invalidation or distributed control-plane propagation.

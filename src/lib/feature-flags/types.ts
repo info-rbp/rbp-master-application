@@ -41,26 +41,6 @@ export type FeatureFlagAssignment = {
   version: number;
 };
 
-export type PercentageRolloutRule = {
-  id: string;
-  flagKey: string;
-  scopeType: FeatureScopeType;
-  scopeId: string;
-  percentage: number;
-  bucketBy: RolloutBucketBy;
-  salt?: string;
-  startsAt?: string;
-  endsAt?: string;
-  enabled: boolean;
-  reason: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  updatedBy: string;
-  metadata: Record<string, unknown>;
-  version: number;
-};
-
 export type ModuleEnablementRule = {
   id: string;
   moduleKey: string;
@@ -80,36 +60,6 @@ export type ModuleEnablementRule = {
   updatedBy: string;
   metadata: Record<string, unknown>;
   version: number;
-};
-
-export type FeatureEvaluationReason = {
-  code: string;
-  category: 'precedence' | 'dependency' | 'conflict' | 'release_stage' | 'kill_switch' | 'rollout' | 'targeting' | 'validation';
-  message: string;
-  source: string;
-  scopeType?: FeatureScopeType;
-  scopeId?: string;
-  details?: Record<string, unknown>;
-};
-
-export type RolloutTargetIdentity = {
-  targetType: 'tenant' | 'workspace' | 'role' | 'user' | 'composite';
-  targetId: string;
-  tenantId?: string;
-  workspaceId?: string;
-  roleCodes?: string[];
-  userId?: string;
-  normalizedKey: string;
-};
-
-export type BucketEvaluationResult = {
-  algorithm: string;
-  normalizedKey: string;
-  hashValue: number;
-  bucket: number;
-  threshold: number;
-  matched: boolean;
-  saltUsed?: string;
 };
 
 export type FeatureEvaluationContext = {
@@ -188,68 +138,4 @@ export type PreviewEvaluationResult = {
   conflicts: string[];
   missingDependencies: string[];
   meta: Record<string, unknown>;
-};
-
-export type ControlPlaneIssueSeverity = 'info' | 'warning' | 'critical';
-export type ControlPlaneIssueType =
-  | 'conflicting_assignment'
-  | 'conflicting_rollout'
-  | 'expired_rule'
-  | 'scheduled_rule'
-  | 'disabled_override'
-  | 'dependency_blocked'
-  | 'conflict_blocked'
-  | 'deprecated_override'
-  | 'kill_switch_active'
-  | 'module_inconsistent_state';
-
-export type ControlPlaneIssue = {
-  id: string;
-  area: 'feature_flag' | 'module_control' | 'control_plane';
-  targetKey: string;
-  severity: ControlPlaneIssueSeverity;
-  type: ControlPlaneIssueType;
-  summary: string;
-  detail: string;
-  status: 'active' | 'scheduled' | 'expired' | 'disabled';
-  relatedIds: string[];
-};
-
-export type FeatureFlagOperationalSummary = FeatureCatalogEntry & {
-  effectiveEnabled: boolean;
-  effectiveValue: unknown;
-  winningSource: string;
-  winningScope: string;
-  hasOverrides: boolean;
-  hasConflicts: boolean;
-  hasActiveRollout: boolean;
-  hasScheduledChanges: boolean;
-  diagnostics: ControlPlaneIssueType[];
-  activeAssignmentCount: number;
-  activeRolloutCount: number;
-  lastUpdatedAt?: string;
-  lastUpdatedBy?: string;
-  currentReasonCodes: string[];
-  activeKillSwitch: boolean;
-};
-
-export type ModuleControlOperationalSummary = {
-  moduleKey: string;
-  moduleName: string;
-  description: string;
-  category: string;
-  route: string;
-  effectiveEnabled: boolean;
-  effectiveVisible: boolean;
-  winningSource: string;
-  winningRuleId?: string;
-  hasOverrides: boolean;
-  diagnostics: ControlPlaneIssueType[];
-  activeRuleCount: number;
-  lastUpdatedAt?: string;
-  lastUpdatedBy?: string;
-  internalOnly: boolean;
-  betaOnly: boolean;
-  defaultLanding?: string;
-  reasonCodes: string[];
 };
