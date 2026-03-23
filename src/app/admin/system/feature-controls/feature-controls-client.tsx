@@ -3,9 +3,25 @@
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import type { AuditEvent } from '@/lib/audit/types';
-import type { ControlPlaneIssue, FeatureCatalogEntry, FeatureEvaluationResult, FeatureFlagAssignment, FeatureFlagOperationalSummary, ModuleAccessControlResult, ModuleControlOperationalSummary, ModuleEnablementRule, PercentageRolloutRule, PreviewEvaluationResult, ReleaseStage } from '@/lib/feature-flags/types';
+import type {
+  BucketEvaluationResult,
+  ControlPlaneIssue,
+  FeatureCatalogEntry,
+  FeatureEvaluationReason,
+  FeatureEvaluationResult,
+  FeatureFlagAssignment,
+  FeatureFlagOperationalSummary,
+  ModuleAccessControlResult,
+  ModuleControlOperationalSummary,
+  ModuleEnablementRule,
+  PercentageRolloutRule,
+  PreviewEvaluationResult,
+  ReleaseStage,
+  RolloutBucketBy,
+} from '@/lib/feature-flags/types';
 
 const releaseStages: ReleaseStage[] = ['experimental', 'internal', 'beta', 'limited', 'general_availability', 'deprecated'];
+const rolloutBucketOptions: RolloutBucketBy[] = ['tenant', 'workspace', 'user', 'role', 'composite'];
 
 type ClientProps = {
   catalog: FeatureCatalogEntry[];
@@ -25,8 +41,23 @@ type ClientProps = {
 };
 
 type TabKey = 'overview' | 'flags' | 'modules' | 'preview' | 'diagnostics' | 'recent';
+type MutationMessage = { kind: 'success' | 'error'; text: string };
+type PreviewRequest = {
+  tenantId?: string;
+  workspaceId?: string;
+  userId?: string;
+  roleCodes: string[];
+  currentModule?: string;
+  currentRoute?: string;
+  featureKeys: string[];
+  includeReasoning: true;
+  includeBucketDetails: true;
+  proposedRolloutRules?: PercentageRolloutRule[];
+};
 
-type MutationResult = { kind: 'success' | 'error'; text: string } | null;
+type JsonResult<T> =
+  | { ok: true; payload: T }
+  | { ok: false; message: string; code?: string; status: number };
 
 export function buildFlagRows(items: FeatureFlagOperationalSummary[], search: string, releaseStage: string, status: string, killSwitchOnly: boolean) {
   const needle = search.trim().toLowerCase();
@@ -78,13 +109,13 @@ function toneForStage(value: ReleaseStage) {
   }[value];
 }
 
-async function handleJsonResponse(response: Response) {
+async function handleJsonResponse<T>(response: Response): Promise<JsonResult<T>> {
   const payload = await response.json().catch(() => ({}));
-  if (response.ok) return { ok: true as const, payload: payload.data ?? payload };
-  return { ok: false as const, message: payload?.error?.message ?? 'Request failed.', code: payload?.error?.code, status: response.status };
+  if (response.ok) return { ok: true, payload: (payload.data ?? payload) as T };
+  return { ok: false, message: payload?.error?.message ?? 'Request failed.', code: payload?.error?.code, status: response.status };
 }
 
-function highRiskMessage(input: { kind: 'assignment' | 'rollout' | 'module'; flagKey?: string; moduleKey?: string; scopeType?: string; value?: unknown; percentage?: number; enabled?: boolean; visible?: boolean; isKillSwitch?: boolean }) {
+function highRiskMessage(input: { kind: 'assignment' | 'rollout' | 'module'; flagKey?: string; moduleKey?: string; scopeType?: string; percentage?: number; enabled?: boolean; visible?: boolean; isKillSwitch?: boolean }) {
   if (input.kind === 'assignment' && input.isKillSwitch) return `You are changing the kill switch ${input.flagKey}. Confirm that this is an incident-response action and that the reason is recorded.`;
   if (input.kind === 'assignment' && input.scopeType === 'environment') return `You are applying an environment-wide feature override for ${input.flagKey}. Confirm that you want a global change.`;
   if (input.kind === 'rollout' && (input.percentage ?? 0) >= 50) return `You are creating a ${input.percentage}% rollout for ${input.flagKey}. Confirm that this cohort expansion is intentional.`;
@@ -92,9 +123,55 @@ function highRiskMessage(input: { kind: 'assignment' | 'rollout' | 'module'; fla
   return null;
 }
 
+function asOptionalString(value: FormDataEntryValue | null) {
+  const text = String(value ?? '').trim();
+  return text ? text : undefined;
+}
+
+function csvValues(value: FormDataEntryValue | null) {
+  return String(value ?? '').split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function buildPreviewPayload(formData: FormData): PreviewRequest {
+  const tenantId = asOptionalString(formData.get('tenantId'));
+  const proposedScopeId = asOptionalString(formData.get('simulateScopeId')) ?? tenantId;
+  const proposedFlagKey = asOptionalString(formData.get('simulateFlagKey'));
+
+  return {
+    tenantId,
+    workspaceId: asOptionalString(formData.get('workspaceId')),
+    userId: asOptionalString(formData.get('userId')),
+    roleCodes: csvValues(formData.get('roleCodes')),
+    currentModule: asOptionalString(formData.get('currentModule')),
+    currentRoute: asOptionalString(formData.get('currentRoute')),
+    featureKeys: csvValues(formData.get('featureKeys')),
+    includeReasoning: true,
+    includeBucketDetails: true,
+    proposedRolloutRules: proposedFlagKey && proposedScopeId
+      ? [{
+          id: 'preview-rule',
+          flagKey: proposedFlagKey,
+          scopeType: String(formData.get('simulateScopeType') ?? 'tenant') as PercentageRolloutRule['scopeType'],
+          scopeId: proposedScopeId,
+          percentage: Number(formData.get('simulatePercentage') ?? 0),
+          bucketBy: String(formData.get('simulateBucketBy') ?? 'tenant') as RolloutBucketBy,
+          salt: String(formData.get('simulateSalt') ?? '').trim() || undefined,
+          reason: String(formData.get('simulateReason') ?? 'preview').trim() || 'preview',
+          enabled: true,
+          metadata: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 'preview',
+          updatedBy: 'preview',
+          version: 1,
+        }]
+      : [],
+  };
+}
+
 export default function FeatureControlsClient(props: ClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
-  const [message, setMessage] = useState<MutationResult>(null);
+  const [message, setMessage] = useState<MutationMessage | null>(null);
   const [flagSearch, setFlagSearch] = useState('');
   const [flagStage, setFlagStage] = useState('');
   const [flagStatus, setFlagStatus] = useState<'all' | 'enabled' | 'disabled' | 'issues'>('all');
@@ -119,12 +196,13 @@ export default function FeatureControlsClient(props: ClientProps) {
   const selectedModuleRules = props.moduleRules.filter((item) => item.moduleKey === selectedModule?.moduleKey);
   const selectedModuleAudit = props.recentChanges.filter((item) => item.metadata?.moduleKey === selectedModule?.moduleKey || item.subjectEntityId === selectedModule?.winningRuleId);
   const selectedModuleIssues = props.diagnostics.filter((item) => item.targetKey === selectedModule?.moduleKey);
+  const previewModulesWithIssues = preview?.evaluatedModules.filter((item) => !item.enabled || !item.visible || item.reasonCodes.length > 0) ?? [];
 
   async function createAssignment(formData: FormData) {
     const flagKey = String(formData.get('flagKey') ?? '');
     const definition = props.catalog.find((item) => item.flagKey === flagKey);
     const payload = { scopeType: String(formData.get('scopeType') ?? 'tenant'), scopeId: String(formData.get('scopeId') ?? ''), value: formData.get('value') === 'true', reason: String(formData.get('reason') ?? ''), enabled: true, metadata: {} };
-    const risk = highRiskMessage({ kind: 'assignment', flagKey, scopeType: payload.scopeType, value: payload.value, isKillSwitch: definition?.isKillSwitch });
+    const risk = highRiskMessage({ kind: 'assignment', flagKey, scopeType: payload.scopeType, isKillSwitch: definition?.isKillSwitch });
     if (risk && !window.confirm(risk)) return;
     const result = await handleJsonResponse(await fetch(`/api/admin/feature-flags/${encodeURIComponent(flagKey)}/assignments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
     setMessage(result.ok ? { kind: 'success', text: `Saved assignment for ${flagKey}. Refresh to load the new effective state.` } : { kind: 'error', text: result.status === 409 ? `Concurrency conflict while saving ${flagKey}. Refresh and retry.` : result.message });
@@ -168,41 +246,15 @@ export default function FeatureControlsClient(props: ClientProps) {
 
   async function runPreview(formData: FormData) {
     setPreviewBusy(true);
-    const payload = {
-      tenantId: String(formData.get('tenantId') || ''),
-      workspaceId: String(formData.get('workspaceId') || '') || undefined,
-      userId: String(formData.get('userId') || '') || undefined,
-      roleCodes: String(formData.get('roleCodes') || '').split(',').map((item) => item.trim()).filter(Boolean),
-      currentModule: String(formData.get('currentModule') || '') || undefined,
-      currentRoute: String(formData.get('currentRoute') || '') || undefined,
-      featureKeys: String(formData.get('featureKeys') || '').split(',').map((item) => item.trim()).filter(Boolean),
-      includeReasoning: true,
-      includeBucketDetails: true,
-      proposedRolloutRules: formData.get('simulateFlagKey') ? [{
-        flagKey: String(formData.get('simulateFlagKey')),
-        scopeType: String(formData.get('simulateScopeType') || 'tenant'),
-        scopeId: String(formData.get('simulateScopeId') || formData.get('tenantId') || ''),
-        percentage: Number(formData.get('simulatePercentage') || 0),
-        bucketBy: String(formData.get('simulateBucketBy') || 'tenant'),
-        salt: String(formData.get('simulateSalt') || ''),
-        reason: String(formData.get('simulateReason') || 'preview'),
-        enabled: true,
-        metadata: {},
-        id: 'preview-rule',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: 'preview',
-        updatedBy: 'preview',
-        version: 1,
-      }] : [],
-    };
-    const result = await handleJsonResponse(await fetch('/api/admin/feature-preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
+    const payload = buildPreviewPayload(formData);
+    const result = await handleJsonResponse<PreviewEvaluationResult>(await fetch('/api/admin/feature-preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
     setPreviewBusy(false);
     if (result.ok) {
       setPreview(result.payload);
-      setMessage({ kind: 'success', text: 'Preview refreshed with reasoning and bucket diagnostics.' });
+      setMessage({ kind: 'success', text: 'Preview refreshed with runtime-equivalent reasoning and bucket diagnostics.' });
       return;
     }
+    setPreview(null);
     setMessage({ kind: 'error', text: result.message });
   }
 
@@ -211,7 +263,7 @@ export default function FeatureControlsClient(props: ClientProps) {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Feature control operations console</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">Operate feature flags, module controls, rollouts, kill switches, diagnostics, preview, and audit history from a backend-owned control plane. Sprint 4 focuses on safer change workflows, explainability, and faster incident handling.</p>
+          <p className="max-w-3xl text-sm text-muted-foreground">Operate feature flags, module controls, rollouts, kill switches, diagnostics, preview, and audit history from a backend-owned control plane. Sprint 2 is finalised on the same evaluation truth path used by runtime checks.</p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           {(['overview', 'flags', 'modules', 'preview', 'diagnostics', 'recent'] as TabKey[]).map((tab) => (
@@ -230,7 +282,7 @@ export default function FeatureControlsClient(props: ClientProps) {
         <SummaryCard title="Diagnostics" value={diagnosticSummary.total} helper={`${diagnosticSummary.critical} critical`} tone={diagnosticSummary.critical > 0 ? 'critical' : 'default'} />
         <SummaryCard title="Scheduled changes" value={diagnosticSummary.scheduled} helper="Future-start rules" />
         <SummaryCard title="Module overrides" value={props.moduleSummaries.filter((item) => item.hasOverrides).length} helper="Non-default modules" />
-        <SummaryCard title="Recent changes" value={props.recentChanges.length} helper={props.auditVisible ? 'Audit-backed' : 'Audit hidden'} />
+        <SummaryCard title="Runtime-visible modules" value={props.modules.length} helper="Enabled and visible now" />
       </section>
 
       {activeTab === 'overview' ? (
@@ -307,8 +359,8 @@ export default function FeatureControlsClient(props: ClientProps) {
                   <DetailStat label="Last changed" value={`${formatDate(selectedFlag.lastUpdatedAt)} by ${selectedFlag.lastUpdatedBy ?? '—'}`} />
                 </div>
                 <SectionTitle title="Explainability" />
-                <div className="space-y-2">{selectedFlagEvaluation.reasons.length > 0 ? selectedFlagEvaluation.reasons.map((entry, index) => <div key={`${entry.code}-${index}`} className="rounded border bg-slate-50 p-3"><div className="font-medium">{entry.code}</div><div className="text-xs text-muted-foreground">{entry.message}</div></div>) : <EmptyState text="No extra reasoning was needed for the current decision." />}</div>
-                {selectedFlagEvaluation.bucketResult ? <div className="rounded border bg-slate-50 p-3 text-xs">Bucket details: normalized key <code>{selectedFlagEvaluation.bucketResult.normalizedKey}</code>, bucket {selectedFlagEvaluation.bucketResult.bucket}, threshold {selectedFlagEvaluation.bucketResult.threshold}, matched {String(selectedFlagEvaluation.bucketResult.matched)}.</div> : null}
+                <ReasonList reasons={selectedFlagEvaluation.reasons} empty="No extra reasoning was needed for the current decision." />
+                {selectedFlagEvaluation.bucketResult ? <BucketDetailsCard bucketResult={selectedFlagEvaluation.bucketResult} /> : null}
                 <SectionTitle title="Diagnostics" />
                 <div className="space-y-2">{selectedFlagIssues.length > 0 ? selectedFlagIssues.map((issue) => <div key={issue.id} className={`rounded border p-3 ${toneForSeverity(issue.severity)}`}><div className="font-medium">{issue.summary}</div><div className="text-xs">{issue.detail}</div></div>) : <EmptyState text="No diagnostics are raised for this feature." />}</div>
                 <SectionTitle title="Assignments" />
@@ -326,7 +378,7 @@ export default function FeatureControlsClient(props: ClientProps) {
               {props.canManage ? <form action={createAssignment} className="space-y-3"><input name="flagKey" defaultValue={selectedFlag?.flagKey ?? ''} placeholder="feature.search.enabled" className="w-full rounded border px-3 py-2 text-sm" /><div className="grid grid-cols-2 gap-2"><input name="scopeType" defaultValue="tenant" className="rounded border px-3 py-2 text-sm" /><input name="scopeId" placeholder="ten_acme_customer" className="rounded border px-3 py-2 text-sm" /></div><select name="value" className="w-full rounded border px-3 py-2 text-sm"><option value="true">true</option><option value="false">false</option></select><textarea name="reason" placeholder="Reason (required for high-risk changes)" className="w-full rounded border px-3 py-2 text-sm" /><button className="rounded bg-slate-900 px-3 py-2 text-sm text-white">Save assignment</button></form> : <EmptyState text="You do not have permission to manage assignments." />}
             </Panel>
             <Panel title="Create percentage rollout" description="Preview big jumps before saving. Rollouts above 50% require explicit confirmation.">
-              {props.canManage ? <form action={createRolloutRule} className="space-y-3"><input name="flagKey" defaultValue={selectedFlag?.flagKey ?? ''} placeholder="feature.search.enabled" className="w-full rounded border px-3 py-2 text-sm" /><div className="grid grid-cols-2 gap-2"><input name="scopeType" defaultValue="tenant" className="rounded border px-3 py-2 text-sm" /><input name="scopeId" placeholder="ten_acme_customer" className="rounded border px-3 py-2 text-sm" /></div><div className="grid grid-cols-2 gap-2"><input name="percentage" type="number" min={0} max={100} defaultValue={25} className="rounded border px-3 py-2 text-sm" /><select name="bucketBy" className="rounded border px-3 py-2 text-sm"><option value="tenant">tenant</option><option value="workspace">workspace</option><option value="user">user</option><option value="role">role</option><option value="composite">composite</option></select></div><input name="salt" placeholder="optional salt" className="w-full rounded border px-3 py-2 text-sm" /><textarea name="reason" placeholder="Why is this rollout changing?" className="w-full rounded border px-3 py-2 text-sm" /><button className="rounded bg-slate-900 px-3 py-2 text-sm text-white">Save rollout rule</button></form> : <EmptyState text="You do not have permission to manage rollouts." />}
+              {props.canManage ? <form action={createRolloutRule} className="space-y-3"><input name="flagKey" defaultValue={selectedFlag?.flagKey ?? ''} placeholder="feature.search.enabled" className="w-full rounded border px-3 py-2 text-sm" /><div className="grid grid-cols-2 gap-2"><input name="scopeType" defaultValue="tenant" className="rounded border px-3 py-2 text-sm" /><input name="scopeId" placeholder="ten_acme_customer" className="rounded border px-3 py-2 text-sm" /></div><div className="grid grid-cols-2 gap-2"><input name="percentage" type="number" min={0} max={100} defaultValue={25} className="rounded border px-3 py-2 text-sm" /><select name="bucketBy" className="rounded border px-3 py-2 text-sm">{rolloutBucketOptions.map((bucketBy) => <option key={bucketBy} value={bucketBy}>{bucketBy}</option>)}</select></div><input name="salt" placeholder="optional salt" className="w-full rounded border px-3 py-2 text-sm" /><textarea name="reason" placeholder="Why is this rollout changing?" className="w-full rounded border px-3 py-2 text-sm" /><button className="rounded bg-slate-900 px-3 py-2 text-sm text-white">Save rollout rule</button></form> : <EmptyState text="You do not have permission to manage rollouts." />}
             </Panel>
           </div>
         </section>
@@ -349,10 +401,34 @@ export default function FeatureControlsClient(props: ClientProps) {
       {activeTab === 'preview' ? (
         <section className="grid gap-6 xl:grid-cols-[1fr,1.2fr]">
           <Panel title="Preview / simulation" description="Run backend-owned evaluations with reasoning, bucket details, and optional unsaved rollout simulation.">
-            {props.canPreview ? <form action={runPreview} className="space-y-3"><div className="grid grid-cols-2 gap-2"><input name="tenantId" placeholder="tenant id" className="rounded border px-3 py-2 text-sm" /><input name="workspaceId" placeholder="workspace id" className="rounded border px-3 py-2 text-sm" /></div><div className="grid grid-cols-2 gap-2"><input name="userId" placeholder="user id" className="rounded border px-3 py-2 text-sm" /><input name="roleCodes" placeholder="role codes csv" className="rounded border px-3 py-2 text-sm" /></div><div className="grid grid-cols-2 gap-2"><input name="currentModule" placeholder="current module" className="rounded border px-3 py-2 text-sm" /><input name="currentRoute" placeholder="current route" className="rounded border px-3 py-2 text-sm" /></div><input name="featureKeys" defaultValue={selectedFlag?.flagKey ?? ''} placeholder="feature keys csv" className="w-full rounded border px-3 py-2 text-sm" /><div className="rounded border p-3"><div className="mb-2 text-sm font-medium">Optional unsaved rollout comparison</div><div className="grid grid-cols-2 gap-2"><input name="simulateFlagKey" defaultValue={selectedFlag?.flagKey ?? ''} placeholder="feature.search.enabled" className="rounded border px-3 py-2 text-sm" /><input name="simulateScopeId" placeholder="scope id" className="rounded border px-3 py-2 text-sm" /></div><div className="mt-2 grid grid-cols-2 gap-2"><input name="simulateScopeType" defaultValue="tenant" className="rounded border px-3 py-2 text-sm" /><input name="simulatePercentage" type="number" min={0} max={100} defaultValue={25} className="rounded border px-3 py-2 text-sm" /></div><div className="mt-2 grid grid-cols-2 gap-2"><select name="simulateBucketBy" className="rounded border px-3 py-2 text-sm"><option value="tenant">tenant</option><option value="workspace">workspace</option><option value="user">user</option><option value="role">role</option><option value="composite">composite</option></select><input name="simulateSalt" placeholder="salt" className="rounded border px-3 py-2 text-sm" /></div><textarea name="simulateReason" placeholder="preview reason" className="mt-2 w-full rounded border px-3 py-2 text-sm" /></div><button className="rounded bg-slate-900 px-3 py-2 text-sm text-white">{previewBusy ? 'Running…' : 'Run preview'}</button></form> : <EmptyState text="You do not have permission to run rollout preview." />}
+            {props.canPreview ? <form action={runPreview} className="space-y-3"><div className="grid grid-cols-2 gap-2"><input name="tenantId" placeholder="tenant id" className="rounded border px-3 py-2 text-sm" /><input name="workspaceId" placeholder="workspace id" className="rounded border px-3 py-2 text-sm" /></div><div className="grid grid-cols-2 gap-2"><input name="userId" placeholder="user id" className="rounded border px-3 py-2 text-sm" /><input name="roleCodes" placeholder="role codes csv" className="rounded border px-3 py-2 text-sm" /></div><div className="grid grid-cols-2 gap-2"><input name="currentModule" placeholder="current module" className="rounded border px-3 py-2 text-sm" /><input name="currentRoute" placeholder="current route" className="rounded border px-3 py-2 text-sm" /></div><input name="featureKeys" defaultValue={selectedFlag?.flagKey ?? ''} placeholder="feature keys csv" className="w-full rounded border px-3 py-2 text-sm" /><div className="rounded border p-3"><div className="mb-2 text-sm font-medium">Optional unsaved rollout comparison</div><div className="grid grid-cols-2 gap-2"><input name="simulateFlagKey" defaultValue={selectedFlag?.flagKey ?? ''} placeholder="feature.search.enabled" className="rounded border px-3 py-2 text-sm" /><input name="simulateScopeId" placeholder="scope id" className="rounded border px-3 py-2 text-sm" /></div><div className="mt-2 grid grid-cols-2 gap-2"><input name="simulateScopeType" defaultValue="tenant" className="rounded border px-3 py-2 text-sm" /><input name="simulatePercentage" type="number" min={0} max={100} defaultValue={25} className="rounded border px-3 py-2 text-sm" /></div><div className="mt-2 grid grid-cols-2 gap-2"><select name="simulateBucketBy" className="rounded border px-3 py-2 text-sm">{rolloutBucketOptions.map((bucketBy) => <option key={bucketBy} value={bucketBy}>{bucketBy}</option>)}</select><input name="simulateSalt" placeholder="salt" className="rounded border px-3 py-2 text-sm" /></div><textarea name="simulateReason" placeholder="preview reason" className="mt-2 w-full rounded border px-3 py-2 text-sm" /></div><button className="rounded bg-slate-900 px-3 py-2 text-sm text-white">{previewBusy ? 'Running…' : 'Run preview'}</button></form> : <EmptyState text="You do not have permission to run rollout preview." />}
           </Panel>
           <Panel title="Preview results" description="Compare current state against preview results without mentally parsing raw API JSON.">
-            {preview ? <div className="space-y-4 text-sm"><div className="rounded border bg-slate-50 p-3 text-xs">Context: {JSON.stringify(preview.contextSummary)}</div>{preview.evaluatedFlags.map((item) => { const current = props.evaluations.find((entry) => entry.flagKey === item.flagKey); return <div key={item.flagKey} className="rounded border p-3"><div className="flex items-center justify-between gap-3"><div className="font-medium">{item.flagKey}</div><div className="flex gap-2"><Badge label={`current ${current?.enabled ? 'enabled' : 'disabled'}`} tone="neutral" /><Badge label={`preview ${item.enabled ? 'enabled' : 'disabled'}`} tone={item.enabled ? 'success' : 'warning'} /></div></div><div className="mt-1 text-xs text-muted-foreground">source={item.source} · scope={item.scopeType}{item.scopeId ? `:${item.scopeId}` : ''}</div>{item.bucketResult ? <div className="mt-2 text-xs">bucket={item.bucketResult.bucket} threshold={item.bucketResult.threshold} normalized={item.bucketResult.normalizedKey}</div> : null}<div className="mt-2 flex flex-wrap gap-2">{item.reasonCodes.length > 0 ? item.reasonCodes.map((code) => <Badge key={code} label={code} tone="warning" />) : <Badge label="no blockers" tone="success" />}</div></div>; })}{preview.missingDependencies.length > 0 ? <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">Missing dependencies: {preview.missingDependencies.join(', ')}</div> : null}{preview.conflicts.length > 0 ? <div className="rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700">Conflicts: {preview.conflicts.join(', ')}</div> : null}</div> : <EmptyState text="Run a preview to inspect reasoning, bucket details, and compare current versus proposed behavior." />}
+            {preview ? (
+              <div className="space-y-4 text-sm">
+                <div className="rounded border bg-slate-50 p-3 text-xs">Context: {JSON.stringify(preview.contextSummary)}</div>
+                {preview.evaluatedFlags.map((item) => {
+                  const current = props.evaluations.find((entry) => entry.flagKey === item.flagKey);
+                  return (
+                    <div key={item.flagKey} className="rounded border p-3">
+                      <div className="flex items-center justify-between gap-3"><div className="font-medium">{item.flagKey}</div><div className="flex gap-2"><Badge label={`current ${current?.enabled ? 'enabled' : 'disabled'}`} tone="neutral" /><Badge label={`preview ${item.enabled ? 'enabled' : 'disabled'}`} tone={item.enabled ? 'success' : 'warning'} /></div></div>
+                      <div className="mt-1 text-xs text-muted-foreground">source={item.source} · scope={item.scopeType}{item.scopeId ? `:${item.scopeId}` : ''}</div>
+                      <div className="mt-2 flex flex-wrap gap-2"><Badge label={item.releaseStage.replaceAll('_', ' ')} tone="neutral" />{item.reasonCodes.length > 0 ? item.reasonCodes.map((code) => <Badge key={code} label={code} tone="warning" />) : <Badge label="no blockers" tone="success" />}</div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-2"><DetailStat label="Preview enabled" value={item.enabled ? 'Yes' : 'No'} /><DetailStat label="Current enabled" value={current?.enabled ? 'Yes' : 'No'} /><DetailStat label="Winning source" value={item.source} /><DetailStat label="Winning scope" value={item.scopeId ? `${item.scopeType}:${item.scopeId}` : item.scopeType} /></div>
+                      <div className="mt-3"><ReasonList reasons={item.reasons} empty="No structured reasons were returned for this preview." compact /></div>
+                      {item.bucketResult ? <div className="mt-3"><BucketDetailsCard bucketResult={item.bucketResult} /></div> : null}
+                    </div>
+                  );
+                })}
+                {preview.missingDependencies.length > 0 ? <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">Missing dependencies: {preview.missingDependencies.join(', ')}</div> : null}
+                {preview.conflicts.length > 0 ? <div className="rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700">Conflicts: {preview.conflicts.join(', ')}</div> : null}
+                <div className="rounded border p-3">
+                  <div className="font-medium">Previewed modules</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Modules are evaluated through the same feature-flag truth path, including any simulated rollout rules.</div>
+                  <div className="mt-3 space-y-2">{previewModulesWithIssues.length > 0 ? previewModulesWithIssues.map((item) => <div key={item.moduleKey} className="rounded border bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><div className="font-medium">{item.moduleKey}</div><div className="flex gap-2"><Badge label={item.enabled ? 'enabled' : 'disabled'} tone={item.enabled ? 'success' : 'warning'} /><Badge label={item.visible ? 'visible' : 'hidden'} tone={item.visible ? 'neutral' : 'warning'} /></div></div><div className="mt-1 text-xs text-muted-foreground">source={item.source} · dependsOn={item.dependsOnFlags.join(', ') || '—'}</div><div className="mt-2 flex flex-wrap gap-2">{item.reasonCodes.length > 0 ? item.reasonCodes.map((code) => <Badge key={code} label={code} tone="warning" />) : <Badge label="no blockers" tone="success" />}</div></div>) : <EmptyState text="No previewed modules were blocked or hidden for this context." />}</div>
+                </div>
+              </div>
+            ) : <EmptyState text="Run a preview to inspect reasoning, bucket details, and compare current versus proposed behavior." />}
           </Panel>
         </section>
       ) : null}
@@ -409,6 +485,25 @@ function RowBadge({ title, subtitle, badges }: { title: string; subtitle: string
 
 function RuleList<T extends { id: string; updatedAt: string; reason: string; version: number }>(props: { items: T[]; empty: string; render: (item: T) => string; onDisable?: (id: string, version: number) => void }) {
   return <div className="space-y-2">{props.items.length > 0 ? props.items.map((item) => <div key={item.id} className="rounded border p-3"><div className="flex items-start justify-between gap-3"><div><div className="font-medium">{props.render(item)}</div><div className="mt-1 text-xs text-muted-foreground">{item.reason || 'No reason recorded.'} · updated {formatDate(item.updatedAt)}</div></div>{props.onDisable ? <button className="rounded border px-3 py-1 text-xs" onClick={() => props.onDisable?.(item.id, item.version)}>Disable</button> : null}</div></div>) : <EmptyState text={props.empty} />}</div>;
+}
+
+function ReasonList({ reasons, empty, compact = false }: { reasons: FeatureEvaluationReason[]; empty: string; compact?: boolean }) {
+  if (reasons.length === 0) return <EmptyState text={empty} />;
+  return (
+    <div className="space-y-2">
+      {reasons.map((entry, index) => (
+        <div key={`${entry.code}-${index}`} className={`rounded border bg-slate-50 ${compact ? 'p-2' : 'p-3'}`}>
+          <div className="flex flex-wrap items-center gap-2"><div className="font-medium">{entry.code}</div><Badge label={entry.category.replaceAll('_', ' ')} tone="neutral" />{entry.scopeType ? <Badge label={`${entry.scopeType}${entry.scopeId ? `:${entry.scopeId}` : ''}`} tone="warning" /> : null}</div>
+          <div className="mt-1 text-xs text-muted-foreground">{entry.message}</div>
+          {entry.details ? <pre className="mt-2 overflow-x-auto rounded bg-white p-2 text-[11px] text-slate-600">{JSON.stringify(entry.details, null, 2)}</pre> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BucketDetailsCard({ bucketResult }: { bucketResult: BucketEvaluationResult }) {
+  return <div className="rounded border bg-slate-50 p-3 text-xs">Bucket details: normalized key <code>{bucketResult.normalizedKey}</code>, bucket {bucketResult.bucket}, threshold {bucketResult.threshold}, matched {String(bucketResult.matched)}, salt {bucketResult.saltUsed ?? 'default'}.</div>;
 }
 
 function AuditRow({ item }: { item: AuditEvent }) {
