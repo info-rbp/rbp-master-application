@@ -37,6 +37,7 @@ export type FeatureFlagAssignment = {
   createdBy: string;
   updatedBy: string;
   metadata: Record<string, unknown>;
+  version: number;
 };
 
 export type ModuleEnablementRule = {
@@ -57,6 +58,7 @@ export type ModuleEnablementRule = {
   createdBy: string;
   updatedBy: string;
   metadata: Record<string, unknown>;
+  version: number;
 };
 
 export type FeatureEvaluationContext = {

@@ -1,21 +1,29 @@
 import { FEATURE_FLAG_DEFINITIONS, getFeatureFlagDefinition } from '@/lib/feature-flags/definitions';
-import { getFeatureFlagStore } from '@/lib/feature-flags/store';
-import type { FeatureCatalogEntry, FeatureEvaluationContext, FeatureEvaluationResult, FeatureFlagAssignment, FeatureFlagDefinition, FeatureScopeType, ModuleAccessControlResult, ModuleEnablementRule, ReleaseStage } from '@/lib/feature-flags/types';
-import { listModuleDefinitions } from '@/lib/platform/bootstrap';
+import { getControlPlaneRepository } from '@/lib/feature-flags/store';
+import type { ControlPlaneRepository } from '@/lib/feature-flags/repository';
+import type { FeatureCatalogEntry, FeatureEvaluationContext, FeatureEvaluationResult, FeatureFlagAssignment, FeatureScopeType, ModuleAccessControlResult, ModuleEnablementRule, ReleaseStage } from '@/lib/feature-flags/types';
+import { getTenantById, getWorkspacesForTenant, listModuleDefinitions, listPlatformRoles } from '@/lib/platform/bootstrap';
 import { canPermission } from '@/lib/platform/permissions';
-import type { ModuleDefinition, PermissionGrant, PlatformSession, Role } from '@/lib/platform/types';
+import type { PermissionGrant, PlatformSession } from '@/lib/platform/types';
 
 const PRECEDENCE: FeatureScopeType[] = ['user', 'role', 'workspace', 'tenant', 'module', 'environment'];
-
-function stageRank(stage: ReleaseStage) {
-  return ['experimental', 'internal', 'beta', 'limited', 'general_availability', 'deprecated'].indexOf(stage);
-}
 
 function isActiveWindow(item: { startsAt?: string; endsAt?: string }) {
   const now = Date.now();
   if (item.startsAt && new Date(item.startsAt).getTime() > now) return false;
   if (item.endsAt && new Date(item.endsAt).getTime() < now) return false;
   return true;
+}
+
+function isKnownScopeTarget(scopeType: FeatureScopeType, scopeId: string) {
+  if (!scopeId) return false;
+  if (scopeType === 'environment') return true;
+  if (scopeType === 'tenant') return Boolean(getTenantById(scopeId));
+  if (scopeType === 'workspace') return [getWorkspacesForTenant('ten_rbp_internal'), getWorkspacesForTenant('ten_acme_customer')].flat().some((workspace) => workspace.id === scopeId);
+  if (scopeType === 'role') return listPlatformRoles().some((role) => role.code === scopeId || role.id === scopeId);
+  if (scopeType === 'user') return scopeId.startsWith('usr_');
+  if (scopeType === 'module') return listModuleDefinitions().some((module) => module.key === scopeId);
+  return false;
 }
 
 export function buildFeatureEvaluationContext(input: { session: PlatformSession; internalUser: boolean; correlationId: string; currentModule?: string; currentRoute?: string }): FeatureEvaluationContext {
@@ -34,7 +42,7 @@ export function buildFeatureEvaluationContext(input: { session: PlatformSession;
 }
 
 export class FeatureFlagService {
-  private readonly store = getFeatureFlagStore();
+  constructor(private readonly repository: ControlPlaneRepository = getControlPlaneRepository()) {}
 
   async evaluateFlag(flagKey: string, context: FeatureEvaluationContext, visited = new Set<string>()): Promise<FeatureEvaluationResult> {
     if (visited.has(flagKey)) {
@@ -46,7 +54,7 @@ export class FeatureFlagService {
       return { flagKey, exists: false, enabled: false, value: false, source: 'missing_definition', scopeType: 'definition', releaseStage: 'deprecated', isKillSwitch: false, reasonCodes: ['missing_definition'], dependenciesSatisfied: false, conflictsDetected: [] };
     }
 
-    const assignments = (await this.store.listAssignments()).filter((item) => item.flagKey === flagKey && item.enabled && isActiveWindow(item));
+    const assignments = (await this.repository.listAssignmentsForFlag(flagKey, { enabled: true })).filter((item) => isActiveWindow(item));
     const killSwitch = definition.isKillSwitch ? this.pickAssignment(assignments, context) : null;
     if (definition.isKillSwitch && Boolean(killSwitch?.value)) {
       return { flagKey, exists: true, enabled: true, value: true, source: 'kill_switch_override', scopeType: killSwitch.scopeType, scopeId: killSwitch.scopeId, releaseStage: killSwitch.releaseStage ?? definition.releaseStage, isKillSwitch: true, reasonCodes: ['kill_switch_active'], dependenciesSatisfied: true, conflictsDetected: [] };
@@ -86,33 +94,33 @@ export class FeatureFlagService {
   }
 
   async listAssignments(flagKey?: string) {
-    return (await this.store.listAssignments()).filter((item) => !flagKey || item.flagKey === flagKey);
+    return this.repository.listAssignments(flagKey ? { flagKey } : undefined);
   }
 
-  async saveAssignment(input: Omit<FeatureFlagAssignment, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) {
-    const definition = getFeatureFlagDefinition(input.flagKey);
-    if (!definition) throw new Error('unknown_flag');
-    if (!definition.allowedScopes.includes(input.scopeType)) throw new Error('unsupported_scope');
-    if (definition.flagType === 'boolean' && typeof input.value !== 'boolean') throw new Error('invalid_boolean_value');
-    if (input.startsAt && input.endsAt && new Date(input.endsAt) < new Date(input.startsAt)) throw new Error('invalid_schedule_window');
+  async saveAssignment(input: Omit<FeatureFlagAssignment, 'id' | 'createdAt' | 'updatedAt' | 'version'> & { id?: string; version?: number }) {
+    this.validateAssignmentInput(input);
+    const duplicate = (await this.repository.listAssignments({ flagKey: input.flagKey, scopeType: input.scopeType, scopeId: input.scopeId })).find((item) => item.enabled);
+    if (duplicate && input.id !== duplicate.id) throw new Error('assignment_conflict');
     const now = new Date().toISOString();
-    const assignment: FeatureFlagAssignment = { ...input, id: input.id ?? `ffa_${crypto.randomUUID()}`, createdAt: now, updatedAt: now };
-    await this.store.saveAssignment(assignment);
-    return assignment;
+    return this.repository.createAssignment({ ...input, id: input.id ?? `ffa_${crypto.randomUUID()}`, createdAt: now, updatedAt: now, version: input.version ?? 1 });
   }
 
-  async updateAssignment(id: string, patch: Partial<FeatureFlagAssignment>) {
-    const existing = await this.store.getAssignment(id);
+  async updateAssignment(id: string, patch: Partial<FeatureFlagAssignment> & { expectedVersion?: number }) {
+    const existing = await this.repository.getAssignmentById(id);
     if (!existing) throw new Error('assignment_not_found');
-    const next = { ...existing, ...patch, id: existing.id, createdAt: existing.createdAt, updatedAt: new Date().toISOString() };
-    await this.store.saveAssignment(next);
-    return next;
+    const next = { ...existing, ...patch };
+    this.validateAssignmentInput(next);
+    return this.repository.updateAssignment(id, patch);
+  }
+
+  async disableAssignment(id: string, input: { updatedBy: string; expectedVersion?: number }) {
+    return this.repository.disableAssignment(id, input);
   }
 
   async evaluateModule(moduleKey: string, input: { tenant: any; workspace?: any; permissions: PermissionGrant[]; internalUser: boolean; featureContext: FeatureEvaluationContext }): Promise<ModuleAccessControlResult> {
     const module = listModuleDefinitions().find((item) => item.key === moduleKey);
     if (!module) return { moduleKey, exists: false, enabled: false, visible: false, source: 'missing_definition', internalOnly: false, betaOnly: false, reasonCodes: ['missing_definition'], dependsOnFlags: [], dependsOnModules: [] };
-    const rules = (await this.store.listModuleRules()).filter((item) => item.moduleKey === moduleKey && isActiveWindow(item));
+    const rules = (await this.repository.listRulesForModule(moduleKey)).filter((item) => isActiveWindow(item));
     const applied = this.pickModuleRule(rules, input.featureContext);
     const reasons: string[] = [];
     const featureKey = this.flagForModule(module.key);
@@ -127,20 +135,7 @@ export class FeatureFlagService {
     if (!module.requiredPermissions.every((permission) => canPermission(input.permissions, permission.resource, permission.action))) reasons.push('permission_denied');
     const ruleEnabled = applied ? applied.enabled : true;
     const ruleVisible = applied ? applied.visible : !module.isHidden;
-    return {
-      moduleKey,
-      exists: true,
-      enabled: reasons.length === 0 && ruleEnabled,
-      visible: reasons.filter((item) => item !== 'permission_denied').length === 0 && ruleVisible,
-      source: applied ? 'module_rule' : 'module_definition',
-      internalOnly: applied?.internalOnly ?? module.isInternalOnly,
-      betaOnly: applied?.betaOnly ?? Boolean((module as any).isBeta),
-      reasonCodes: reasons,
-      dependsOnFlags: featureCheck ? [featureCheck.flagKey] : [],
-      dependsOnModules: [],
-      releaseStage: featureCheck?.releaseStage,
-      defaultLanding: applied?.defaultLanding,
-    };
+    return { moduleKey, exists: true, enabled: reasons.length === 0 && ruleEnabled, visible: reasons.filter((item) => item !== 'permission_denied').length === 0 && ruleVisible, source: applied ? 'module_rule' : 'module_definition', internalOnly: applied?.internalOnly ?? module.isInternalOnly, betaOnly: applied?.betaOnly ?? Boolean((module as any).isBeta), reasonCodes: reasons, dependsOnFlags: featureCheck ? [featureCheck.flagKey] : [], dependsOnModules: [], releaseStage: featureCheck?.releaseStage, defaultLanding: applied?.defaultLanding };
   }
 
   async getEffectiveModules(input: { tenant: any; workspace?: any; permissions: PermissionGrant[]; internalUser: boolean; featureContext: FeatureEvaluationContext }) {
@@ -149,22 +144,45 @@ export class FeatureFlagService {
   }
 
   async listModuleRules(moduleKey?: string) {
-    return (await this.store.listModuleRules()).filter((item) => !moduleKey || item.moduleKey === moduleKey);
+    return this.repository.listModuleRules(moduleKey ? { moduleKey } : undefined);
   }
 
-  async saveModuleRule(input: Omit<ModuleEnablementRule, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) {
+  async saveModuleRule(input: Omit<ModuleEnablementRule, 'id' | 'createdAt' | 'updatedAt' | 'version'> & { id?: string; version?: number }) {
+    this.validateModuleRuleInput(input);
+    const duplicate = (await this.repository.listModuleRules({ moduleKey: input.moduleKey, scopeType: input.scopeType, scopeId: input.scopeId })).find((item) => item.enabled || item.visible);
+    if (duplicate && input.id !== duplicate.id) throw new Error('module_rule_conflict');
     const now = new Date().toISOString();
-    const rule: ModuleEnablementRule = { ...input, id: input.id ?? `mcr_${crypto.randomUUID()}`, createdAt: now, updatedAt: now };
-    await this.store.saveModuleRule(rule);
-    return rule;
+    return this.repository.createModuleRule({ ...input, id: input.id ?? `mcr_${crypto.randomUUID()}`, createdAt: now, updatedAt: now, version: input.version ?? 1 });
   }
 
-  async updateModuleRule(id: string, patch: Partial<ModuleEnablementRule>) {
-    const existing = await this.store.getModuleRule(id);
+  async updateModuleRule(id: string, patch: Partial<ModuleEnablementRule> & { expectedVersion?: number }) {
+    const existing = await this.repository.getModuleRuleById(id);
     if (!existing) throw new Error('module_rule_not_found');
-    const next = { ...existing, ...patch, id: existing.id, createdAt: existing.createdAt, updatedAt: new Date().toISOString() };
-    await this.store.saveModuleRule(next);
-    return next;
+    const next = { ...existing, ...patch };
+    this.validateModuleRuleInput(next);
+    return this.repository.updateModuleRule(id, patch);
+  }
+
+  async disableModuleRule(id: string, input: { updatedBy: string; expectedVersion?: number }) {
+    return this.repository.disableModuleRule(id, input);
+  }
+
+  private validateAssignmentInput(input: Omit<FeatureFlagAssignment, 'id' | 'createdAt' | 'updatedAt' | 'version'> | FeatureFlagAssignment) {
+    const definition = getFeatureFlagDefinition(input.flagKey);
+    if (!definition) throw new Error('unknown_flag');
+    if (!definition.allowedScopes.includes(input.scopeType)) throw new Error('unsupported_scope');
+    if (!isKnownScopeTarget(input.scopeType, input.scopeId)) throw new Error('invalid_scope_target');
+    if (definition.flagType === 'boolean' && typeof input.value !== 'boolean') throw new Error('invalid_boolean_value');
+    if (input.startsAt && input.endsAt && new Date(input.endsAt) < new Date(input.startsAt)) throw new Error('invalid_schedule_window');
+    if (definition.isKillSwitch && !input.reason?.trim()) throw new Error('reason_required');
+  }
+
+  private validateModuleRuleInput(input: Omit<ModuleEnablementRule, 'id' | 'createdAt' | 'updatedAt' | 'version'> | ModuleEnablementRule) {
+    const module = listModuleDefinitions().find((item) => item.key === input.moduleKey);
+    if (!module) throw new Error('unknown_module');
+    if (!isKnownScopeTarget(input.scopeType, input.scopeId)) throw new Error('invalid_scope_target');
+    if (input.startsAt && input.endsAt && new Date(input.endsAt) < new Date(input.startsAt)) throw new Error('invalid_schedule_window');
+    if ((input.internalOnly || input.betaOnly || input.enabled === false) && !input.reason?.trim()) throw new Error('reason_required');
   }
 
   private pickAssignment(assignments: FeatureFlagAssignment[], context: FeatureEvaluationContext) {

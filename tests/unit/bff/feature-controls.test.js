@@ -1,12 +1,19 @@
+process.env.NODE_ENV = 'test';
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { mkdtemp } = require('node:fs/promises');
+const { tmpdir } = require('node:os');
+const { join } = require('node:path');
 require('ts-node/register/transpile-only');
 require('../../../scripts/register-alias.cjs');
 
 const { createPersistedSession, buildPlatformSession } = require('../../../src/lib/platform/session');
 const { resolvePrincipalFromBootstrap } = require('../../../src/lib/platform/bootstrap');
 const { FeatureFlagService, buildFeatureEvaluationContext } = require('../../../src/lib/feature-flags/service');
-const { resetFeatureFlagStoreForTests, getFeatureFlagStore } = require('../../../src/lib/feature-flags/store');
+const { resetControlPlaneRepositoryForTests, getControlPlaneRepository } = require('../../../src/lib/feature-flags/store');
+const { FeatureFlagStore } = require('../../../src/lib/feature-flags/store');
+const { importLegacyFeatureControlStore } = require('../../../src/lib/feature-flags/migration');
 const { resetAuditStoreForTests, getAuditStore } = require('../../../src/lib/audit/store');
 const { resetNotificationStoreForTests, getNotificationStore } = require('../../../src/lib/notifications-center/store');
 const { AuditService } = require('../../../src/lib/audit/service');
@@ -23,10 +30,11 @@ async function makeContext(kind = 'internal') {
 }
 
 test.beforeEach(async () => {
-  resetFeatureFlagStoreForTests();
+  process.env.NODE_ENV = 'test';
+  resetControlPlaneRepositoryForTests();
   resetAuditStoreForTests();
   resetNotificationStoreForTests();
-  await getFeatureFlagStore().reset();
+  await getControlPlaneRepository().reset();
   await getAuditStore().reset();
   await getNotificationStore().reset();
 });
@@ -43,6 +51,20 @@ test('feature flag precedence prefers user over tenant over environment', async 
   assert.equal(result.scopeType, 'user');
 });
 
+test('assignment persistence supports versioned update and disable', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const created = await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'tenant on', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  assert.equal(created.version, 1);
+  const updated = await service.updateAssignment(created.id, { value: false, updatedBy: 'editor', expectedVersion: 1 });
+  assert.equal(updated.version, 2);
+  assert.equal(updated.value, false);
+  await assert.rejects(() => service.updateAssignment(created.id, { value: true, updatedBy: 'editor', expectedVersion: 1 }), /assignment_version_conflict/);
+  const disabled = await service.disableAssignment(created.id, { updatedBy: 'editor', expectedVersion: 2 });
+  assert.equal(disabled.enabled, false);
+  assert.equal(disabled.version, 3);
+});
+
 test('kill switch overrides normal feature enablement', async () => {
   const service = new FeatureFlagService();
   const context = await makeContext();
@@ -51,7 +73,8 @@ test('kill switch overrides normal feature enablement', async () => {
   await service.saveAssignment({ flagKey: 'feature.kill_switch.search', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'incident', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
   const kill = await service.evaluateFlag('feature.kill_switch.search', featureContext);
   assert.equal(kill.enabled, true);
-  await assert.rejects(() => new SearchService().search(context, new URLSearchParams({ q: 'loan', page: '1', pageSize: '5' })), (error) => error instanceof BffApiError && error.code === 'search_kill_switch_active');
+  const refreshedSession = await buildPlatformSession(createPersistedSession({ principal: resolvePrincipalFromBootstrap({ email: 'admin@rbp.local' }), auth: { provider: 'local' }, activeTenantId: 'ten_rbp_internal', activeWorkspaceId: 'wrk_internal_ops' }));
+  await assert.rejects(() => new SearchService().search({ ...context, session: refreshedSession }, new URLSearchParams({ q: 'loan', page: '1', pageSize: '5' })), (error) => error instanceof BffApiError && error.code === 'search_kill_switch_active');
 });
 
 test('dependencies and internal release restrictions disable flags safely', async () => {
@@ -72,11 +95,46 @@ test('module controls can hide analytics for a tenant', async () => {
   assert.equal(modules.some((item) => item.moduleKey === 'analytics'), false);
 });
 
+test('module rule persistence supports versioned disable', async () => {
+  const service = new FeatureFlagService();
+  const created = await service.saveModuleRule({ moduleKey: 'analytics', scopeType: 'tenant', scopeId: 'ten_rbp_internal', enabled: true, visible: true, internalOnly: false, betaOnly: false, reason: 'allow analytics', createdBy: 'system', updatedBy: 'system', metadata: {} });
+  assert.equal(created.version, 1);
+  const updated = await service.updateModuleRule(created.id, { visible: false, updatedBy: 'editor', expectedVersion: 1 });
+  assert.equal(updated.version, 2);
+  assert.equal(updated.visible, false);
+  const disabled = await service.disableModuleRule(created.id, { updatedBy: 'editor', expectedVersion: 2 });
+  assert.equal(disabled.enabled, false);
+  assert.equal(disabled.visible, false);
+  assert.equal(disabled.version, 3);
+});
+
 test('task kill switch disables task listing', async () => {
   const service = new FeatureFlagService();
   const context = await makeContext();
   await service.saveAssignment({ flagKey: 'feature.kill_switch.tasks', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'incident', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
-  await assert.rejects(() => new TaskService().listTasks(context, { page: 1, pageSize: 10, assignment: 'all' }), (error) => error instanceof BffApiError && error.code === 'tasks_kill_switch_active');
+  const refreshedSession = await buildPlatformSession(createPersistedSession({ principal: resolvePrincipalFromBootstrap({ email: 'admin@rbp.local' }), auth: { provider: 'local' }, activeTenantId: 'ten_rbp_internal', activeWorkspaceId: 'wrk_internal_ops' }));
+  await assert.rejects(() => new TaskService().listTasks({ ...context, session: refreshedSession }, { page: 1, pageSize: 10, assignment: 'all' }), (error) => error instanceof BffApiError && error.code === 'tasks_kill_switch_active');
+});
+
+test('migration imports legacy file store and preserves effective evaluation', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'feature-control-migration-'));
+  const legacyStore = new FeatureFlagStore(join(dir, 'legacy.json'));
+  const context = await makeContext();
+  await legacyStore.write({
+    assignments: [{ id: 'ffa_legacy_1', flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: false, reason: 'legacy off', enabled: true, createdAt: '2026-03-20T00:00:00.000Z', updatedAt: '2026-03-20T00:00:00.000Z', createdBy: 'legacy', updatedBy: 'legacy', metadata: {}, version: 1 }],
+    moduleRules: [{ id: 'mcr_legacy_1', moduleKey: 'analytics', scopeType: 'tenant', scopeId: context.session.activeTenant.id, enabled: false, visible: false, internalOnly: false, betaOnly: false, reason: 'legacy hold', createdAt: '2026-03-20T00:00:00.000Z', updatedAt: '2026-03-20T00:00:00.000Z', createdBy: 'legacy', updatedBy: 'legacy', metadata: {}, version: 1 }],
+  });
+  const repo = getControlPlaneRepository();
+  const result = await importLegacyFeatureControlStore({ repository: repo, store: legacyStore, actorId: 'migration' });
+  assert.deepEqual(result, { assignmentsImported: 1, assignmentsSkipped: 0, moduleRulesImported: 1, moduleRulesSkipped: 0 });
+  const rerun = await importLegacyFeatureControlStore({ repository: repo, store: legacyStore, actorId: 'migration' });
+  assert.deepEqual(rerun, { assignmentsImported: 0, assignmentsSkipped: 1, moduleRulesImported: 0, moduleRulesSkipped: 1 });
+  const service = new FeatureFlagService();
+  const featureContext = buildFeatureEvaluationContext(context);
+  const flag = await service.evaluateFlag('feature.search.enabled', featureContext);
+  const modules = await service.getEffectiveModules({ tenant: context.session.activeTenant, workspace: context.session.activeWorkspace, permissions: context.session.effectivePermissions, internalUser: context.internalUser, featureContext });
+  assert.equal(flag.enabled, false);
+  assert.equal(modules.some((item) => item.moduleKey === 'analytics'), false);
 });
 
 test('critical kill switch changes are auditable and notify operators', async () => {

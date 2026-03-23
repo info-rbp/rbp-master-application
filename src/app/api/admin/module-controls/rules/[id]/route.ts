@@ -17,8 +17,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await readJsonBody<any>(request);
     if (!body.ok) return body.response;
     const { id } = await params;
-    const updated = await service.updateModuleRule(id, { ...body.data, updatedBy: context.session.user.id });
+    const updated = await service.updateModuleRule(id, { ...body.data, updatedBy: context.session.user.id, expectedVersion: body.data?.expectedVersion });
     await audit.record({ eventType: 'module.control.updated', action: 'update', category: 'configuration', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, actorType: 'user', actorId: context.session.user.id, actorDisplay: context.session.user.displayName, subjectEntityType: 'module_control', subjectEntityId: id, sourceSystem: 'platform', correlationId, outcome: 'success', severity: 'warning', metadata: { moduleKey: updated.moduleKey, enabled: updated.enabled, visible: updated.visible }, sensitivity: 'internal' });
+    return ok(updated, correlationId);
+  } catch (error) { return fail(error, correlationId); }
+}
+
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
+  try {
+    const context = await getBffRequestContext(request);
+    correlationId = context.correlationId;
+    requirePermission(context, 'module_controls', 'manage');
+    const { id } = await params;
+    const updated = await service.disableModuleRule(id, { updatedBy: context.session.user.id });
+    await audit.record({ eventType: 'module.control.disabled', action: 'disable', category: 'configuration', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, actorType: 'user', actorId: context.session.user.id, actorDisplay: context.session.user.displayName, subjectEntityType: 'module_control', subjectEntityId: id, sourceSystem: 'platform', correlationId, outcome: 'success', severity: 'warning', metadata: { moduleKey: updated.moduleKey, enabled: updated.enabled, visible: updated.visible }, sensitivity: 'internal' });
     return ok(updated, correlationId);
   } catch (error) { return fail(error, correlationId); }
 }
