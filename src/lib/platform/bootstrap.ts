@@ -231,6 +231,10 @@ export function findBootstrapUserByProviderId(providerUserId: string) {
   return seededUsers.find((entry) => entry.user.authProviderUserId === providerUserId);
 }
 
+export function listBootstrapUsers() {
+  return seededUsers;
+}
+
 export function findBootstrapUserById(userId: string) {
   return seededUsers.find((entry) => entry.user.id === userId);
 }

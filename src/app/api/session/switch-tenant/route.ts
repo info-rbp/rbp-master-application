@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const before = await getPersistedPlatformSession();
     const session = await switchTenantContext({ tenantId: body.tenantId, workspaceId: body.workspaceId });
     if (!session) {
       throw new BffApiError('unauthenticated', 'Authentication is required for this endpoint.', 401);
