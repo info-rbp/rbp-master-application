@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { applyMemberOverride, getMemberDetailForAdmin, removeMemberOverride } from '@/lib/admin-membership-crm';
-import { getRequestAuthContext } from '@/lib/server-auth';
+import { AuthorizationError, requireAdminActionRequestContext } from '@/lib/server-auth';
 import { readJsonBody } from '@/lib/http';
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ memberId: string }> }) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let auth;
+  try {
+    auth = await requireAdminActionRequestContext(request, 'admin.membership.override.manage');
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const parsed = await readJsonBody<Record<string, unknown>>(request);
@@ -37,9 +40,12 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ mem
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ memberId: string }> }) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let auth;
+  try {
+    auth = await requireAdminActionRequestContext(request, 'admin.membership.override.manage');
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const { memberId } = await context.params;

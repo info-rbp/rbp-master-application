@@ -54,3 +54,9 @@ export function evaluateSubFeatureAccess(subFeatureKey: string, context: AccessE
   const def = getSubFeature(subFeatureKey); if (!def) return { definition: null, result: { allowed: true, source: 'unconfigured_subfeature', requiredCapabilities: [], missingCapabilities: [], requiredFlags: [], missingFlags: [], requiredModules: [], missingModules: [], reasonCodes: [], conditionsPassed: true, degraded: true, visibilitySuggestion: 'visible' } as AccessEvaluationResult };
   return { definition: def, result: evaluateRequirements({ source: def.key, requiredCapabilities: def.requiredCapabilities, requiredFlags: def.requiredFeatureFlags, requiredModules: [def.moduleKey], context, internalOnly: def.internalOnly }) };
 }
+
+export async function requireSubFeatureAccess(subFeatureKey: string, context: BffRequestContext) {
+  const { definition, result } = evaluateSubFeatureAccess(subFeatureKey, toAccessContext(context));
+  if (!result.allowed) throw new BffApiError('forbidden', 'Sub-feature access denied.', 403, { subFeatureKey, definition: definition?.key, reasonCodes: result.reasonCodes });
+  return { definition, result };
+}

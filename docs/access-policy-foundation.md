@@ -76,13 +76,12 @@ Use `evaluateSubFeatureAccess(...)` or `canSubFeature(...)` for rendering hints,
 
 ## Current Sprint 3 coverage
 
-The central model now governs key backend surfaces for:
+The central model now governs the major protected platform surfaces that currently exist in the repo, including:
 
-- dashboard summary and detail APIs
-- application, loan, and customer-360 BFF detail APIs
-- search APIs and capability-based domain filtering
-- task inbox listing, summary, and task actions
-- workflow start/action/status endpoints
-- audit feed endpoints and audit page access
-- admin feature-control read/manage/preview paths
-- settings team management page access
+- protected page roots and significant page families for admin, settings, dashboard, and portal flows
+- application, loan, customer-360, search, task, workflow, and audit APIs
+- admin feature-controls, knowledge-center, and membership management APIs
+- sensitive workflow review, task execution, support escalation, document upload, and admin control-plane actions
+- independently gated sub-features such as rollout preview, audit history, internal notes, and membership notes
+
+When adding a new protected page/API/action/sub-feature, update the central registry first and extend tests/validation so the inventory remains complete.

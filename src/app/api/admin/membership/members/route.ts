@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRequestAuthContext } from '@/lib/server-auth';
+import { AuthorizationError, requireAdminActionRequestContext } from '@/lib/server-auth';
 import { getMembershipCRMOverview } from '@/lib/admin-membership-crm';
 
 export async function GET(request: NextRequest) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    await requireAdminActionRequestContext(request, 'admin.membership.read');
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const { searchParams } = new URL(request.url);
