@@ -9,10 +9,6 @@ export class FeatureControlsBffService {
   private readonly flags = new FeatureFlagService();
   private readonly audit = new AuditService();
 
-  private canViewAudit(context: BffRequestContext) {
-    return context.internalUser && canPermission(context.session.effectivePermissions, 'admin_user', 'read');
-  }
-
   async getCatalog() { return { items: await this.flags.getFeatureCatalog() }; }
   async getAssignments(flagKey?: string) { return await this.flags.listAssignments(flagKey); }
   async getRolloutRules(flagKey?: string) { return await this.flags.listRolloutRules(flagKey); }
@@ -60,12 +56,12 @@ export class FeatureControlsBffService {
       moduleSummaries,
       diagnostics,
       recentChanges,
-      auditVisible: this.canViewAudit(context),
+      auditVisible: canPermission(context.session.effectivePermissions, 'admin_user', 'read') && context.internalUser,
     };
   }
 
   async getRecentChanges(context: BffRequestContext, limit = 20) {
-    if (!this.canViewAudit(context)) return [];
+    if (!context.internalUser || !canPermission(context.session.effectivePermissions, 'admin_user', 'read')) return [];
     const query = await this.audit.query({ tenantId: context.session.activeTenant.id, limit } as any);
     return query.items.filter((item) =>
       item.eventType.startsWith('feature.')

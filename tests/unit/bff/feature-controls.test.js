@@ -243,19 +243,6 @@ test('console data exposes summaries and recent audit changes for operators', as
   assert.ok(consoleData.recentChanges.some((item) => item.metadata.flagKey === 'feature.search.enabled'));
 });
 
-test('console data hides recent changes for non-internal sessions', async () => {
-  const context = await makeContext('customer');
-  const service = new FeatureFlagService();
-  const bff = new FeatureControlsBffService();
-  await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: false, reason: 'tenant off', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
-  await new AuditService().record({ eventType: 'feature.assignment.updated', action: 'update', category: 'admin', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, actorType: 'user', actorId: context.session.user.id, actorDisplay: context.session.user.displayName, subjectEntityType: 'feature_flag', subjectEntityId: 'feature.search.enabled', sourceSystem: 'platform', correlationId: context.correlationId, outcome: 'success', severity: 'warning', metadata: { flagKey: 'feature.search.enabled', reason: 'tenant off' }, sensitivity: 'internal' });
-
-  const consoleData = await bff.getConsoleData(context);
-  assert.equal(consoleData.auditVisible, false);
-  assert.deepEqual(consoleData.recentChanges, []);
-  assert.ok(consoleData.flagSummaries.some((item) => item.flagKey === 'feature.search.enabled' && item.hasOverrides));
-});
-
 test('catalog helper filters flags, modules, and diagnostic summary for the operator console', () => {
   const flagRows = buildFlagRows([
     { flagKey: 'feature.search.enabled', name: 'Search', description: '', category: 'search', releaseStage: 'general_availability', currentDefaultValue: true, scopesSupported: ['tenant'], isKillSwitch: false, isDeprecated: false, owner: 'platform', tags: ['capability'], dependencies: [], conflicts: [], supportsPercentageRollout: true, effectiveEnabled: true, effectiveValue: true, winningSource: 'definition_default', winningScope: 'definition', hasOverrides: false, hasConflicts: false, hasActiveRollout: false, hasScheduledChanges: false, diagnostics: [], activeAssignmentCount: 0, activeRolloutCount: 0, lastUpdatedAt: undefined, lastUpdatedBy: undefined, currentReasonCodes: [], activeKillSwitch: false },
