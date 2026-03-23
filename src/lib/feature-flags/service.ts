@@ -89,6 +89,7 @@ export class FeatureFlagService {
     const now = new Date().toISOString();
     return this.repository.createAssignment({ ...input, id: input.id ?? `ffa_${crypto.randomUUID()}`, createdAt: now, updatedAt: now, version: input.version ?? 1 });
   }
+  async getEffectiveModules(input: { tenant: any; workspace?: any; permissions: PermissionGrant[]; internalUser: boolean; featureContext: FeatureEvaluationContext }) { const all = await Promise.all(listModuleDefinitions().map((module) => this.evaluateModule(module.key, input))); return all.filter((item) => item.visible && item.enabled); }
 
   async updateAssignment(id: string, patch: Partial<FeatureFlagAssignment> & { expectedVersion?: number }) {
     const existing = await this.repository.getAssignmentById(id);
@@ -123,9 +124,37 @@ export class FeatureFlagService {
     return { moduleKey, exists: true, enabled: reasons.length === 0 && ruleEnabled, visible: reasons.filter((item) => item !== 'permission_denied').length === 0 && ruleVisible, source: applied ? 'module_rule' : 'module_definition', internalOnly: applied?.internalOnly ?? module.isInternalOnly, betaOnly: applied?.betaOnly ?? Boolean((module as any).isBeta), reasonCodes: reasons, dependsOnFlags: featureCheck ? [featureCheck.flagKey] : [], dependsOnModules: [], releaseStage: featureCheck?.releaseStage, defaultLanding: applied?.defaultLanding };
   }
 
-  async getEffectiveModules(input: { tenant: any; workspace?: any; permissions: PermissionGrant[]; internalUser: boolean; featureContext: FeatureEvaluationContext }) {
-    const all = await Promise.all(listModuleDefinitions().map((module) => this.evaluateModule(module.key, input)));
-    return all.filter((item) => item.visible && item.enabled);
+  async getModuleOperationalSummaries(input: { tenant: any; workspace?: any; permissions: PermissionGrant[]; internalUser: boolean; featureContext: FeatureEvaluationContext }): Promise<ModuleControlOperationalSummary[]> {
+    const rules = await this.listModuleRules();
+    const issues = await this.getControlPlaneDiagnostics(input.featureContext);
+    const evaluations = await Promise.all(listModuleDefinitions().map((module) => this.evaluateModule(module.key, input)));
+    return listModuleDefinitions().map((module) => {
+      const evaluation = evaluations.find((entry) => entry.moduleKey === module.key)!;
+      const moduleRules = rules.filter((entry) => entry.moduleKey === module.key);
+      const activeRules = moduleRules.filter((entry) => entry.enabled && isActiveWindow(entry));
+      const lastTouched = [...moduleRules].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))[0];
+      const applied = activeRules.sort((a, b) => PRECEDENCE.indexOf(a.scopeType as FeatureScopeType) - PRECEDENCE.indexOf(b.scopeType as FeatureScopeType))[0];
+      return {
+        moduleKey: module.key,
+        moduleName: module.name,
+        description: module.description,
+        category: module.category,
+        route: module.route,
+        effectiveEnabled: evaluation.enabled,
+        effectiveVisible: evaluation.visible,
+        winningSource: evaluation.source,
+        winningRuleId: applied?.id,
+        hasOverrides: activeRules.length > 0,
+        diagnostics: issues.filter((issue) => issue.targetKey === module.key).map((issue) => issue.type),
+        activeRuleCount: activeRules.length,
+        lastUpdatedAt: lastTouched?.updatedAt,
+        lastUpdatedBy: lastTouched?.updatedBy,
+        internalOnly: evaluation.internalOnly,
+        betaOnly: evaluation.betaOnly,
+        defaultLanding: evaluation.defaultLanding,
+        reasonCodes: evaluation.reasonCodes,
+      };
+    });
   }
 
   async listModuleRules(moduleKey?: string) {
