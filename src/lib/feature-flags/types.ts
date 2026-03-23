@@ -41,26 +41,6 @@ export type FeatureFlagAssignment = {
   version: number;
 };
 
-export type PercentageRolloutRule = {
-  id: string;
-  flagKey: string;
-  scopeType: FeatureScopeType;
-  scopeId: string;
-  percentage: number;
-  bucketBy: RolloutBucketBy;
-  salt?: string;
-  startsAt?: string;
-  endsAt?: string;
-  enabled: boolean;
-  reason: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  updatedBy: string;
-  metadata: Record<string, unknown>;
-  version: number;
-};
-
 export type ModuleEnablementRule = {
   id: string;
   moduleKey: string;
@@ -80,36 +60,6 @@ export type ModuleEnablementRule = {
   updatedBy: string;
   metadata: Record<string, unknown>;
   version: number;
-};
-
-export type FeatureEvaluationReason = {
-  code: string;
-  category: 'precedence' | 'dependency' | 'conflict' | 'release_stage' | 'kill_switch' | 'rollout' | 'targeting' | 'validation';
-  message: string;
-  source: string;
-  scopeType?: FeatureScopeType;
-  scopeId?: string;
-  details?: Record<string, unknown>;
-};
-
-export type RolloutTargetIdentity = {
-  targetType: 'tenant' | 'workspace' | 'role' | 'user' | 'composite';
-  targetId: string;
-  tenantId?: string;
-  workspaceId?: string;
-  roleCodes?: string[];
-  userId?: string;
-  normalizedKey: string;
-};
-
-export type BucketEvaluationResult = {
-  algorithm: string;
-  normalizedKey: string;
-  hashValue: number;
-  bucket: number;
-  threshold: number;
-  matched: boolean;
-  saltUsed?: string;
 };
 
 export type FeatureEvaluationContext = {
