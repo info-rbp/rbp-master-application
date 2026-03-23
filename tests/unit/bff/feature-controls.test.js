@@ -297,7 +297,7 @@ test('control-plane diagnostics surface conflicts, stale rules, and kill switche
 });
 
 test('console data exposes summaries and recent audit changes for operators', async () => {
-  const context = await makeContext();
+  const context = await makeAdminConsoleContext();
   const service = new FeatureFlagService();
   const bff = new FeatureControlsBffService();
   await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: false, reason: 'tenant off', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
