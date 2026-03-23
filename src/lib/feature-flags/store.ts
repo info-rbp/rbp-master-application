@@ -6,9 +6,10 @@ import type { FeatureFlagAssignment, ModuleEnablementRule } from '@/lib/feature-
 
 type FeatureFlagStoreState = {
   assignments: FeatureFlagAssignment[];
+  rolloutRules: PercentageRolloutRule[];
   moduleRules: ModuleEnablementRule[];
 };
-const emptyState = (): FeatureFlagStoreState => ({ assignments: [], moduleRules: [] });
+const emptyState = (): FeatureFlagStoreState => ({ assignments: [], rolloutRules: [], moduleRules: [] });
 
 export class FeatureFlagStore {
   constructor(private readonly filePath = process.env.RBP_FEATURE_FLAG_STORE_PATH ?? path.join(process.cwd(), '.rbp-data', 'feature-flags-store.json')) {}

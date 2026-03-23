@@ -64,9 +64,34 @@ Fields:
 - `metadata`
 - `version`
 
-## Precedence rules
+## Deterministic bucketing strategy
 
-Highest to lowest:
+The system uses deterministic bucketing for percentage rollout.
+
+### Algorithm
+
+1. Build a stable target identity string.
+2. Concatenate `flagKey | normalizedKey | saltUsed`.
+3. Hash with `sha256`.
+4. Convert the first 8 hex chars to an integer.
+5. Compute `bucket = hashValue % 100`.
+6. Mark the target as included when `bucket < percentage`.
+
+This yields a stable bucket range of **0-99**.
+
+### Target identity normalization
+
+- `tenant` → `tenant:<tenantId>`
+- `workspace` → `tenant:<tenantId>|workspace:<workspaceId>`
+- `user` → `tenant:<tenantId>|user:<userId>`
+- `role` → `tenant:<tenantId>|roles:<sorted role codes>`
+- `composite` → `tenant + workspace + user + sorted roles`
+
+If a required identifier for the chosen `bucketBy` mode is missing, the rollout rule fails safely and does not match.
+
+## Precedence with rollout
+
+Effective precedence remains:
 
 1. kill switch assignment
 2. user assignment
@@ -77,12 +102,72 @@ Highest to lowest:
 7. environment assignment
 8. definition default
 
-Additional fail-safe rules:
+Within a given scope:
 
-- missing dependencies disable the feature
-- detected conflicts disable the feature
-- `internal` stage features stay off for external users unless explicitly changed in policy later
-- `beta`, `limited`, and `experimental` features default to restricted behavior unless targeted
+- explicit assignment beats percentage rollout
+- one matching rollout rule may apply
+- conflicting rollout rules at the same winning scope fail safe and surface reasoning
+- dependencies, conflicts, and release-stage gating still apply after rollout match
+
+## Explainability model
+
+Feature evaluation now exposes:
+
+- `reasonCodes[]`
+- structured `reasons[]`
+- winning source / scope
+- bucket details when a percentage rollout rule is involved
+- dependency/conflict failures
+- release-stage blockers
+- kill-switch override reasoning
+
+This is available to runtime evaluation and admin preview.
+
+## Preview and simulation
+
+### Current live preview
+
+Use:
+
+- `GET /api/admin/feature-preview`
+
+Supported query fields include:
+
+- `tenantId`
+- `workspaceId`
+- `userId`
+- `roleCodes` as comma-separated values
+- `featureKeys` as comma-separated values
+- `includeReasoning`
+- `includeBucketDetails`
+
+### Simulated preview
+
+Use:
+
+- `POST /api/admin/feature-preview`
+
+This supports proposed unsaved rollout changes through request payload fields such as:
+
+- `proposedAssignments[]`
+- `proposedRolloutRules[]`
+
+The preview response returns context summary, evaluated flags, evaluated modules, warnings, dependency/conflict summaries, and metadata about reasoning inclusion.
+
+## Admin APIs
+
+Existing admin APIs remain, with rollout additions:
+
+- `GET /api/admin/feature-flags` now includes `rolloutRules`
+- `POST /api/admin/feature-flags/:key/rollout-rules`
+- `PUT /api/admin/feature-flags/rollout-rules/:id`
+- `DELETE /api/admin/feature-flags/rollout-rules/:id`
+- `GET /api/admin/feature-preview`
+- `POST /api/admin/feature-preview`
+
+## Admin UI usage
+
+The feature-controls admin screen now supports:
 
 ## Validation and concurrency
 
@@ -131,7 +216,7 @@ Recommended checks:
 - The existing admin UI continues to consume the same API shapes; no redesign was introduced in Sprint 1.
 - Session bootstrap, navigation visibility, feature preview, and module evaluation now read the durable repository path.
 
-## Operational notes
+## Rollback guidance
 
 - Critical changes should generate audit events.
 - Kill switch changes may also notify privileged operators.

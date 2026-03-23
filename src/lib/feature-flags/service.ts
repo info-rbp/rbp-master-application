@@ -27,31 +27,26 @@ function isKnownScopeTarget(scopeType: FeatureScopeType, scopeId: string) {
 }
 
 export function buildFeatureEvaluationContext(input: { session: PlatformSession; internalUser: boolean; correlationId: string; currentModule?: string; currentRoute?: string }): FeatureEvaluationContext {
-  return {
-    environment: process.env.NODE_ENV ?? 'development',
-    tenantId: input.session.activeTenant.id,
-    workspaceId: input.session.activeWorkspace?.id,
-    userId: input.session.user.id,
-    roleCodes: input.session.roles.map((role) => role.code),
-    enabledModules: input.session.enabledModules,
-    currentModule: input.currentModule,
-    currentRoute: input.currentRoute,
-    isInternalUser: input.internalUser,
-    correlationId: input.correlationId,
-  };
+  return { environment: process.env.NODE_ENV ?? 'development', tenantId: input.session.activeTenant.id, workspaceId: input.session.activeWorkspace?.id, userId: input.session.user.id, roleCodes: input.session.roles.map((role) => role.code), enabledModules: input.session.enabledModules, currentModule: input.currentModule, currentRoute: input.currentRoute, isInternalUser: input.internalUser, correlationId: input.correlationId };
 }
 
 export class FeatureFlagService {
   constructor(private readonly repository: ControlPlaneRepository = getControlPlaneRepository()) {}
 
-  async evaluateFlag(flagKey: string, context: FeatureEvaluationContext, visited = new Set<string>()): Promise<FeatureEvaluationResult> {
-    if (visited.has(flagKey)) {
-      return { flagKey, exists: true, enabled: false, value: false, source: 'cycle_guard', scopeType: 'definition', releaseStage: 'deprecated', isKillSwitch: false, reasonCodes: ['cyclic_reference'], dependenciesSatisfied: false, conflictsDetected: [] };
-    }
+  async evaluateFlag(flagKey: string, context: FeatureEvaluationContext, visited = new Set<string>(), runtime?: { assignments?: FeatureFlagAssignment[]; rolloutRules?: PercentageRolloutRule[]; }): Promise<FeatureEvaluationResult> {
+    const reasons: FeatureEvaluationReason[] = [];
+    if (visited.has(flagKey)) return { flagKey, exists: true, enabled: false, value: false, source: 'cycle_guard', scopeType: 'definition', releaseStage: 'deprecated', isKillSwitch: false, reasonCodes: ['cyclic_reference'], reasons: [reason('cyclic_reference', 'validation', 'Cyclic dependency detected.', 'cycle_guard')], dependenciesSatisfied: false, conflictsDetected: [] };
     visited.add(flagKey);
     const definition = getFeatureFlagDefinition(flagKey);
-    if (!definition) {
-      return { flagKey, exists: false, enabled: false, value: false, source: 'missing_definition', scopeType: 'definition', releaseStage: 'deprecated', isKillSwitch: false, reasonCodes: ['missing_definition'], dependenciesSatisfied: false, conflictsDetected: [] };
+    if (!definition) return { flagKey, exists: false, enabled: false, value: false, source: 'missing_definition', scopeType: 'definition', releaseStage: 'deprecated', isKillSwitch: false, reasonCodes: ['missing_definition'], reasons: [reason('missing_definition', 'validation', 'Flag definition was not found.', 'definition')], dependenciesSatisfied: false, conflictsDetected: [] };
+
+    const assignmentPool = (runtime?.assignments ?? await this.repository.listAssignmentsForFlag(flagKey, { enabled: true })).filter((item) => item.flagKey === flagKey && item.enabled && isActiveWindow(item));
+    const rolloutPool = (runtime?.rolloutRules ?? await this.repository.listRolloutRulesForFlag(flagKey, { enabled: true })).filter((item) => item.flagKey === flagKey && item.enabled && isActiveWindow(item));
+
+    const killAssignment = definition.isKillSwitch ? this.pickAssignment(assignmentPool, context) : null;
+    if (definition.isKillSwitch && Boolean(killAssignment?.value)) {
+      reasons.push(reason('kill_switch_active', 'kill_switch', 'Kill switch override is active.', 'assignment', { scopeType: killAssignment.scopeType, scopeId: killAssignment.scopeId }));
+      return { flagKey, exists: true, enabled: true, value: true, source: 'kill_switch_override', scopeType: killAssignment.scopeType, scopeId: killAssignment.scopeId, releaseStage: killAssignment.releaseStage ?? definition.releaseStage, isKillSwitch: true, reasonCodes: reasons.map((item) => item.code), reasons, dependenciesSatisfied: true, conflictsDetected: [] };
     }
 
     const assignments = (await this.repository.listAssignmentsForFlag(flagKey, { enabled: true })).filter((item) => isActiveWindow(item));
@@ -60,38 +55,28 @@ export class FeatureFlagService {
       return { flagKey, exists: true, enabled: true, value: true, source: 'kill_switch_override', scopeType: killSwitch.scopeType, scopeId: killSwitch.scopeId, releaseStage: killSwitch.releaseStage ?? definition.releaseStage, isKillSwitch: true, reasonCodes: ['kill_switch_active'], dependenciesSatisfied: true, conflictsDetected: [] };
     }
 
-    const applied = this.pickAssignment(assignments, context);
-    const releaseStage = applied?.releaseStage ?? definition.releaseStage;
-    const reasonCodes: string[] = [];
-    if (definition.isInternalOnly && !context.isInternalUser) reasonCodes.push('internal_only');
-    if (releaseStage === 'internal' && !context.isInternalUser) reasonCodes.push('release_stage_internal');
-    if ((releaseStage === 'beta' || releaseStage === 'experimental' || releaseStage === 'limited') && !applied && !context.isInternalUser) reasonCodes.push('release_stage_restricted');
+    if (definition.isInternalOnly && !context.isInternalUser) reasons.push(reason('internal_only', 'release_stage', 'Feature is internal-only.', 'definition'));
+    if (releaseStage === 'internal' && !context.isInternalUser) reasons.push(reason('release_stage_internal', 'release_stage', 'Release stage is internal.', 'definition'));
+    if ((releaseStage === 'beta' || releaseStage === 'experimental' || releaseStage === 'limited') && !explicit && !rolloutDecision?.matched && !context.isInternalUser) reasons.push(reason('release_stage_restricted', 'release_stage', 'Release stage requires targeted rollout.', 'definition'));
 
-    const dependencies = await Promise.all(definition.dependencies.map((dependency) => this.evaluateFlag(dependency, context, new Set(visited))));
+    const dependencies = await Promise.all(definition.dependencies.map((dependency) => this.evaluateFlag(dependency, context, new Set(visited), runtime)));
     const dependenciesSatisfied = dependencies.every((item) => item.enabled);
-    if (!dependenciesSatisfied) reasonCodes.push('missing_dependency');
+    if (!dependenciesSatisfied) reasons.push(reason('missing_dependency', 'dependency', 'Required dependency is not enabled.', 'definition', { details: { dependencies: dependencies.filter((item) => !item.enabled).map((item) => item.flagKey) } }));
 
-    const conflicts = await Promise.all(definition.conflicts.map((conflict) => this.evaluateFlag(conflict, context, new Set(visited))));
+    const conflicts = await Promise.all(definition.conflicts.map((conflict) => this.evaluateFlag(conflict, context, new Set(visited), runtime)));
     const conflictsDetected = conflicts.filter((item) => item.enabled).map((item) => item.flagKey);
-    if (conflictsDetected.length > 0) reasonCodes.push('conflict_detected');
+    if (conflictsDetected.length > 0) reasons.push(reason('conflict_detected', 'conflict', 'Conflicting feature is enabled.', 'definition', { details: { conflicts: conflictsDetected } }));
 
-    const value = applied?.value ?? definition.defaultValue;
-    const enabled = Boolean(value) && reasonCodes.length === 0;
-    return { flagKey, exists: true, enabled, value, source: applied ? 'assignment' : 'definition_default', scopeType: applied?.scopeType ?? 'definition', scopeId: applied?.scopeId, releaseStage, isKillSwitch: definition.isKillSwitch, reasonCodes, dependenciesSatisfied, conflictsDetected };
+    const enabled = Boolean(value) && reasons.every((item) => !['internal_only', 'release_stage_internal', 'release_stage_restricted', 'missing_dependency', 'conflict_detected', 'rollout_conflict'].includes(item.code));
+    return { flagKey, exists: true, enabled, value, source, scopeType, scopeId, releaseStage, isKillSwitch: definition.isKillSwitch, reasonCodes: reasons.map((item) => item.code), reasons, bucketResult, dependenciesSatisfied, conflictsDetected };
   }
 
-  async evaluateFlags(flagKeys: string[], context: FeatureEvaluationContext) {
-    return Promise.all(flagKeys.map((flagKey) => this.evaluateFlag(flagKey, context)));
-  }
-
-  async getEffectiveFlags(context: FeatureEvaluationContext) {
-    const evaluated = await this.evaluateFlags(FEATURE_FLAG_DEFINITIONS.map((item) => item.key), context);
-    return Object.fromEntries(evaluated.map((item) => [item.flagKey, item.enabled]));
-  }
-
-  async getFeatureCatalog(): Promise<FeatureCatalogEntry[]> {
-    return FEATURE_FLAG_DEFINITIONS.map((item) => ({ flagKey: item.key, name: item.name, description: item.description, category: item.category, releaseStage: item.releaseStage, currentDefaultValue: item.defaultValue, scopesSupported: item.allowedScopes, isKillSwitch: item.isKillSwitch, isDeprecated: item.isDeprecated, owner: item.owner, tags: item.tags, dependencies: item.dependencies, conflicts: item.conflicts }));
-  }
+  async evaluateFlags(flagKeys: string[], context: FeatureEvaluationContext, runtime?: { assignments?: FeatureFlagAssignment[]; rolloutRules?: PercentageRolloutRule[]; }) { return Promise.all(flagKeys.map((flagKey) => this.evaluateFlag(flagKey, context, new Set<string>(), runtime))); }
+  async getEffectiveFlags(context: FeatureEvaluationContext) { const evaluated = await this.evaluateFlags(FEATURE_FLAG_DEFINITIONS.map((item) => item.key), context); return Object.fromEntries(evaluated.map((item) => [item.flagKey, item.enabled])); }
+  async getFeatureCatalog(): Promise<FeatureCatalogEntry[]> { return FEATURE_FLAG_DEFINITIONS.map((item) => ({ flagKey: item.key, name: item.name, description: item.description, category: item.category, releaseStage: item.releaseStage, currentDefaultValue: item.defaultValue, scopesSupported: item.allowedScopes, isKillSwitch: item.isKillSwitch, isDeprecated: item.isDeprecated, owner: item.owner, tags: item.tags, dependencies: item.dependencies, conflicts: item.conflicts, supportsPercentageRollout: item.flagType === 'boolean' || item.flagType === 'percentage' })); }
+  async listAssignments(flagKey?: string) { return this.repository.listAssignments(flagKey ? { flagKey } : undefined); }
+  async listRolloutRules(flagKey?: string) { return this.repository.listRolloutRules(flagKey ? { flagKey } : undefined); }
+  async listModuleRules(moduleKey?: string) { return this.repository.listModuleRules(moduleKey ? { moduleKey } : undefined); }
 
   async listAssignments(flagKey?: string) {
     return this.repository.listAssignments(flagKey ? { flagKey } : undefined);

@@ -39,6 +39,26 @@ test.beforeEach(async () => {
   await getNotificationStore().reset();
 });
 
+test('deterministic bucketing stays stable for same identity and salt', () => {
+  const identity = buildRolloutTargetIdentity({ tenantId: 'ten_rbp_internal', workspaceId: 'wrk_internal_ops', userId: 'usr_jane_admin', roleCodes: ['platform.super_admin'] }, 'user');
+  const first = evaluateDeterministicBucket({ flagKey: 'feature.search.enabled', identity, percentage: 25, salt: 'wave-1' });
+  const second = evaluateDeterministicBucket({ flagKey: 'feature.search.enabled', identity, percentage: 25, salt: 'wave-1' });
+  assert.deepEqual(first, second);
+});
+
+test('salt change re-cuts rollout cohort deterministically', () => {
+  const identity = buildRolloutTargetIdentity({ tenantId: 'ten_rbp_internal', workspaceId: 'wrk_internal_ops', userId: 'usr_jane_admin', roleCodes: ['platform.super_admin'] }, 'user');
+  const first = evaluateDeterministicBucket({ flagKey: 'feature.search.enabled', identity, percentage: 50, salt: 'wave-1' });
+  const second = evaluateDeterministicBucket({ flagKey: 'feature.search.enabled', identity, percentage: 50, salt: 'wave-2' });
+  assert.notEqual(first.hashValue, second.hashValue);
+});
+
+test('rollout threshold boundaries handle 0 and 100 percent safely', () => {
+  const identity = buildRolloutTargetIdentity({ tenantId: 'ten_rbp_internal', roleCodes: [] }, 'tenant');
+  assert.equal(evaluateDeterministicBucket({ flagKey: 'feature.search.enabled', identity, percentage: 0 }).matched, false);
+  assert.equal(evaluateDeterministicBucket({ flagKey: 'feature.search.enabled', identity, percentage: 100 }).matched, true);
+});
+
 test('feature flag precedence prefers user over tenant over environment', async () => {
   const service = new FeatureFlagService();
   const context = await makeContext();
@@ -69,7 +89,43 @@ test('kill switch overrides normal feature enablement', async () => {
   const service = new FeatureFlagService();
   const context = await makeContext();
   const featureContext = buildFeatureEvaluationContext(context);
-  await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'tenant on', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  await service.saveRolloutRule({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'wave-1', reason: 'broad rollout', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: false, reason: 'explicit off', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  const result = await service.evaluateFlag('feature.search.enabled', featureContext);
+  assert.equal(result.enabled, false);
+  assert.equal(result.source, 'assignment');
+});
+
+test('percentage rollout returns bucket details and stable reasoning', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const featureContext = buildFeatureEvaluationContext(context);
+  await service.saveRolloutRule({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'wave-1', reason: 'broad rollout', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  const result = await service.evaluateFlag('feature.search.enabled', featureContext);
+  assert.equal(result.enabled, true);
+  assert.equal(result.source, 'percentage_rollout');
+  assert.ok(result.bucketResult);
+  assert.ok(result.reasonCodes.includes('rollout_match'));
+});
+
+test('assignment persistence supports versioned update and disable', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const created = await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'tenant on', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  assert.equal(created.version, 1);
+  const updated = await service.updateAssignment(created.id, { value: false, updatedBy: 'editor', expectedVersion: 1 });
+  assert.equal(updated.version, 2);
+  await assert.rejects(() => service.updateAssignment(created.id, { value: true, updatedBy: 'editor', expectedVersion: 1 }), /assignment_version_conflict/);
+  const disabled = await service.disableAssignment(created.id, { updatedBy: 'editor', expectedVersion: 2 });
+  assert.equal(disabled.enabled, false);
+  assert.equal(disabled.version, 3);
+});
+
+test('kill switch overrides normal feature enablement and rollout', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const featureContext = buildFeatureEvaluationContext(context);
+  await service.saveRolloutRule({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, percentage: 100, bucketBy: 'tenant', salt: 'wave-1', reason: 'broad rollout', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
   await service.saveAssignment({ flagKey: 'feature.kill_switch.search', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'incident', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
   const kill = await service.evaluateFlag('feature.kill_switch.search', featureContext);
   assert.equal(kill.enabled, true);

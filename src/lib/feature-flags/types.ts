@@ -1,6 +1,7 @@
 export type FeatureFlagType = 'boolean' | 'multivariate' | 'percentage' | 'structured';
 export type FeatureScopeType = 'environment' | 'tenant' | 'workspace' | 'role' | 'user' | 'module';
 export type ReleaseStage = 'experimental' | 'internal' | 'beta' | 'limited' | 'general_availability' | 'deprecated';
+export type RolloutBucketBy = 'tenant' | 'workspace' | 'role' | 'user' | 'composite';
 
 export type FeatureFlagDefinition = {
   key: string;
@@ -74,6 +75,12 @@ export type FeatureEvaluationContext = {
   correlationId: string;
 };
 
+export type PreviewEvaluationContext = FeatureEvaluationContext & {
+  featureKeys?: string[];
+  includeReasoning: boolean;
+  includeBucketDetails: boolean;
+};
+
 export type FeatureEvaluationResult = {
   flagKey: string;
   exists: boolean;
@@ -85,6 +92,8 @@ export type FeatureEvaluationResult = {
   releaseStage: ReleaseStage;
   isKillSwitch: boolean;
   reasonCodes: string[];
+  reasons: FeatureEvaluationReason[];
+  bucketResult?: BucketEvaluationResult;
   dependenciesSatisfied: boolean;
   conflictsDetected: string[];
 };
@@ -118,4 +127,15 @@ export type FeatureCatalogEntry = {
   tags: string[];
   dependencies: string[];
   conflicts: string[];
+  supportsPercentageRollout: boolean;
+};
+
+export type PreviewEvaluationResult = {
+  contextSummary: Record<string, unknown>;
+  evaluatedFlags: FeatureEvaluationResult[];
+  evaluatedModules: ModuleAccessControlResult[];
+  warnings: string[];
+  conflicts: string[];
+  missingDependencies: string[];
+  meta: Record<string, unknown>;
 };
