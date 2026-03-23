@@ -2,11 +2,9 @@ import type { DashboardDto } from '@/lib/bff/dto/dashboard';
 import { requireModule, requirePermission, type BffRequestContext } from '@/lib/bff/utils/request-context';
 import { adapterContext, buildQuickAction, buildTimelineEvent, getAdapters, tryOrWarn } from './shared';
 import { normalizeStatus } from '@/lib/bff/utils/status';
-import { NotificationService } from '@/lib/notifications-center/service';
+import { getUnreadNotificationCount, listNotificationsForActor } from '@/lib/notifications';
 
 export class DashboardBffService {
-  private readonly notifications = new NotificationService();
-
   async getDashboard(context: BffRequestContext): Promise<DashboardDto> {
     requireModule(context, 'dashboard');
     requirePermission(context, 'dashboard', 'read');
@@ -22,7 +20,7 @@ export class DashboardBffService {
       tryOrWarn(() => adapters.odoo.listSupportTickets({ limit: 5 }, ctx), { code: 'support_unavailable', message: 'Support summary is temporarily unavailable.', sourceSystem: 'odoo', retryable: true }),
       tryOrWarn(() => adapters.marble.listDecisions({ limit: 5 }, ctx), { code: 'decisions_unavailable', message: 'Decision summary is temporarily unavailable.', sourceSystem: 'marble', retryable: true }),
       tryOrWarn(() => adapters.n8n.listWorkflowExecutions({ limit: 5 }, ctx), { code: 'workflows_unavailable', message: 'Workflow summary is temporarily unavailable.', sourceSystem: 'n8n', retryable: true }),
-      this.notifications.listForUser({ tenantId: context.session.activeTenant.id, recipientId: context.session.user.id, limit: 10 }),
+      listNotificationsForActor({ userId: context.session.user.id, role: context.internalUser ? 'admin' : 'member' }),
     ]);
 
     [applications.warning, loans.warning, invoices.warning, tickets.warning, decisions.warning, workflows.warning].filter(Boolean).forEach((warning) => warnings.push(warning!));
@@ -52,7 +50,11 @@ export class DashboardBffService {
         overdue: invoices.data?.data.filter((item) => item.amountDue > 0).length ?? 0,
         highPriority: decisions.data?.data.filter((item) => item.outcome === 'review').length ?? 0,
       },
-      notificationsSummary: notifications.summary,
+      notificationsSummary: {
+        total: notifications.length,
+        unread: await getUnreadNotificationCount({ userId: context.session.user.id, role: context.internalUser ? 'admin' : 'member' }),
+        highSeverity: notifications.filter((item) => item.severity === 'error' || item.severity === 'warning').length,
+      },
       quickActions: [
         buildQuickAction({ key: 'open_tasks', label: 'Open task inbox', type: 'navigate', route: '/tasks' }),
         buildQuickAction({ key: 'open_support', label: 'Open support', type: 'navigate', route: '/portal/support', enabled: context.session.enabledModules.includes('support') }),
