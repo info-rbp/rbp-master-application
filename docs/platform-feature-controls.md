@@ -2,24 +2,48 @@
 
 ## Architecture
 
-The Step 9 platform rollout system is split into five layers:
+The control-plane rollout system now has five active layers:
 
-1. **Definitions** in `src/lib/feature-flags/definitions.ts` define canonical flags, release stages, scope support, dependencies, conflicts, and kill switch status.
-2. **Persistence** in `src/lib/feature-flags/store.ts` durably stores runtime feature assignments and module enablement rules in a replaceable file-backed store.
-3. **Evaluation** in `src/lib/feature-flags/service.ts` resolves effective flags and modules for a session-aware context using explicit precedence.
-4. **Admin control surfaces** in `src/app/api/admin/**` and `src/app/admin/system/feature-controls/**` expose protected operator APIs and an internal admin UI.
-5. **Integration** flows through `src/lib/platform/session.ts`, search/tasks/workflow services, notifications, and navigation so the backend stays the source of truth.
+1. **Definitions** in `src/lib/feature-flags/definitions.ts` keep the flag catalog, default values, release stages, dependencies, conflicts, and kill-switch designation in code.
+2. **Durable persistence** stores explicit assignments, percentage rollout rules, and module enablement rules in Firestore through the repository interfaces under `src/lib/feature-flags/repository.ts`.
+3. **Deterministic evaluation** in `src/lib/feature-flags/service.ts` applies precedence, release-stage gating, dependency/conflict checks, and percentage rollout bucketing.
+4. **Preview / simulation** flows through `FeatureControlsBffService` and `/api/admin/feature-preview`, including support for unsaved rollout-rule simulation.
+5. **Integration** continues through session bootstrap, admin APIs/UI, navigation, and backend feature checks so the frontend only consumes evaluated state.
 
-## Feature flags vs module controls
+## Durable runtime collections
 
-- **Feature flags** control behaviors, release stages, previews, integrations, and kill switches.
-- **Module controls** control whether a module is visible and enabled for a scope.
-- A module may exist in the registry but still be hidden or disabled by a module rule.
-- A module may be enabled while a sub-feature inside it stays beta-only or disabled by a feature flag.
+- `platform_control_plane/runtime/feature_flag_assignments`
+- `platform_control_plane/runtime/percentage_rollout_rules`
+- `platform_control_plane/runtime/module_enablement_rules`
 
-## Precedence rules
+## Deterministic bucketing strategy
 
-Highest to lowest:
+The system uses deterministic bucketing for percentage rollout.
+
+### Algorithm
+
+1. Build a stable target identity string.
+2. Concatenate `flagKey | normalizedKey | saltUsed`.
+3. Hash with `sha256`.
+4. Convert the first 8 hex chars to an integer.
+5. Compute `bucket = hashValue % 100`.
+6. Mark the target as included when `bucket < percentage`.
+
+This yields a stable bucket range of **0-99**.
+
+### Target identity normalization
+
+- `tenant` → `tenant:<tenantId>`
+- `workspace` → `tenant:<tenantId>|workspace:<workspaceId>`
+- `user` → `tenant:<tenantId>|user:<userId>`
+- `role` → `tenant:<tenantId>|roles:<sorted role codes>`
+- `composite` → `tenant + workspace + user + sorted roles`
+
+If a required identifier for the chosen `bucketBy` mode is missing, the rollout rule fails safely and does not match.
+
+## Precedence with rollout
+
+Effective precedence remains:
 
 1. kill switch assignment
 2. user assignment
@@ -30,59 +54,122 @@ Highest to lowest:
 7. environment assignment
 8. definition default
 
-Additional fail-safe rules:
+Within a given scope:
 
-- missing dependencies disable the feature
-- detected conflicts disable the feature
-- `internal` stage features stay off for external users unless explicitly changed in policy later
-- `beta`, `limited`, and `experimental` features default to restricted behavior unless targeted
+- explicit assignment beats percentage rollout
+- one matching rollout rule may apply
+- conflicting rollout rules at the same winning scope fail safe and surface reasoning
+- dependencies, conflicts, and release-stage gating still apply after rollout match
 
-## Naming rules
+## Explainability model
 
-Use stable dotted keys:
+Feature evaluation now exposes:
 
-- `feature.<module>.enabled`
-- `feature.module.<module>.enabled`
-- `feature.internal.preview.<capability>`
-- `feature.kill_switch.<capability>`
-- `feature.integration.<system>.<behavior>`
+- `reasonCodes[]`
+- structured `reasons[]`
+- winning source / scope
+- bucket details when a percentage rollout rule is involved
+- dependency/conflict failures
+- release-stage blockers
+- kill-switch override reasoning
 
-## How to add a new flag
+This is available to runtime evaluation and admin preview.
 
-1. Add a `FeatureFlagDefinition` entry in `src/lib/feature-flags/definitions.ts`.
-2. Choose a category, release stage, supported scopes, dependencies, and conflicts.
-3. Integrate the flag in backend service logic through `FeatureFlagService` rather than ad hoc booleans.
-4. Add tests for evaluation, precedence, and any kill-switch or dependency behavior.
-5. If the frontend needs visibility, consume the evaluated `session.featureFlags` payload instead of raw assignments.
+## Preview and simulation
 
-## How to add a new module rollout rule
+### Current live preview
 
-1. Ensure the module exists in the platform module registry/bootstrap definitions.
-2. Use `FeatureFlagService.saveModuleRule()` from protected admin surfaces.
-3. Keep enablement and visibility logic in `FeatureFlagService.evaluateModule()`.
-4. Validate the resulting module in session/bootstrap and route access tests.
+Use:
 
-## Safe backend and frontend usage
+- `GET /api/admin/feature-preview`
 
-- Backend code should build a `FeatureEvaluationContext` and call `evaluateFlag`, `getEffectiveFlags`, `evaluateModule`, or `getEffectiveModules`.
-- Frontend code should only consume evaluated session data and admin preview results.
-- Search, tasks, workflows, and notifications now respect kill switches or feature availability server-side.
+Supported query fields include:
 
-## Preview and rollback guidance
+- `tenantId`
+- `workspaceId`
+- `userId`
+- `roleCodes` as comma-separated values
+- `featureKeys` as comma-separated values
+- `includeReasoning`
+- `includeBucketDetails`
 
-- Use `GET /api/admin/feature-preview` to preview effective state for a target tenant/workspace context.
-- Use kill switches for emergency rollback of search, tasks, notifications, and workflows.
-- Prefer tenant/workspace-targeted rollout before environment-wide changes.
-- Always provide a human-readable reason when changing assignments or module rules.
+### Simulated preview
 
-## Operational notes
+Use:
 
-- Critical changes should generate audit events.
-- Kill switch changes may also notify privileged operators.
-- The file-backed store is intentionally replaceable; later platform maturity can move the same service contract to a DB-backed implementation.
+- `POST /api/admin/feature-preview`
 
-## Known limitations / future maturity
+This supports proposed unsaved rollout changes through request payload fields such as:
 
-- Percentage rollout definitions exist in the model, but deterministic bucketing is not yet implemented.
-- The admin UI is intentionally functional and internal-first rather than fully polished.
-- Some deeper route-level sub-feature checks can be added over time as more modules are migrated to the central evaluator.
+- `proposedAssignments[]`
+- `proposedRolloutRules[]`
+
+The preview response returns context summary, evaluated flags, evaluated modules, warnings, dependency/conflict summaries, and metadata about reasoning inclusion.
+
+## Admin APIs
+
+Existing admin APIs remain, with rollout additions:
+
+- `GET /api/admin/feature-flags` now includes `rolloutRules`
+- `POST /api/admin/feature-flags/:key/rollout-rules`
+- `PUT /api/admin/feature-flags/rollout-rules/:id`
+- `DELETE /api/admin/feature-flags/rollout-rules/:id`
+- `GET /api/admin/feature-preview`
+- `POST /api/admin/feature-preview`
+
+## Admin UI usage
+
+The feature-controls admin screen now supports:
+
+- viewing rollout-capable flags
+- creating percentage rollout rules
+- selecting `bucketBy`
+- optional salt input
+- previewing target contexts
+- simulating an unsaved rollout rule
+- seeing bucket details and reason codes in the preview output
+
+## Validation rules
+
+- rollout percentage must be an integer in `0..100`
+- scope must be supported by the flag
+- scope identifiers must be valid where bootstrap lookup is available
+- `startsAt <= endsAt`
+- a reason is required for rollout changes
+- release-stage and kill-switch safeguards remain enforced by evaluation
+
+## Salt guidance
+
+- Keep salt empty to preserve the current cohort definition.
+- Change salt only when you intentionally want a new deterministic cohort cut.
+- Treat salt changes like user-impacting rollout changes and audit them carefully.
+
+## Migration / local bootstrap
+
+Legacy JSON import remains available:
+
+```bash
+npm run migrate:feature-controls
+```
+
+The importer now supports assignments, percentage rollout rules, and module rules, while remaining idempotent by id.
+
+## Safe rollout guidance
+
+- Start with tenant or workspace rollout before broader user/composite targeting.
+- Use preview before saving high-risk changes.
+- Keep kill switches available for emergency rollback.
+- Prefer changing percentage before changing salt; changing salt intentionally reshuffles cohorts.
+
+## Rollback guidance
+
+- Disable or reduce the percentage rollout rule.
+- Apply an explicit assignment override for emergency scoped disable.
+- Use a kill switch if immediate broad shutdown is required.
+- Avoid falling back to legacy JSON reads for runtime truth.
+
+## Sprint 3 deferred
+
+- deeper route-level rollout controls
+- broader rollout analytics / observability
+- richer operator notifications for threshold crossings and rollout conflicts
