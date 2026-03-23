@@ -7,7 +7,7 @@ The control-plane rollout system now has five active layers:
 1. **Definitions** in `src/lib/feature-flags/definitions.ts` keep the flag catalog, default values, release stages, dependencies, conflicts, and kill-switch designation in code.
 2. **Durable persistence** stores explicit assignments, percentage rollout rules, and module enablement rules through the repository interfaces under `src/lib/feature-flags/repository.ts`, with Firestore selected as the normal runtime implementation.
 3. **Deterministic evaluation** in `src/lib/feature-flags/service.ts` applies precedence, release-stage gating, dependency/conflict checks, and percentage rollout bucketing.
-4. **Preview / simulation** flows through `FeatureControlsBffService` and `/api/admin/feature-preview`, including support for unsaved rollout-rule simulation.
+4. **Preview / simulation** flows through `FeatureControlsBffService` and `/api/admin/feature-preview`, and delegates to the same `FeatureFlagService` evaluation path used by runtime checks. Unsaved rollout-rule simulation is layered into that same repository-backed runtime state for preview only.
 5. **Integration** continues through session bootstrap, admin APIs/UI, navigation, and backend feature checks so the frontend only consumes evaluated state.
 
 ## Durable runtime collections
@@ -67,6 +67,7 @@ Within a given scope:
 - explicit assignment beats percentage rollout
 - one matching rollout rule may apply
 - conflicting rollout rules at the same winning scope fail safe and surface reasoning
+- if the selected `bucketBy` identity cannot be built from the target context, the rollout fails safe and returns `rollout_identity_missing` reasoning
 - dependencies, conflicts, and release-stage gating still apply after rollout match
 
 ## Explainability model
@@ -84,6 +85,8 @@ Feature evaluation now exposes:
 This is available to runtime evaluation and admin preview.
 
 ## Preview and simulation
+
+Preview uses the same evaluator that runtime uses: `FeatureControlsBffService.preview()` builds a `PreviewEvaluationContext` and then calls `FeatureFlagService.preview()`, which in turn reuses `evaluateFlag()` for flags and `evaluateModule()` for modules against the same repository-backed runtime state. Proposed rollout rules are appended only inside that preview runtime snapshot; they are never evaluated on a separate frontend code path.
 
 ### Current live preview
 
@@ -137,7 +140,7 @@ The feature-controls admin screen now supports:
 - optional salt input
 - previewing target contexts
 - simulating an unsaved rollout rule
-- seeing bucket details and reason codes in the preview output
+- seeing bucket details, structured reasons, and module blockers in the preview output
 
 ## Validation rules
 
