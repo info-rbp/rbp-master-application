@@ -1,19 +1,19 @@
-import { canPermission } from '@/lib/platform/permissions';
 import type { ModuleDefinition } from '@/lib/platform/types';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
+import { evaluateActionPolicyAccess, toAccessContext } from '@/lib/access/evaluators';
 import type { SearchEntityType } from './types';
 
-const entityAccessMap: Record<SearchEntityType, { moduleKey: ModuleDefinition['key']; resource: string; action: string; internalOnly?: boolean }> = {
-  customer: { moduleKey: 'customers', resource: 'customer', action: 'read', internalOnly: true },
-  application: { moduleKey: 'applications', resource: 'application', action: 'read', internalOnly: true },
-  loan: { moduleKey: 'loans', resource: 'loan', action: 'read', internalOnly: true },
-  document: { moduleKey: 'documents', resource: 'document', action: 'read' },
-  invoice: { moduleKey: 'finance', resource: 'finance', action: 'read', internalOnly: true },
-  support_ticket: { moduleKey: 'support', resource: 'support_ticket', action: 'read' },
-  task: { moduleKey: 'dashboard', resource: 'dashboard', action: 'read' },
-  knowledge: { moduleKey: 'knowledge', resource: 'knowledge', action: 'read' },
-  workflow: { moduleKey: 'dashboard', resource: 'dashboard', action: 'read', internalOnly: true },
-  case: { moduleKey: 'applications', resource: 'application', action: 'read', internalOnly: true },
+const entityAccessMap: Record<SearchEntityType, { moduleKey: ModuleDefinition['key']; actionPolicyKey: string; internalOnly?: boolean }> = {
+  customer: { moduleKey: 'customers', actionPolicyKey: 'search.query.customers', internalOnly: true },
+  application: { moduleKey: 'applications', actionPolicyKey: 'search.query.applications', internalOnly: true },
+  loan: { moduleKey: 'loans', actionPolicyKey: 'search.query.loans', internalOnly: true },
+  document: { moduleKey: 'documents', actionPolicyKey: 'search.query.documents' },
+  invoice: { moduleKey: 'finance', actionPolicyKey: 'search.query.finance', internalOnly: true },
+  support_ticket: { moduleKey: 'support', actionPolicyKey: 'search.query.support' },
+  task: { moduleKey: 'dashboard', actionPolicyKey: 'tasks.list' },
+  knowledge: { moduleKey: 'knowledge', actionPolicyKey: 'search.query.documents' },
+  workflow: { moduleKey: 'dashboard', actionPolicyKey: 'search.query.workflows', internalOnly: true },
+  case: { moduleKey: 'applications', actionPolicyKey: 'search.query.applications', internalOnly: true },
 };
 
 export function getSearchEntityAccess(entityType: SearchEntityType) {
@@ -25,7 +25,7 @@ export function canAccessSearchEntity(context: BffRequestContext, entityType: Se
   if (!access) return false;
   if (access.internalOnly && !context.internalUser) return false;
   if (!context.session.enabledModules.includes(access.moduleKey)) return false;
-  return canPermission(context.session.effectivePermissions, access.resource, access.action);
+  return evaluateActionPolicyAccess(access.actionPolicyKey, toAccessContext(context)).result.allowed;
 }
 
 export function listAccessibleSearchEntityTypes(context: BffRequestContext): SearchEntityType[] {

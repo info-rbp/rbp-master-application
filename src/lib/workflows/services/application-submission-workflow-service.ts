@@ -13,7 +13,7 @@ export class ApplicationSubmissionWorkflowService extends WorkflowOrchestrationS
   private readonly hooks = new WorkflowTaskNotificationHooks();
 
   async submit(context: BffRequestContext, input: ApplicationSubmissionCommandDto): Promise<ApplicationSubmissionResultDto> {
-    requireWorkflowAccess(context, { moduleKey: 'applications', resource: 'application', action: 'update' });
+    await requireWorkflowAccess(context, 'applications.submit');
     const command: WorkflowCommand<ApplicationSubmissionCommandDto> = {
       commandId: `cmd_${crypto.randomUUID()}`,
       workflowType: 'application_submission',
