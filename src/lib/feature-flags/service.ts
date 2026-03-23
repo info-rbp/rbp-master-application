@@ -170,27 +170,48 @@ export class FeatureFlagService {
     if ((input.internalOnly || input.betaOnly || input.enabled === false) && !input.reason?.trim()) throw new Error('reason_required');
   }
 
-  private pickAssignment(assignments: FeatureFlagAssignment[], context: FeatureEvaluationContext) {
-    const ordered = [...assignments].sort((a, b) => PRECEDENCE.indexOf(a.scopeType) - PRECEDENCE.indexOf(b.scopeType));
-    return ordered.find((item) => this.matchesScope(item.scopeType, item.scopeId, context)) ?? null;
+    for (const item of moduleRules) {
+      if (!item.enabled) issues.push({ id: `module-disabled-${item.id}`, area: 'module_control', targetKey: item.moduleKey, severity: 'info', type: 'disabled_override', summary: 'Disabled module rule remains in the control plane.', detail: `${item.moduleKey} has a disabled rule for ${item.scopeType}:${item.scopeId}.`, status: 'disabled', relatedIds: [item.id] });
+      if (isExpiredWindow(item)) issues.push({ id: `module-expired-${item.id}`, area: 'module_control', targetKey: item.moduleKey, severity: 'warning', type: 'expired_rule', summary: 'Expired module rule still present.', detail: `${item.moduleKey} rule for ${item.scopeType}:${item.scopeId} is expired and should be cleaned up.`, status: 'expired', relatedIds: [item.id] });
+      if (isScheduledWindow(item) && item.enabled) issues.push({ id: `module-scheduled-${item.id}`, area: 'module_control', targetKey: item.moduleKey, severity: 'info', type: 'scheduled_rule', summary: 'Future module rule is scheduled.', detail: `${item.moduleKey} rule for ${item.scopeType}:${item.scopeId} has not started yet.`, status: 'scheduled', relatedIds: [item.id] });
+      if (item.visible && item.enabled === false) issues.push({ id: `module-inconsistent-${item.id}`, area: 'module_control', targetKey: item.moduleKey, severity: 'warning', type: 'module_inconsistent_state', summary: 'Module rule is visible but disabled.', detail: `${item.moduleKey} stays visible while disabled for ${item.scopeType}:${item.scopeId}, which can confuse operators and users.`, status: 'active', relatedIds: [item.id] });
+    }
+
+    for (const evaluation of evaluations) {
+      const activeAssignments = assignments.filter((entry) => entry.flagKey === evaluation.flagKey && entry.enabled && isActiveWindow(entry));
+      const activeRollouts = rolloutRules.filter((entry) => entry.flagKey === evaluation.flagKey && entry.enabled && isActiveWindow(entry));
+      const conflictAssignments = new Map<string, string[]>();
+      for (const entry of activeAssignments) {
+        const key = `${entry.scopeType}:${entry.scopeId}`;
+        conflictAssignments.set(key, [...(conflictAssignments.get(key) ?? []), entry.id]);
+      }
+      for (const [scopeKey, ids] of conflictAssignments) {
+        if (ids.length > 1) issues.push({ id: `assignment-conflict-${evaluation.flagKey}-${scopeKey}`, area: 'feature_flag', targetKey: evaluation.flagKey, severity: 'critical', type: 'conflicting_assignment', summary: 'Multiple active assignments target the same scope.', detail: `${evaluation.flagKey} has ${ids.length} active assignments for ${scopeKey}.`, status: 'active', relatedIds: ids });
+      }
+      const conflictRollouts = new Map<string, string[]>();
+      for (const entry of activeRollouts) {
+        const key = `${entry.scopeType}:${entry.scopeId}`;
+        conflictRollouts.set(key, [...(conflictRollouts.get(key) ?? []), entry.id]);
+      }
+      for (const [scopeKey, ids] of conflictRollouts) {
+        if (ids.length > 1) issues.push({ id: `rollout-conflict-${evaluation.flagKey}-${scopeKey}`, area: 'feature_flag', targetKey: evaluation.flagKey, severity: 'critical', type: 'conflicting_rollout', summary: 'Multiple active rollout rules target the same scope.', detail: `${evaluation.flagKey} has ${ids.length} rollout rules for ${scopeKey}.`, status: 'active', relatedIds: ids });
+      }
+      if (!evaluation.dependenciesSatisfied) issues.push({ id: `dependency-${evaluation.flagKey}`, area: 'feature_flag', targetKey: evaluation.flagKey, severity: 'warning', type: 'dependency_blocked', summary: 'Feature is blocked by a missing dependency.', detail: `${evaluation.flagKey} cannot evaluate to enabled because one or more dependencies are not enabled.`, status: 'active', relatedIds: [] });
+      if (evaluation.conflictsDetected.length > 0) issues.push({ id: `conflict-${evaluation.flagKey}`, area: 'feature_flag', targetKey: evaluation.flagKey, severity: 'warning', type: 'conflict_blocked', summary: 'Feature is blocked by an active conflicting flag.', detail: `${evaluation.flagKey} conflicts with ${evaluation.conflictsDetected.join(', ')}.`, status: 'active', relatedIds: [] });
+      const definition = catalog.find((entry) => entry.flagKey === evaluation.flagKey);
+      if (definition?.isDeprecated && (activeAssignments.length > 0 || activeRollouts.length > 0)) issues.push({ id: `deprecated-${evaluation.flagKey}`, area: 'feature_flag', targetKey: evaluation.flagKey, severity: 'warning', type: 'deprecated_override', summary: 'Deprecated feature still has active overrides.', detail: `${evaluation.flagKey} is deprecated but still has active control-plane state.`, status: 'active', relatedIds: [...activeAssignments.map((entry) => entry.id), ...activeRollouts.map((entry) => entry.id)] });
+      if (definition?.isKillSwitch && evaluation.enabled) issues.push({ id: `kill-${evaluation.flagKey}`, area: 'feature_flag', targetKey: evaluation.flagKey, severity: 'critical', type: 'kill_switch_active', summary: 'Kill switch is currently active.', detail: `${evaluation.flagKey} is actively forcing a protective stop.`, status: 'active', relatedIds: activeAssignments.map((entry) => entry.id) });
+    }
+
+    return issues.sort((a, b) => `${a.severity}:${a.summary}`.localeCompare(`${b.severity}:${b.summary}`));
   }
 
-  private pickModuleRule(rules: ModuleEnablementRule[], context: FeatureEvaluationContext) {
-    const ordered = [...rules].sort((a, b) => PRECEDENCE.indexOf(a.scopeType as FeatureScopeType) - PRECEDENCE.indexOf(b.scopeType as FeatureScopeType));
-    return ordered.find((item) => this.matchesScope(item.scopeType as FeatureScopeType, item.scopeId, context)) ?? null;
-  }
-
-  private matchesScope(scopeType: FeatureScopeType, scopeId: string, context: FeatureEvaluationContext) {
-    if (scopeType === 'environment') return scopeId === context.environment;
-    if (scopeType === 'tenant') return scopeId === context.tenantId;
-    if (scopeType === 'workspace') return Boolean(context.workspaceId) && scopeId === context.workspaceId;
-    if (scopeType === 'user') return Boolean(context.userId) && scopeId === context.userId;
-    if (scopeType === 'module') return Boolean(context.currentModule) && scopeId === context.currentModule;
-    if (scopeType === 'role') return context.roleCodes.includes(scopeId);
-    return false;
-  }
-
-  private flagForModule(moduleKey: string) {
-    return ({ dashboard: 'feature.dashboard.enabled', customers: 'feature.customers.enabled', applications: 'feature.applications.enabled', loans: 'feature.loans.enabled', documents: 'feature.documents.enabled', finance: 'feature.finance.enabled', support: 'feature.support.enabled', analytics: 'feature.analytics.enabled', settings: 'feature.module.settings.enabled', admin: 'feature.module.admin.enabled' } as Record<string, string | undefined>)[moduleKey];
-  }
+  private validateAssignmentInput(input: Omit<FeatureFlagAssignment, 'id' | 'createdAt' | 'updatedAt' | 'version'> | FeatureFlagAssignment) { const definition = getFeatureFlagDefinition(input.flagKey); if (!definition) throw new Error('unknown_flag'); if (!definition.allowedScopes.includes(input.scopeType)) throw new Error('unsupported_scope'); if (!isKnownScopeTarget(input.scopeType, input.scopeId)) throw new Error('invalid_scope_target'); if (definition.flagType === 'boolean' && typeof input.value !== 'boolean') throw new Error('invalid_boolean_value'); if (input.startsAt && input.endsAt && new Date(input.endsAt) < new Date(input.startsAt)) throw new Error('invalid_schedule_window'); if (definition.isKillSwitch && !input.reason?.trim()) throw new Error('reason_required'); }
+  private validateRolloutRuleInput(input: Omit<PercentageRolloutRule, 'id' | 'createdAt' | 'updatedAt' | 'version'> | PercentageRolloutRule) { const definition = getFeatureFlagDefinition(input.flagKey); if (!definition) throw new Error('unknown_flag'); if (!definition.allowedScopes.includes(input.scopeType)) throw new Error('unsupported_scope'); if (!isKnownScopeTarget(input.scopeType, input.scopeId)) throw new Error('invalid_scope_target'); if (!Number.isInteger(input.percentage) || input.percentage < 0 || input.percentage > 100) throw new Error('invalid_percentage'); if (input.startsAt && input.endsAt && new Date(input.endsAt) < new Date(input.startsAt)) throw new Error('invalid_schedule_window'); if (!input.reason?.trim()) throw new Error('reason_required'); }
+  private validateModuleRuleInput(input: Omit<ModuleEnablementRule, 'id' | 'createdAt' | 'updatedAt' | 'version'> | ModuleEnablementRule) { const module = listModuleDefinitions().find((item) => item.key === input.moduleKey); if (!module) throw new Error('unknown_module'); if (!isKnownScopeTarget(input.scopeType, input.scopeId)) throw new Error('invalid_scope_target'); if (input.startsAt && input.endsAt && new Date(input.endsAt) < new Date(input.startsAt)) throw new Error('invalid_schedule_window'); if ((input.internalOnly || input.betaOnly || input.enabled === false) && !input.reason?.trim()) throw new Error('reason_required'); }
+  private pickAssignment(assignments: FeatureFlagAssignment[], context: FeatureEvaluationContext) { const ordered = [...assignments].sort((a, b) => PRECEDENCE.indexOf(a.scopeType) - PRECEDENCE.indexOf(b.scopeType)); return ordered.find((item) => this.matchesScope(item.scopeType, item.scopeId, context)) ?? null; }
+  private pickRolloutRule(rules: PercentageRolloutRule[], context: FeatureEvaluationContext, flagKey: string) { const matchedRules = [...rules].filter((item) => this.matchesScope(item.scopeType, item.scopeId, context)).sort((a, b) => PRECEDENCE.indexOf(a.scopeType) - PRECEDENCE.indexOf(b.scopeType)); if (!matchedRules.length) return null; const winningScope = matchedRules[0].scopeType; const sameScope = matchedRules.filter((item) => item.scopeType === winningScope); if (sameScope.length > 1) return { rule: sameScope[0], matched: false, conflict: sameScope[1] }; const rule = sameScope[0]; const identity = buildRolloutTargetIdentity(context, rule.bucketBy); if (!identity) return { rule, matched: false, bucketResult: undefined }; const bucketResult = evaluateDeterministicBucket({ flagKey, identity, percentage: rule.percentage, salt: rule.salt }); return { rule, matched: bucketResult.matched, bucketResult } as const; }
+  private pickModuleRule(rules: ModuleEnablementRule[], context: FeatureEvaluationContext) { const ordered = [...rules].sort((a, b) => PRECEDENCE.indexOf(a.scopeType as FeatureScopeType) - PRECEDENCE.indexOf(b.scopeType as FeatureScopeType)); return ordered.find((item) => this.matchesScope(item.scopeType as FeatureScopeType, item.scopeId, context)) ?? null; }
+  private matchesScope(scopeType: FeatureScopeType, scopeId: string, context: FeatureEvaluationContext) { if (scopeType === 'environment') return scopeId === context.environment; if (scopeType === 'tenant') return scopeId === context.tenantId; if (scopeType === 'workspace') return Boolean(context.workspaceId) && scopeId === context.workspaceId; if (scopeType === 'user') return Boolean(context.userId) && scopeId === context.userId; if (scopeType === 'module') return Boolean(context.currentModule) && scopeId === context.currentModule; if (scopeType === 'role') return context.roleCodes.includes(scopeId); return false; }
+  private flagForModule(moduleKey: string) { return ({ dashboard: 'feature.dashboard.enabled', customers: 'feature.customers.enabled', applications: 'feature.applications.enabled', loans: 'feature.loans.enabled', documents: 'feature.documents.enabled', finance: 'feature.finance.enabled', support: 'feature.support.enabled', analytics: 'feature.analytics.enabled', settings: 'feature.module.settings.enabled', admin: 'feature.module.admin.enabled' } as Record<string, string | undefined>)[moduleKey]; }
 }

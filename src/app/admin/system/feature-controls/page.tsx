@@ -1,7 +1,7 @@
 import { resolveSessionResponse } from '@/lib/platform/session';
 import { redirect } from 'next/navigation';
 import { canPermission } from '@/lib/platform/permissions';
-import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
+import { FeatureControlsBffService } from '@/lib/bff/services/feature-controls-bff-service';
 import FeatureControlsClient from './feature-controls-client';
 
 export default async function FeatureControlsPage() {

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import type { FeatureCatalogEntry, FeatureEvaluationResult, FeatureFlagAssignment, ModuleAccessControlResult, ModuleEnablementRule, PercentageRolloutRule, PreviewEvaluationResult } from '@/lib/feature-flags/types';
 
@@ -32,8 +33,69 @@ export default function FeatureControlsClient({ catalog, assignments, rolloutRul
 
   async function createModuleRule(formData: FormData) {
     const payload = Object.fromEntries(formData.entries());
-    const response = await fetch('/api/admin/module-controls', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ moduleKey: payload.moduleKey, scopeType: payload.scopeType, scopeId: payload.scopeId, enabled: payload.enabled === 'true', visible: payload.visible === 'true', internalOnly: payload.internalOnly === 'true', betaOnly: payload.betaOnly === 'true', reason: payload.reason, metadata: {} }) });
-    setMessage(response.ok ? 'Module rule saved. Refresh to see updated evaluations.' : 'Failed to save module rule.');
+    const request = { moduleKey: String(payload.moduleKey), scopeType: String(payload.scopeType), scopeId: String(payload.scopeId), enabled: payload.enabled === 'true', visible: payload.visible === 'true', internalOnly: payload.internalOnly === 'true', betaOnly: payload.betaOnly === 'true', reason: String(payload.reason ?? ''), metadata: {} };
+    const risk = highRiskMessage({ kind: 'module', moduleKey: request.moduleKey, enabled: request.enabled, visible: request.visible });
+    if (risk && !window.confirm(risk)) return;
+    const result = await handleJsonResponse(await fetch('/api/admin/module-controls', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) }));
+    setMessage(result.ok ? { kind: 'success', text: `Saved module rule for ${request.moduleKey}. Refresh to validate the winning state.` } : { kind: 'error', text: result.status === 409 ? `Concurrency conflict while saving ${request.moduleKey}.` : result.message });
+  }
+
+  async function disableAssignment(id: string) {
+    if (!window.confirm('Disable this assignment? This is the safest rollback path for a stale override.')) return;
+    const result = await handleJsonResponse(await fetch(`/api/admin/feature-flags/assignments/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+    setMessage(result.ok ? { kind: 'success', text: 'Assignment disabled. Refresh to confirm the new effective state.' } : { kind: 'error', text: result.message });
+  }
+
+  async function disableRolloutRule(id: string) {
+    if (!window.confirm('Disable this rollout rule? This immediately removes it from matching cohorts.')) return;
+    const result = await handleJsonResponse(await fetch(`/api/admin/feature-flags/rollout-rules/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+    setMessage(result.ok ? { kind: 'success', text: 'Rollout rule disabled. Refresh to verify the next winning rule.' } : { kind: 'error', text: result.message });
+  }
+
+  async function disableModuleRule(id: string) {
+    if (!window.confirm('Disable this module rule? This can change navigation visibility and access.')) return;
+    const result = await handleJsonResponse(await fetch(`/api/admin/module-controls/rules/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+    setMessage(result.ok ? { kind: 'success', text: 'Module rule disabled. Refresh to validate module availability.' } : { kind: 'error', text: result.message });
+  }
+
+  async function runPreview(formData: FormData) {
+    setPreviewBusy(true);
+    const payload = {
+      tenantId: String(formData.get('tenantId') || ''),
+      workspaceId: String(formData.get('workspaceId') || '') || undefined,
+      userId: String(formData.get('userId') || '') || undefined,
+      roleCodes: String(formData.get('roleCodes') || '').split(',').map((item) => item.trim()).filter(Boolean),
+      currentModule: String(formData.get('currentModule') || '') || undefined,
+      currentRoute: String(formData.get('currentRoute') || '') || undefined,
+      featureKeys: String(formData.get('featureKeys') || '').split(',').map((item) => item.trim()).filter(Boolean),
+      includeReasoning: true,
+      includeBucketDetails: true,
+      proposedRolloutRules: formData.get('simulateFlagKey') ? [{
+        flagKey: String(formData.get('simulateFlagKey')),
+        scopeType: String(formData.get('simulateScopeType') || 'tenant'),
+        scopeId: String(formData.get('simulateScopeId') || formData.get('tenantId') || ''),
+        percentage: Number(formData.get('simulatePercentage') || 0),
+        bucketBy: String(formData.get('simulateBucketBy') || 'tenant'),
+        salt: String(formData.get('simulateSalt') || ''),
+        reason: String(formData.get('simulateReason') || 'preview'),
+        enabled: true,
+        metadata: {},
+        id: 'preview-rule',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: 'preview',
+        updatedBy: 'preview',
+        version: 1,
+      }] : [],
+    };
+    const result = await handleJsonResponse(await fetch('/api/admin/feature-preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
+    setPreviewBusy(false);
+    if (result.ok) {
+      setPreview(result.payload);
+      setMessage({ kind: 'success', text: 'Preview refreshed with reasoning and bucket diagnostics.' });
+      return;
+    }
+    setMessage({ kind: 'error', text: result.message });
   }
 
   return <div className="space-y-6 p-4 pt-6 md:p-8"><div className="flex items-center justify-between gap-4"><div><h1 className="text-3xl font-bold tracking-tight">Feature controls</h1><p className="text-sm text-muted-foreground">Backend-owned feature flags, rollout assignments, deterministic bucketing previews, kill switches, and module controls.</p></div><input className="rounded border px-3 py-2 text-sm" placeholder="Filter flags" value={filter} onChange={(event) => setFilter(event.target.value)} /></div>{message ? <div className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm">{message}</div> : null}

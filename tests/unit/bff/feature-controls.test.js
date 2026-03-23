@@ -20,6 +20,8 @@ const { AuditService } = require('../../../src/lib/audit/service');
 const { NotificationService } = require('../../../src/lib/notifications-center/service');
 const { SearchService } = require('../../../src/lib/search/service');
 const { TaskService } = require('../../../src/lib/tasks/service');
+const { FeatureControlsBffService } = require('../../../src/lib/bff/services/feature-controls-bff-service');
+const { buildFlagRows, buildModuleRows, summarizeDiagnostics } = require('../../../src/app/admin/system/feature-controls/feature-controls-client');
 const { BffApiError } = require('../../../src/lib/bff/utils/request-context');
 
 async function makeContext(kind = 'internal') {
@@ -201,4 +203,54 @@ test('critical kill switch changes are auditable and notify operators', async ()
   const events = await audit.query({ tenantId: 'ten_rbp_internal', eventType: 'feature.kill_switch.activated' });
   assert.equal(events.items.length, 1);
   assert.ok(created.length >= 1);
+});
+
+test('control-plane diagnostics surface conflicts, stale rules, and kill switches', async () => {
+  const service = new FeatureFlagService();
+  const context = await makeContext();
+  const featureContext = buildFeatureEvaluationContext(context);
+  await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'tenant on', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: false, reason: 'conflicting tenant off', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  await service.saveAssignment({ flagKey: 'feature.kill_switch.search', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: true, reason: 'incident', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  const expiredModuleRule = await service.saveModuleRule({ moduleKey: 'analytics', scopeType: 'tenant', scopeId: context.session.activeTenant.id, enabled: true, visible: true, internalOnly: false, betaOnly: false, reason: 'temporary override', startsAt: '2026-03-01T00:00:00.000Z', endsAt: '2026-03-02T00:00:00.000Z', createdBy: 'system', updatedBy: 'system', metadata: {} });
+  await service.updateModuleRule(expiredModuleRule.id, { updatedBy: 'system', expectedVersion: 1 });
+  const diagnostics = await service.getControlPlaneDiagnostics(featureContext);
+  assert.ok(diagnostics.some((item) => item.type === 'conflicting_assignment' && item.targetKey === 'feature.search.enabled'));
+  assert.ok(diagnostics.some((item) => item.type === 'kill_switch_active' && item.targetKey === 'feature.kill_switch.search'));
+  assert.ok(diagnostics.some((item) => item.type === 'expired_rule' && item.targetKey === 'analytics'));
+});
+
+test('console data exposes summaries and recent audit changes for operators', async () => {
+  const context = await makeContext();
+  const service = new FeatureFlagService();
+  const bff = new FeatureControlsBffService();
+  await service.saveAssignment({ flagKey: 'feature.search.enabled', scopeType: 'tenant', scopeId: context.session.activeTenant.id, value: false, reason: 'tenant off', enabled: true, createdBy: 'system', updatedBy: 'system', metadata: {} });
+  await new AuditService().record({ eventType: 'feature.assignment.updated', action: 'update', category: 'admin', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, actorType: 'user', actorId: context.session.user.id, actorDisplay: context.session.user.displayName, subjectEntityType: 'feature_flag', subjectEntityId: 'feature.search.enabled', sourceSystem: 'platform', correlationId: context.correlationId, outcome: 'success', severity: 'warning', metadata: { flagKey: 'feature.search.enabled', reason: 'tenant off' }, sensitivity: 'internal' });
+  const consoleData = await bff.getConsoleData(context);
+  assert.ok(consoleData.flagSummaries.some((item) => item.flagKey === 'feature.search.enabled' && item.hasOverrides));
+  assert.ok(consoleData.diagnostics.length >= 0);
+  assert.ok(consoleData.recentChanges.some((item) => item.metadata.flagKey === 'feature.search.enabled'));
+});
+
+test('catalog helper filters flags, modules, and diagnostic summary for the operator console', () => {
+  const flagRows = buildFlagRows([
+    { flagKey: 'feature.search.enabled', name: 'Search', description: '', category: 'search', releaseStage: 'general_availability', currentDefaultValue: true, scopesSupported: ['tenant'], isKillSwitch: false, isDeprecated: false, owner: 'platform', tags: ['capability'], dependencies: [], conflicts: [], supportsPercentageRollout: true, effectiveEnabled: true, effectiveValue: true, winningSource: 'definition_default', winningScope: 'definition', hasOverrides: false, hasConflicts: false, hasActiveRollout: false, hasScheduledChanges: false, diagnostics: [], activeAssignmentCount: 0, activeRolloutCount: 0, lastUpdatedAt: undefined, lastUpdatedBy: undefined, currentReasonCodes: [], activeKillSwitch: false },
+    { flagKey: 'feature.kill_switch.search', name: 'Search kill switch', description: '', category: 'search', releaseStage: 'general_availability', currentDefaultValue: false, scopesSupported: ['tenant'], isKillSwitch: true, isDeprecated: false, owner: 'platform', tags: ['kill-switch'], dependencies: [], conflicts: [], supportsPercentageRollout: false, effectiveEnabled: true, effectiveValue: true, winningSource: 'assignment', winningScope: 'tenant:ten_rbp_internal', hasOverrides: true, hasConflicts: false, hasActiveRollout: false, hasScheduledChanges: false, diagnostics: ['kill_switch_active'], activeAssignmentCount: 1, activeRolloutCount: 0, lastUpdatedAt: undefined, lastUpdatedBy: undefined, currentReasonCodes: ['kill_switch_active'], activeKillSwitch: true },
+  ], 'kill switch', '', 'all', true);
+  assert.equal(flagRows.length, 1);
+  assert.equal(flagRows[0].flagKey, 'feature.kill_switch.search');
+
+  const moduleRows = buildModuleRows([
+    { moduleKey: 'analytics', moduleName: 'Analytics', description: '', category: 'intelligence', route: '/admin/analytics', effectiveEnabled: false, effectiveVisible: false, winningSource: 'module_rule', winningRuleId: 'mcr_1', hasOverrides: true, diagnostics: ['module_inconsistent_state'], activeRuleCount: 1, lastUpdatedAt: undefined, lastUpdatedBy: undefined, internalOnly: false, betaOnly: true, defaultLanding: undefined, reasonCodes: ['beta_only'] },
+    { moduleKey: 'support', moduleName: 'Support', description: '', category: 'service', route: '/portal/support', effectiveEnabled: true, effectiveVisible: true, winningSource: 'module_definition', winningRuleId: undefined, hasOverrides: false, diagnostics: [], activeRuleCount: 0, lastUpdatedAt: undefined, lastUpdatedBy: undefined, internalOnly: false, betaOnly: false, defaultLanding: undefined, reasonCodes: [] },
+  ], 'analytics', 'issues');
+  assert.equal(moduleRows.length, 1);
+  assert.equal(moduleRows[0].moduleKey, 'analytics');
+
+  const summary = summarizeDiagnostics([
+    { id: '1', area: 'feature_flag', targetKey: 'feature.kill_switch.search', severity: 'critical', type: 'kill_switch_active', summary: 'Kill switch active', detail: '...', status: 'active', relatedIds: [] },
+    { id: '2', area: 'feature_flag', targetKey: 'feature.search.enabled', severity: 'warning', type: 'conflicting_assignment', summary: 'Conflict', detail: '...', status: 'active', relatedIds: [] },
+    { id: '3', area: 'module_control', targetKey: 'analytics', severity: 'info', type: 'scheduled_rule', summary: 'Scheduled', detail: '...', status: 'scheduled', relatedIds: [] },
+  ]);
+  assert.deepEqual(summary, { total: 3, critical: 1, warning: 1, scheduled: 1, activeKillSwitches: 1 });
 });

@@ -1,10 +1,12 @@
 import { FeatureFlagService, buildFeatureEvaluationContext } from '@/lib/feature-flags/service';
+import { AuditService } from '@/lib/audit/service';
 import { getTenantById, getWorkspacesForTenant } from '@/lib/platform/bootstrap';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
 import type { FeatureFlagAssignment, PercentageRolloutRule, PreviewEvaluationContext } from '@/lib/feature-flags/types';
 
 export class FeatureControlsBffService {
   private readonly flags = new FeatureFlagService();
+  private readonly audit = new AuditService();
 
   async getCatalog() { return { items: await this.flags.getFeatureCatalog() }; }
   async getAssignments(flagKey?: string) { return await this.flags.listAssignments(flagKey); }
