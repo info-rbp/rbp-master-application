@@ -1,25 +1,32 @@
+import { NextRequest } from 'next/server';
+import { getBffRequestContext } from '@/lib/bff/utils/request-context';
+import { fail, ok } from '@/lib/bff/utils/http';
+import { AuditQueryService } from '@/lib/audit/query-service';
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuditLogs } from '@/lib/audit-service';
-import { getServerAuthContext } from '@/lib/server-auth';
+const service = new AuditQueryService();
 
 export async function GET(request: NextRequest) {
-  const auth = await getServerAuthContext();
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('userId') || undefined;
-  const action = searchParams.get('action') || undefined;
-  const targetId = searchParams.get('targetId') || undefined;
-  const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
-
+  const correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
   try {
-    const logs = await getAuditLogs({ userId, action, targetId, limit });
-    return NextResponse.json(logs);
+    const context = await getBffRequestContext(request);
+    const { searchParams } = new URL(request.url);
+    const data = await service.query(context, {
+      workspaceId: searchParams.get('workspaceId') ?? undefined,
+      actorId: searchParams.get('actorId') ?? undefined,
+      category: searchParams.get('category') ?? undefined,
+      eventType: searchParams.get('eventType') ?? undefined,
+      subjectEntityType: searchParams.get('subjectEntityType') ?? undefined,
+      subjectEntityId: searchParams.get('subjectEntityId') ?? undefined,
+      targetEntityType: searchParams.get('targetEntityType') ?? undefined,
+      targetEntityId: searchParams.get('targetEntityId') ?? undefined,
+      outcome: searchParams.get('outcome') ?? undefined,
+      dateFrom: searchParams.get('dateFrom') ?? undefined,
+      dateTo: searchParams.get('dateTo') ?? undefined,
+      limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined,
+      cursor: searchParams.get('cursor') ?? undefined,
+    } as any);
+    return ok(data, correlationId);
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Failed to retrieve audit logs' }, { status: 500 });
+    return fail(error, correlationId);
   }
 }
