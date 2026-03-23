@@ -15,7 +15,7 @@ export class BillingEventWorkflowService extends WorkflowOrchestrationService {
   private readonly hooks = new WorkflowTaskNotificationHooks();
 
   async process(context: BffRequestContext, input: BillingEventCommandDto): Promise<BillingEventResultDto> {
-    requireWorkflowAccess(context, { moduleKey: 'finance', resource: 'finance', action: 'manage' });
+    await requireWorkflowAccess(context, 'finance.billing_event.manage');
     if (!supportedEventTypes.has(input.eventType)) throw new WorkflowError({ code: 'billing_event_unsupported', message: 'Unsupported billing event type.', status: 400, category: 'validation_failure' });
     const command: WorkflowCommand<BillingEventCommandDto> = { commandId: `cmd_${crypto.randomUUID()}`, workflowType: 'billing_event', tenantId: context.session.activeTenant.id, workspaceId: context.session.activeWorkspace?.id, initiatedBy: context.session.user.id, relatedEntityType: input.relatedEntityType, relatedEntityId: input.relatedEntityId, payload: input, idempotencyKey: input.idempotencyKey, correlationId: context.correlationId, requestedAt: new Date().toISOString() };
     const existing = await this.registerCommand(command);

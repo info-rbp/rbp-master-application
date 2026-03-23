@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     const flagKey = request.nextUrl.searchParams.get('flagKey') ?? undefined;
     const catalog = await service.getCatalog();
     const assignments = await service.getAssignments(flagKey);
-    return ok({ ...catalog, assignments }, correlationId);
+    const rolloutRules = await service.getRolloutRules(flagKey);
+    return ok({ ...catalog, assignments, rolloutRules }, correlationId);
   } catch (error) {
     return fail(error, correlationId);
   }

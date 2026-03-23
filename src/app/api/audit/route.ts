@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { getBffRequestContext } from '@/lib/bff/utils/request-context';
 import { fail, ok } from '@/lib/bff/utils/http';
 import { AuditQueryService } from '@/lib/audit/query-service';
+import { requireRoutePolicyAccess } from '@/lib/access/evaluators';
 
 const service = new AuditQueryService();
 
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   const correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
   try {
     const context = await getBffRequestContext(request);
+    await requireRoutePolicyAccess('/api/audit', context);
     const { searchParams } = new URL(request.url);
     const data = await service.query(context, {
       workspaceId: searchParams.get('workspaceId') ?? undefined,

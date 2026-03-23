@@ -1,10 +1,10 @@
-import { requireModule, requirePermission, type BffRequestContext } from '@/lib/bff/utils/request-context';
+import type { BffRequestContext } from '@/lib/bff/utils/request-context';
+import { requireActionPolicyAccess } from '@/lib/access/evaluators';
 import { WorkflowError } from '@/lib/workflows/utils/errors';
 
-export function requireWorkflowAccess(context: BffRequestContext, input: { moduleKey: 'applications' | 'customers' | 'loans' | 'support' | 'finance' | 'documents'; resource: string; action: string }) {
+export async function requireWorkflowAccess(context: BffRequestContext, actionKey: string) {
   try {
-    requireModule(context, input.moduleKey);
-    requirePermission(context, input.resource, input.action);
+    await requireActionPolicyAccess(actionKey, context);
   } catch (error) {
     throw new WorkflowError({ code: 'workflow_permission_denied', message: error instanceof Error ? error.message : 'Forbidden.', status: 403, category: 'permission_denied' });
   }

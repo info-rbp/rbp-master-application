@@ -3,11 +3,13 @@ import type { WorkflowStatusDto } from '@/lib/workflows/dto/workflow-dto';
 import { toWorkflowInstanceDto } from '@/lib/workflows/dto/workflow-dto';
 import type { BffRequestContext } from '@/lib/bff/utils/request-context';
 import { WorkflowError } from '@/lib/workflows/utils/errors';
+import { requireWorkflowAccess } from './workflow-policy';
 
 export class WorkflowStatusQueryService {
   private readonly store = getWorkflowStore();
 
   async getWorkflowStatus(context: BffRequestContext, workflowId: string): Promise<WorkflowStatusDto> {
+    await requireWorkflowAccess(context, 'workflows.status.view');
     const status = await this.store.getWorkflowStatus(workflowId);
     if (!status) throw new WorkflowError({ code: 'workflow_not_found', message: 'Workflow was not found.', status: 404, category: 'validation_failure' });
     if (status.workflow.tenantId !== context.session.activeTenant.id) throw new WorkflowError({ code: 'workflow_forbidden', message: 'Workflow is outside the active tenant scope.', status: 403, category: 'permission_denied' });
