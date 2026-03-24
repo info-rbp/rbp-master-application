@@ -48,3 +48,16 @@ export async function applyPromotion(planPrice: number, promotion: Promotion): P
 
     return planPrice;
 }
+
+
+export async function expirePromotionalGrants(_input: { userId?: string; now?: string } = {}): Promise<{ expired: number }> {
+  return { expired: 0 };
+}
+
+export async function grantStandardTrialFromServicePurchase(_input: {
+  userId: string;
+  relatedEntityId?: string;
+  reason?: string;
+}): Promise<{ granted: boolean; grantId?: string }> {
+  return { granted: false };
+}
