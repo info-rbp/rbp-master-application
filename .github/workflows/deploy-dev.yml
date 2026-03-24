@@ -1,0 +1,71 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    name: Validate, Deploy, Smoke (dev)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: dev
+    permissions:
+      contents: read
+
+    env:
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate project quality gates
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test:platform
+          npm run test:bff
+          npm run build
+
+      - name: Validate dev configuration
+        run: ./scripts/ci/validate-env-config.sh dev
+
+      - name: Deploy to Firebase App Hosting (dev)
+        run: ./scripts/ci/deploy-apphosting.sh dev
+
+      - name: Smoke checks (dev)
+        run: ./scripts/ci/smoke-test.sh dev
+
+      - name: Write deployment summary
+        if: always()
+        run: ./scripts/ci/write-deployment-summary.sh dev "${{ job.status }}" "${{ github.sha }}"
+
+      - name: Upload deployment artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-dev-artifacts-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: ignore
+          path: |
+            artifacts/**/*.md
+            firebase-debug*.log
+            npm-debug.log*
