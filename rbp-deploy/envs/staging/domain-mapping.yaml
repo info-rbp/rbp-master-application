@@ -1,0 +1,17 @@
+# Template: domain and subdomain mappings for staging
+environment: staging
+apex_domain: "<replace-me>"
+public_domains:
+  app: "<replace-me>"
+  admin_path_strategy: "/admin"
+auth_domains:
+  callback_url: "<replace-me>/api/auth/callback"
+  post_logout_redirect_url: "<replace-me>/login"
+internal_domains:
+  authentik: "<replace-me>"
+  odoo: "<replace-me>"
+  lending: "<replace-me>"
+  marble: "<replace-me>"
+  n8n: "<replace-me>"
+  docspell: "<replace-me>"
+  metabase: "<replace-me>"

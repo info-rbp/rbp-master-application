@@ -1,0 +1,49 @@
+# Machine-friendly config contract (local)
+environment: local
+contract_version: v1
+variables:
+  fixed:
+    ENVIRONMENT: "local"
+    ADMIN_PATH: "/admin"
+  environment_provided:
+    APP_BASE_URL: "http://localhost:3000"
+    API_BASE_URL: "http://localhost:3000/api"
+    AUTHENTIK_ISSUER_URL: "<replace-local-auth-issuer>"
+    AUTHENTIK_REDIRECT_URI: "http://localhost:3000/api/auth/callback"
+    AUTHENTIK_POST_LOGOUT_REDIRECT_URI: "http://localhost:3000/login"
+    FIREBASE_PROJECT_ID: "rbp-local-emulator"
+    GCP_PROJECT_ID: "none-local"
+    FIRESTORE_DATABASE: "(default)"
+    ODOO_BASE_URL: "<replace-local-odoo-url>"
+    LENDING_BASE_URL: "<replace-local-lending-url>"
+    MARBLE_BASE_URL: "<replace-local-marble-url>"
+    N8N_BASE_URL: "<replace-local-n8n-url>"
+    DOCSPELL_BASE_URL: "<replace-local-docspell-url>"
+    METABASE_BASE_URL: "<replace-local-metabase-url>"
+    PRIMARY_STORAGE_BUCKET: "rbp-local-app-assets"
+    DOCUMENT_STORAGE_BUCKET: "rbp-local-documents"
+    LOGGING_DESTINATION: "local-console"
+    MONITORING_DESTINATION: "local-console"
+  secret_backed:
+    AUTHENTIK_CLIENT_SECRET: "ref:rbp/local/rbp-master-application/AUTHENTIK_CLIENT_SECRET"
+    SESSION_SECRET: "ref:rbp/local/rbp-master-application/SESSION_SECRET"
+    ODOO_API_KEY: "ref:rbp/local/odoo/ODOO_API_KEY"
+    LENDING_API_KEY: "ref:rbp/local/lending/LENDING_API_KEY"
+    LENDING_API_SECRET: "ref:rbp/local/lending/LENDING_API_SECRET"
+    MARBLE_API_KEY: "ref:rbp/local/marble/MARBLE_API_KEY"
+    N8N_API_KEY: "ref:rbp/local/n8n/N8N_API_KEY"
+    METABASE_EMBED_SECRET: "ref:rbp/local/metabase/METABASE_EMBED_SECRET"
+  operator_supplied:
+    RELEASE_TAG: "<git-sha-or-semver>"
+    CHANGE_TICKET: "<required-for-staging-prod>"
+    INCIDENT_ID: "<required-for-emergency-actions-only>"
+feature_flag_posture:
+  workflows_enabled: true
+  integration_n8n_dispatch_enabled: false
+  integration_marble_evaluation_enabled: false
+  odoo_readonly_mode: false
+  lending_readonly_mode: false
+data_expectations:
+  policy: "synthetic_only"
+  synthetic_vs_masked: "synthetic_only"
+promotion_eligibility: "not_eligible"

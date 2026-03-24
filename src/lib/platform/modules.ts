@@ -43,3 +43,25 @@ export function buildNavigation(modules: ModuleDefinition[]): NavigationItem[] {
 export function hasModule(enabledModules: ModuleDefinition[], key: ModuleDefinition['key']) {
   return enabledModules.some((module) => module.key === key);
 }
+
+
+export function evaluateModuleAccess(module: ModuleDefinition, input: {
+  tenant?: Tenant;
+  workspace?: Workspace;
+  permissions?: PermissionGrant[];
+  internalUser?: boolean;
+}): { visible: boolean; accessible: boolean } {
+  const enabled = input.tenant
+    ? evaluateEnabledModules({
+        tenant: input.tenant,
+        workspace: input.workspace,
+        permissions: input.permissions ?? [],
+        internalUser: Boolean(input.internalUser),
+      }).some((item) => item.key === module.key)
+    : !module.isInternalOnly;
+
+  return {
+    visible: enabled,
+    accessible: enabled,
+  };
+}

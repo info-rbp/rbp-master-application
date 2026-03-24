@@ -1,0 +1,87 @@
+contract:
+  name: rbp-runtime-config-contract
+  version: v1
+  description: Global configuration + secret contract for rbp platform runtimes.
+  environments:
+    supported: [local, dev, staging, prod]
+    promotion_path: [local, dev, staging, prod]
+
+classification:
+  classes: [non_secret, secret]
+  injection_phase: [deploy_time, runtime, both]
+  source_types: [env_overlay, secret_manager, operator_input, external_managed]
+
+config_groups:
+  application:
+    required_keys:
+      - ENVIRONMENT
+      - NODE_ENV
+      - APP_BASE_URL
+      - API_BASE_URL
+      - ADMIN_PATH
+  firebase_gcp:
+    required_keys:
+      - FIREBASE_PROJECT_ID
+      - GCP_PROJECT_ID
+      - FIRESTORE_DATABASE
+      - RBP_APP_HOSTING_BACKEND_ID
+      - PRIMARY_STORAGE_BUCKET
+      - DOCUMENT_STORAGE_BUCKET
+  auth:
+    required_keys:
+      - AUTHENTIK_ISSUER_URL
+      - AUTHENTIK_CLIENT_ID
+      - AUTHENTIK_REDIRECT_URI
+      - AUTHENTIK_POST_LOGOUT_REDIRECT_URI
+      - AUTHENTIK_CLIENT_SECRET
+      - SESSION_SECRET
+  integrations:
+    required_keys:
+      - ODOO_BASE_URL
+      - LENDING_BASE_URL
+      - MARBLE_BASE_URL
+      - N8N_BASE_URL
+    planned_keys:
+      - DOCSPELL_BASE_URL
+      - METABASE_BASE_URL
+  control_plane:
+    keys:
+      - RBP_CONTROL_PLANE_COLLECTION
+      - FEATURE_PREVIEW_ENABLED
+      - AUDIT_SINK
+      - NOTIFICATION_SINK
+  observability:
+    required_keys:
+      - LOGGING_DESTINATION
+      - MONITORING_DESTINATION
+      - ALERTING_TARGET_REF
+
+secret_contract:
+  manager_model: centralized_secret_manager
+  required_secret_refs:
+    - AUTHENTIK_CLIENT_SECRET
+    - SESSION_SECRET
+    - ODOO_API_KEY
+    - LENDING_API_KEY
+    - LENDING_API_SECRET
+    - MARBLE_API_KEY
+    - N8N_API_KEY
+  optional_secret_refs:
+    - ODOO_PASSWORD
+    - N8N_WEBHOOK_SIGNING_SECRET
+    - DOCSPELL_API_TOKEN
+    - METABASE_EMBED_SECRET
+  naming_pattern: rbp/<env>/<service>/<SECRET_KEY>
+
+validation_rules:
+  - AUTHENTIK_REDIRECT_URI must start with APP_BASE_URL
+  - AUTHENTIK_POST_LOGOUT_REDIRECT_URI must start with APP_BASE_URL
+  - API_BASE_URL should be APP_BASE_URL + /api
+  - local environment may use LOCAL_AUTH_ENABLED=true
+  - prod must not use LOCAL_AUTH_ENABLED=true
+  - secret values must not be committed to git
+
+ownership:
+  config_owner: platform_sre
+  app_runtime_owner: platform_app_team
+  secret_owner_authority: security_team
