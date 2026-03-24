@@ -24,7 +24,7 @@ const { TaskService } = require('../../../src/lib/tasks/service');
 const { FeatureControlsBffService } = require('../../../src/lib/bff/services/feature-controls-bff-service');
 const { requireActionPolicyAccess, evaluateRoutePolicyAccess, toAccessContext } = require('../../../src/lib/access/evaluators');
 const { toFeatureControlApiError } = require('../../../src/lib/feature-flags/http-errors');
-const { buildFlagRows, buildModuleRows, summarizeDiagnostics } = require('../../../src/app/admin/system/feature-controls/feature-controls-client');
+const { buildFlagRows, buildModuleRows, summarizeDiagnostics, highRiskMessage, buildPreviewPayload } = require('../../../src/app/admin/system/feature-controls/components/feature-controls-utils');
 const { BffApiError } = require('../../../src/lib/bff/utils/request-context');
 
 async function makeContext(kind = 'internal') {
@@ -353,4 +353,26 @@ test('feature-control error mapping converts version conflicts into API-safe err
   assert.ok(mapped instanceof BffApiError);
   assert.equal(mapped.status, 409);
   assert.equal(mapped.code, 'assignment_version_conflict');
+});
+
+
+test('operator risk helper classifies high-risk mutations consistently', () => {
+  assert.ok(highRiskMessage({ kind: 'assignment', operation: 'update', flagKey: 'feature.kill_switch.search', isKillSwitch: true }));
+  assert.ok(highRiskMessage({ kind: 'rollout', operation: 'create', flagKey: 'feature.search.enabled', percentage: 75 }));
+  assert.ok(highRiskMessage({ kind: 'module', operation: 'update', moduleKey: 'analytics', enabled: false, visible: true }));
+  assert.equal(highRiskMessage({ kind: 'rollout', operation: 'update', flagKey: 'feature.search.enabled', percentage: 10 }), null);
+});
+
+test('preview payload builder labels simulated rules for preview-only execution', () => {
+  const formData = new FormData();
+  formData.set('tenantId', 'ten_rbp_internal');
+  formData.set('featureKeys', 'feature.search.enabled');
+  formData.set('simulateFlagKey', 'feature.search.enabled');
+  formData.set('simulateScopeType', 'tenant');
+  formData.set('simulateScopeId', 'ten_rbp_internal');
+  formData.set('simulatePercentage', '45');
+  const payload = buildPreviewPayload(formData);
+  assert.equal(payload.featureKeys[0], 'feature.search.enabled');
+  assert.equal(payload.proposedRolloutRules?.[0].reason, 'preview');
+  assert.equal(payload.proposedRolloutRules?.[0].percentage, 45);
 });
