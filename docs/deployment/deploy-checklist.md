@@ -3,7 +3,6 @@
 Use this checklist for each environment deployment.
 
 ## Pre-deploy
-- [ ] PR targets `master` (integration branch).
 - [ ] Change/ref selected and reviewed.
 - [ ] Relevant runbook identified.
 - [ ] Required approvals obtained.
@@ -11,7 +10,6 @@ Use this checklist for each environment deployment.
 - [ ] Secrets present in GitHub Environment.
 
 ## Deploy
-- [ ] For dev auto-deploy, confirm change is merged to `master`.
 - [ ] Trigger correct workflow (`deploy-dev`, `promote-staging`, `deploy-prod`).
 - [ ] Confirm validation stages pass (lint/typecheck/tests/build).
 - [ ] Confirm deploy stage succeeds.

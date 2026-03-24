@@ -2,17 +2,10 @@
 
 ## Branch/promotion model
 
-Canonical branch strategy:
-- Default branch: `master`
-- Integration branch: `master`
-- Dev auto-deploy source: `master`
-- Release candidate source: tagged commits from `master` (or explicit manual ref)
-
-
 The release model encoded by workflows is:
 
 1. **Pull Request** → validation only (`PR Validation` workflow).
-2. **Merge to `master`** → deploy to **dev** (`Deploy Dev`).
+2. **Merge to `develop`** → deploy to **dev** (`Deploy Dev`).
 3. **Tag release (`v*` / `release-*`) or manual dispatch** → deploy to **staging** (`Promote to Staging`).
 4. **Manual production dispatch with protected environment approval** → deploy to **production** (`Deploy Production`).
 
