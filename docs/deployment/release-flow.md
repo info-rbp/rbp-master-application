@@ -4,8 +4,8 @@
 
 The release model encoded by workflows is:
 
-1. **Pull Request** → validation only (`PR Validation` workflow).
-2. **Merge to `develop`** → deploy to **dev** (`Deploy Dev`).
+1. **Pull Request to `master`** → validation only (`PR Validation` workflow).
+2. **Merge to `master`** → deploy to **dev** (`Deploy Dev`).
 3. **Tag release (`v*` / `release-*`) or manual dispatch** → deploy to **staging** (`Promote to Staging`).
 4. **Manual production dispatch with protected environment approval** → deploy to **production** (`Deploy Production`).
 
@@ -52,6 +52,7 @@ Required checks from `pr-validation.yml`:
 
 ## Operational notes
 
-- promotions are linear (dev -> staging -> prod) even when triggered manually.
+- promotions are linear (`dev` -> `staging` -> `prod`) even when triggered manually.
 - each environment has its own secrets via GitHub environments.
 - concurrency groups prevent overlapping deployment jobs per environment.
+- `master` is the active integration branch for this repository and is the source branch for dev deployment.
