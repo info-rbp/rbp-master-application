@@ -59,3 +59,25 @@ export const offers: PartnerOffer[] = [
         updatedAt: '2024-01-01T00:00:00Z',
     },
 ];
+
+
+export type OfferCategory = { id: string; label: string };
+
+export const categories: OfferCategory[] = [
+  { id: 'all', label: 'All offers' },
+  { id: 'top', label: 'Top offers' },
+  { id: 'new', label: 'New offers' },
+  { id: 'exclusive', label: 'Exclusive offers' },
+  { id: 'our', label: 'Our picks' },
+];
+
+export function toOfferView(offer: PartnerOffer) {
+  return {
+    ...offer,
+    category: offer.entitlement?.accessTier === 'premium' ? 'exclusive' : 'all',
+  };
+}
+
+export function getOfferCategories() {
+  return categories;
+}

@@ -6,11 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.cjs,.mjs --ignore-pattern node_modules/** --ignore-pattern .next/** --ignore-pattern dist/**",
     "optimize-images": "TS_NODE_PROJECT=tsconfig-node.json node -r ts-node/register src/lib/optimize-images.ts",
     "test:platform": "node scripts/run-platform-tests.cjs",
     "test:bff": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test tests/unit/bff/platform-bff.test.js",
-    "migrate:feature-controls": "node scripts/migrate-feature-controls.ts"
+    "migrate:feature-controls": "node scripts/migrate-feature-controls.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.30.1",
