@@ -1,0 +1,14 @@
+# Template: environment-level feature/module posture for staging
+environment: staging
+default_posture:
+  release_stage_floor: "<alpha|beta|ga>"
+  kill_switch_defaults:
+    workflows: false
+    billing: false
+integration_posture:
+  odoo_readonly_mode: false
+  lending_readonly_mode: false
+  marble_evaluation_enabled: true
+  n8n_dispatch_enabled: true
+notes:
+  - "Values here represent expected posture; runtime truth remains in control-plane store"

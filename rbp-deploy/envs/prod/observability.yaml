@@ -1,0 +1,14 @@
+# Template: observability sinks for prod
+environment: prod
+logging:
+  provider: "<replace-me>"
+  destination: "<replace-me>"
+metrics:
+  provider: "<replace-me>"
+  dashboard_namespace: "rbp/prod"
+alerting:
+  on_call_schedule: "<replace-me>"
+  channels:
+    - "<pager|slack|email>"
+tracing:
+  correlation_id_header: "x-correlation-id"

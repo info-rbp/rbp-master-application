@@ -1,0 +1,20 @@
+# Environment service endpoint registry (prod)
+environment: prod
+public:
+  app_base_url: "https://app.<replace-domain>"
+  admin_path: "/admin"
+  api_base_url: "https://app.<replace-domain>/api"
+auth:
+  authentik_issuer_url: "<replace-prod-auth-issuer>"
+  callback_url: "https://app.<replace-domain>/api/auth/callback"
+  post_logout_redirect_url: "https://app.<replace-domain>/login"
+upstream_engines:
+  odoo_base_url: "<replace-prod-odoo-url>"
+  lending_base_url: "<replace-prod-lending-url>"
+  marble_base_url: "<replace-prod-marble-url>"
+  n8n_base_url: "<replace-prod-n8n-url>"
+  docspell_base_url: "<replace-prod-docspell-url>"
+  metabase_base_url: "<replace-prod-metabase-url>"
+observability:
+  monitoring_destination: "<replace-prod-monitoring-workspace>"
+  logging_destination: "<replace-prod-logging-sink>"

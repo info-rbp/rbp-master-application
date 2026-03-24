@@ -21,3 +21,42 @@ export function getRouteAccess(pathname: string): RouteAccess {
   const match = routeRules.find((rule) => pathname.startsWith(rule.prefix));
   return match?.access ?? { kind: 'public' };
 }
+
+
+export type RouteDefinition = {
+  id: string;
+  path: string;
+  label: string;
+  moduleKey?: ModuleDefinition['key'];
+  icon?: string;
+  order: number;
+  navGroup?: string;
+  isDefaultLanding?: boolean;
+};
+
+export function getRouteDefinition(pathname: string): RouteDefinition | null {
+  const access = getRouteAccess(pathname);
+  return {
+    id: `route.${pathname || '/'}`,
+    path: pathname || '/',
+    label: pathname || '/',
+    moduleKey: access.moduleKey,
+    order: 0,
+    isDefaultLanding: true,
+  };
+}
+
+export function getVisibleRoutesForModule(moduleKey: ModuleDefinition['key']): RouteDefinition[] {
+  const matches = routeRules.filter((rule) => rule.access.moduleKey === moduleKey);
+  if (matches.length === 0) {
+    return [{ id: `route.${moduleKey}`, path: `/${moduleKey}`, label: moduleKey, moduleKey, order: 0, isDefaultLanding: true }];
+  }
+  return matches.map((rule, index) => ({
+    id: `route.${moduleKey}.${index + 1}`,
+    path: rule.prefix,
+    label: rule.prefix.replace(/^\//, ''),
+    moduleKey,
+    order: index,
+    isDefaultLanding: index === 0,
+  }));
+}
