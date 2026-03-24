@@ -1,0 +1,24 @@
+# Template: service endpoint registry for staging
+environment: staging
+services:
+  rbp_master_application:
+    public_base_url: "<replace-me>"
+    internal_api_base_url: "<replace-me-or-same-as-public>"
+  authentik:
+    issuer_url: "<replace-me>"
+    auth_ui_url: "<replace-me>"
+  odoo:
+    api_base_url: "<replace-me>"
+  lending:
+    api_base_url: "<replace-me>"
+  marble:
+    api_base_url: "<replace-me>"
+  n8n:
+    api_base_url: "<replace-me>"
+    webhook_base_url: "<replace-me>"
+  docspell:
+    api_base_url: "<replace-me>"
+  metabase:
+    app_base_url: "<replace-me>"
+notes:
+  - "TODO: validate endpoints against DNS and firewall allowlists"
