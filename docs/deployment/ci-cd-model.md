@@ -37,8 +37,6 @@ Each environment must define at least:
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_TOKEN`
 - `APP_BASE_URL`
-- `SMOKE_AUTH_COOKIE` (optional, enables authorized smoke checks)
-- `SMOKE_AUTH_HEADER` (optional alternative to cookie auth)
 
 Production approvals are enforced via the protected `production` GitHub environment reviewers.
 
@@ -58,4 +56,4 @@ That script executes real Firebase App Hosting deployment using `firebase-tools`
 
 ## Step 7 integration point
 
-`smoke-test.sh` now invokes `scripts/ci/smoke-test.mjs`, which executes auth/session/control-plane/runtime checks with explicit PASS/FAIL/SKIP output. Later hardening can add deeper contract assertions per upstream integration.
+`smoke-test.sh` is intentionally lightweight and path-driven (`SMOKE_PATHS`) so Step 7 can replace/extend it with richer synthetic checks while keeping workflow contracts stable.

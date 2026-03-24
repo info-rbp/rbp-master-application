@@ -19,8 +19,3 @@
 - CODEOWNERS for path-based approvals
 - policy-as-code checks for env parity and secret reference validation
 - policy checks in PR validation pipeline
-
-
-## Step 4 structured contract
-
-- `config-contract.yaml` defines machine-friendly validation groups, key requirements, secret contract, and ownership metadata.
