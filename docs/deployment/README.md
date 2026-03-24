@@ -1,8 +1,8 @@
-# Deployment model package
+# Deployment model package (Phase A / Step 1)
 
-This folder captures deployment architecture and delivery controls for `rbp-master-application`.
+This folder freezes deployment topology and runtime ownership for `rbp-master-application`.
 
-## Foundation docs
+## Documents
 
 1. `deployment-topology.md`
 2. `service-inventory.md`
@@ -10,10 +10,4 @@ This folder captures deployment architecture and delivery controls for `rbp-mast
 4. `domain-and-subdomain-map.md`
 5. `network-and-trust-boundaries.md`
 
-## CI/CD and release-control docs
-
-6. `ci-cd-model.md`
-7. `release-flow.md`
-8. `rollback-model.md`
-
-These files are intended to be read together before and during Phase A implementation work.
+These files are intended to be read together before Phase A / Step 2 implementation work.

@@ -11,11 +11,7 @@
     "test:platform": "node scripts/run-platform-tests.cjs",
     "test:bff": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' node --test tests/unit/bff/platform-bff.test.js",
     "migrate:feature-controls": "node scripts/migrate-feature-controls.ts",
-    "typecheck": "tsc --noEmit",
-    "ci:validate-env": "bash scripts/ci/validate-env-config.sh",
-    "ci:deploy": "bash scripts/ci/deploy-apphosting.sh",
-    "ci:smoke": "bash scripts/ci/smoke-test.sh",
-    "ci:summary": "bash scripts/ci/write-deployment-summary.sh"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.30.1",
