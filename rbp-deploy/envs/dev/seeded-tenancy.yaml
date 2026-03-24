@@ -1,0 +1,16 @@
+# Template: seeded tenant/workspace expectations for dev
+environment: dev
+tenants:
+  - tenant_code: "<replace-me>"
+    display_name: "<replace-me>"
+    expected_workspaces:
+      - code: "<replace-me>"
+        display_name: "<replace-me>"
+        modules_expected:
+          - dashboard
+          - applications
+          - loans
+          - support
+checks:
+  - "tenant bootstrap complete"
+  - "workspace module visibility validated"
