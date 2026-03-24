@@ -6,7 +6,7 @@ This directory is a **ready-to-extract bootstrap** for a dedicated deployment re
 
 Centralize deployment and infrastructure ownership for the RBP platform:
 
-- environment overlays (`envs/local`, `envs/dev`, `envs/staging`, `envs/prod`)
+- environment overlays (`envs/dev`, `envs/staging`, `envs/prod`)
 - per-application deployment boundaries (`apps/*`)
 - shared network, policy, and secret conventions (`shared/*`)
 - release pipelines and promotion flow (`pipelines/*`)
