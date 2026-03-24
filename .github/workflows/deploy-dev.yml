@@ -3,7 +3,7 @@ name: Deploy Dev
 on:
   push:
     branches:
-      - develop
+      - master
   workflow_dispatch:
 
 concurrency:
