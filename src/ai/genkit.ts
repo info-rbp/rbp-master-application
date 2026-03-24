@@ -1,8 +1,7 @@
 import 'server-only';
 
-import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { genkit, type Genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
 let aiInstance: Genkit | null = null;
 

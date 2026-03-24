@@ -1,0 +1,49 @@
+# Machine-friendly config contract (staging)
+environment: staging
+contract_version: v1
+variables:
+  fixed:
+    ENVIRONMENT: "staging"
+    ADMIN_PATH: "/admin"
+  environment_provided:
+    APP_BASE_URL: "https://app-stg.<replace-domain>"
+    API_BASE_URL: "https://app-stg.<replace-domain>/api"
+    AUTHENTIK_ISSUER_URL: "<replace-staging-auth-issuer>"
+    AUTHENTIK_REDIRECT_URI: "https://app-stg.<replace-domain>/api/auth/callback"
+    AUTHENTIK_POST_LOGOUT_REDIRECT_URI: "https://app-stg.<replace-domain>/login"
+    FIREBASE_PROJECT_ID: "<replace-stg-firebase-project>"
+    GCP_PROJECT_ID: "<replace-stg-gcp-project>"
+    FIRESTORE_DATABASE: "(default)"
+    ODOO_BASE_URL: "<replace-staging-odoo-url>"
+    LENDING_BASE_URL: "<replace-staging-lending-url>"
+    MARBLE_BASE_URL: "<replace-staging-marble-url>"
+    N8N_BASE_URL: "<replace-staging-n8n-url>"
+    DOCSPELL_BASE_URL: "<replace-staging-docspell-url>"
+    METABASE_BASE_URL: "<replace-staging-metabase-url>"
+    PRIMARY_STORAGE_BUCKET: "rbp-staging-app-assets"
+    DOCUMENT_STORAGE_BUCKET: "rbp-staging-documents"
+    LOGGING_DESTINATION: "<replace-stg-logging-sink>"
+    MONITORING_DESTINATION: "<replace-stg-monitoring-workspace>"
+  secret_backed:
+    AUTHENTIK_CLIENT_SECRET: "ref:rbp/staging/rbp-master-application/AUTHENTIK_CLIENT_SECRET"
+    SESSION_SECRET: "ref:rbp/staging/rbp-master-application/SESSION_SECRET"
+    ODOO_API_KEY: "ref:rbp/staging/odoo/ODOO_API_KEY"
+    LENDING_API_KEY: "ref:rbp/staging/lending/LENDING_API_KEY"
+    LENDING_API_SECRET: "ref:rbp/staging/lending/LENDING_API_SECRET"
+    MARBLE_API_KEY: "ref:rbp/staging/marble/MARBLE_API_KEY"
+    N8N_API_KEY: "ref:rbp/staging/n8n/N8N_API_KEY"
+    METABASE_EMBED_SECRET: "ref:rbp/staging/metabase/METABASE_EMBED_SECRET"
+  operator_supplied:
+    RELEASE_TAG: "<git-sha-or-semver>"
+    CHANGE_TICKET: "<required-for-staging-prod>"
+    INCIDENT_ID: "<required-for-emergency-actions-only>"
+feature_flag_posture:
+  workflows_enabled: true
+  integration_n8n_dispatch_enabled: true
+  integration_marble_evaluation_enabled: true
+  odoo_readonly_mode: false
+  lending_readonly_mode: false
+data_expectations:
+  policy: "masked_production_like"
+  synthetic_vs_masked: "masked_required"
+promotion_eligibility: "eligible_to_prod"

@@ -1,0 +1,21 @@
+# Template deployment manifest for metabase
+apiVersion: deploy.rbp/v1
+kind: ServiceDeployment
+metadata:
+  name: metabase
+spec:
+  enabled: true
+  runtime: analytics_presentation
+  replicas:
+    dev: 1
+    staging: 1
+    prod: <replace-me>
+  image:
+    repository: "<replace-me>/metabase"
+    tag_strategy: "<git-sha|semver>"
+  resources:
+    cpu: "<replace-me>"
+    memory: "<replace-me>"
+  health:
+    liveness_path: "<replace-me>"
+    readiness_path: "<replace-me>"

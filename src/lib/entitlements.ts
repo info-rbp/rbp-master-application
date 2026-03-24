@@ -350,3 +350,11 @@ export function getAccessMetadataForDocuShareSection(contentType: 'templates' | 
   if (contentType === 'end-to-end-processes') return CONTENT_ACCESS_DEFAULTS.docshare_end_to_end_process;
   return CONTENT_ACCESS_DEFAULTS.docshare_tool;
 }
+
+
+export function canAccessTool(input: { tier: MembershipTier; requiredAccess?: ToolsAccessLevel | null }): boolean {
+  const required = input.requiredAccess ?? 'limited';
+  const available = ENTITLEMENT_MATRIX[input.tier].docshare_tools_access_level;
+  if (required === 'limited') return ENTITLEMENT_MATRIX[input.tier].docshare_tools;
+  return ENTITLEMENT_MATRIX[input.tier].docshare_tools && available === 'full';
+}

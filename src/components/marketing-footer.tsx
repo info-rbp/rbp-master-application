@@ -1,6 +1,4 @@
-
 import * as React from "react";
-import { Button } from "./ui/button";
 import { Logo } from "./logo";
 
 const FooterLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -63,6 +61,4 @@ export const MarketingFooter = () => {
   );
 };
 
-function cn(...inputs: any[]) {
-    return inputs.filter(Boolean).join(' ');
-}
+export default MarketingFooter;
