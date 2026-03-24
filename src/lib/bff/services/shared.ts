@@ -1,5 +1,6 @@
 import { getPlatformAdapters } from '@/lib/platform/adapters/factory';
-import type { SourceReference } from '@/lib/platform/integrations/types';
+import { toIntegrationWarning } from '@/lib/platform/integrations/errors';
+import type { IntegrationWarning, SourceReference } from '@/lib/platform/integrations/types';
 import type { AdapterRequestContext } from '@/lib/platform/integrations/tracing';
 import type { QuickActionDto, TimelineEventDto, WarningDto } from '@/lib/bff/dto/common';
 import { normalizeStatus } from '@/lib/bff/utils/status';
@@ -18,12 +19,29 @@ export function getAdapters() {
   return getPlatformAdapters();
 }
 
+export function toWarningDto(warning: IntegrationWarning): WarningDto {
+  return {
+    code: warning.code,
+    message: warning.message,
+    sourceSystem: warning.sourceSystem,
+    retryable: warning.retryable,
+    correlationId: warning.correlationId,
+    operation: warning.operation,
+  };
+}
+
 export async function tryOrWarn<T>(operation: () => Promise<T>, warning: WarningDto): Promise<{ data?: T; warning?: WarningDto }> {
   try {
     return { data: await operation() };
   } catch (error) {
-    console.warn('[bff.partial-failure]', { warning, error });
-    return { warning };
+    const normalized = toIntegrationWarning(error, {
+      code: warning.code,
+      message: warning.message,
+      sourceSystem: (warning.sourceSystem ?? 'platform') as IntegrationWarning['sourceSystem'],
+      retryable: warning.retryable,
+    });
+    console.warn('[bff.partial-failure]', { warning: normalized, error });
+    return { warning: toWarningDto(normalized) };
   }
 }
 

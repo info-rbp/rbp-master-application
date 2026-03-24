@@ -1,12 +1,66 @@
 import type { AdapterHealth } from './health';
 import type { AdapterRequestContext } from './tracing';
 
+export type IntegrationSourceSystem =
+  | 'platform'
+  | 'authentik'
+  | 'odoo'
+  | 'lending'
+  | 'marble'
+  | 'n8n'
+  | 'docspell'
+  | 'metabase';
+
 export type SourceReference = {
-  sourceSystem: 'odoo' | 'lending' | 'marble' | 'n8n';
+  sourceSystem: IntegrationSourceSystem;
   sourceRecordType: string;
   sourceRecordId: string;
   sourceUrl?: string;
   syncedAt: string;
+};
+
+export type CorrelationMetadata = {
+  correlationId: string;
+  requestId?: string;
+  tenantId?: string;
+  workspaceId?: string;
+  actorUserId?: string;
+};
+
+export type IntegrationWarning = {
+  code: string;
+  message: string;
+  sourceSystem: IntegrationSourceSystem;
+  retryable: boolean;
+  correlationId?: string;
+  operation?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type NormalizedAdapterError = {
+  code: string;
+  sourceSystem: IntegrationSourceSystem | string;
+  operation: string;
+  message: string;
+  retryable: boolean;
+  httpStatus?: number;
+  upstreamStatus?: number;
+  correlationId?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type IntegrationCriticality = 'launch_critical' | 'internal_accelerator' | 'optional';
+export type IntegrationFailureMode = 'fail_open' | 'fail_closed';
+
+export type IntegrationRuntimePolicy = {
+  adapterKey: string;
+  mode: 'live' | 'mock' | 'disabled';
+  enabled: boolean;
+  criticality: IntegrationCriticality;
+  defaultFailureMode: IntegrationFailureMode;
+  timeoutMs: number;
+  retryCount: number;
+  rolloutFlag: string;
 };
 
 export type AdapterCapability = {
@@ -14,6 +68,8 @@ export type AdapterCapability = {
   label: string;
   supportsWrite: boolean;
   description: string;
+  stage?: 'ga' | 'beta' | 'experimental';
+  rolloutFlag?: string;
 };
 
 export type AdapterSourceInfo = {
@@ -222,5 +278,6 @@ export type TriggeredWorkflowResponse = {
 export interface PlatformAdapter {
   getHealth(context?: AdapterRequestContext): Promise<AdapterHealth>;
   getCapabilities(context?: AdapterRequestContext): Promise<AdapterCapability[]>;
+  getRuntimePolicy(context?: AdapterRequestContext): Promise<IntegrationRuntimePolicy>;
   getSourceInfo(): AdapterSourceInfo;
 }

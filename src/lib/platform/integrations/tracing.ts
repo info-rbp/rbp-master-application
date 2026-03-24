@@ -1,3 +1,5 @@
+import type { CorrelationMetadata } from './types';
+
 export type AdapterRequestContext = {
   correlationId?: string;
   tenantId?: string;
@@ -21,6 +23,16 @@ export function createTracingHeaders(context?: AdapterRequestContext) {
     'x-tenant-id': context?.tenantId ?? '',
     'x-workspace-id': context?.workspaceId ?? '',
     'x-acting-user-id': context?.actingUserId ?? '',
+  };
+}
+
+export function toCorrelationMetadata(context?: AdapterRequestContext): CorrelationMetadata {
+  return {
+    correlationId: resolveCorrelationId(context),
+    requestId: context?.requestId,
+    tenantId: context?.tenantId,
+    workspaceId: context?.workspaceId,
+    actorUserId: context?.actingUserId,
   };
 }
 

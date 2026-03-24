@@ -1,3 +1,5 @@
+import type { IntegrationWarning, NormalizedAdapterError } from './types';
+
 export type IntegrationErrorCode =
   | 'integration_error'
   | 'authentication_error'
@@ -139,4 +141,43 @@ export function toIntegrationError(input: {
     metadata: input.metadata,
     cause: input.error,
   });
+}
+
+export function toNormalizedAdapterError(error: unknown): NormalizedAdapterError {
+  const fallback: NormalizedAdapterError = {
+    code: 'integration_error',
+    sourceSystem: 'platform',
+    operation: 'unknown_operation',
+    message: error instanceof Error ? error.message : 'Integration operation failed.',
+    retryable: false,
+  };
+
+  if (!(error instanceof IntegrationError)) {
+    return fallback;
+  }
+
+  return {
+    code: error.code,
+    sourceSystem: error.sourceSystem,
+    operation: error.operation,
+    message: error.message,
+    retryable: error.retryable,
+    httpStatus: error.httpStatus,
+    upstreamStatus: error.upstreamStatus,
+    correlationId: error.correlationId,
+    metadata: error.metadata,
+  };
+}
+
+export function toIntegrationWarning(error: unknown, fallback: Omit<IntegrationWarning, 'retryable'> & { retryable?: boolean }): IntegrationWarning {
+  const normalized = toNormalizedAdapterError(error);
+  return {
+    code: fallback.code || normalized.code,
+    message: fallback.message || normalized.message,
+    sourceSystem: fallback.sourceSystem,
+    retryable: normalized.retryable ?? fallback.retryable ?? false,
+    correlationId: normalized.correlationId,
+    operation: normalized.operation !== 'unknown_operation' ? normalized.operation : undefined,
+    metadata: normalized.metadata,
+  };
 }

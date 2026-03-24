@@ -1,4 +1,5 @@
 import { getPlatformAdapters } from '../adapters/factory';
+import { listIntegrationRuntimePolicies } from './policy';
 import type { AdapterRequestContext } from './tracing';
 
 export async function getPlatformIntegrationSnapshot(context?: AdapterRequestContext) {
@@ -17,6 +18,7 @@ export async function getPlatformIntegrationSnapshot(context?: AdapterRequestCon
       marble: marbleHealth,
       n8n: n8nHealth,
     },
+    runtimePolicy: listIntegrationRuntimePolicies(),
     capabilities: {
       odoo: await adapters.odoo.getCapabilities(context),
       lending: await adapters.lending.getCapabilities(context),

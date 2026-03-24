@@ -7,5 +7,7 @@ export type AdapterHealth = {
   checkedAt: string;
   latencyMs?: number;
   authStatus: AdapterAuthStatus;
+  mode?: 'live' | 'mock' | 'disabled';
+  criticality?: 'launch_critical' | 'internal_accelerator' | 'optional';
   details?: Record<string, unknown>;
 };

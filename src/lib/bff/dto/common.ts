@@ -12,6 +12,8 @@ export type WarningDto = {
   message: string;
   sourceSystem?: SourceReference['sourceSystem'] | 'platform';
   retryable?: boolean;
+  correlationId?: string;
+  operation?: string;
 };
 
 export type QuickActionDto = {

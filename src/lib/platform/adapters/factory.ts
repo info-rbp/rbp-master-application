@@ -7,6 +7,8 @@ import { OdooPlatformAdapter } from './odoo/odoo-adapter';
 import { LendingPlatformAdapter } from './lending/lending-adapter';
 import { MarblePlatformAdapter } from './marble/marble-adapter';
 import { N8nPlatformAdapter } from './n8n/n8n-adapter';
+import { getIntegrationRuntimePolicy, type IntegrationAdapterKey } from '../integrations/policy';
+import type { IntegrationRuntimePolicy } from '../integrations/types';
 
 const mockNow = () => new Date().toISOString();
 
@@ -22,6 +24,10 @@ abstract class MockAdapterBase {
   }
 
   async getCapabilities() { return []; }
+
+  async getRuntimePolicy(): Promise<IntegrationRuntimePolicy> {
+    return getIntegrationRuntimePolicy({ adapterKey: this.adapterKey as IntegrationAdapterKey, overrides: { mode: 'mock', enabled: true } });
+  }
 
   protected envelope<T>(data: T, correlationId = 'mock-correlation'): AdapterResponseEnvelope<T> {
     return { data, meta: { correlationId, source: this.getSourceInfo(), receivedAt: mockNow() } };

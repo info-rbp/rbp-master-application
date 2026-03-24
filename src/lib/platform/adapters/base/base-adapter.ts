@@ -1,6 +1,8 @@
 import type { AdapterHealth } from '../../integrations/health';
 import { PlatformHttpClient } from '../../integrations/http';
-import type { AdapterResponseEnvelope, AdapterSourceInfo } from '../../integrations/types';
+import { getIntegrationRuntimePolicy, type IntegrationAdapterKey } from '../../integrations/policy';
+import { toIntegrationWarning } from '../../integrations/errors';
+import type { AdapterResponseEnvelope, AdapterSourceInfo, IntegrationRuntimePolicy, IntegrationWarning } from '../../integrations/types';
 import { createTracingHeaders, logAdapterEvent, resolveCorrelationId, type AdapterRequestContext } from '../../integrations/tracing';
 
 export abstract class BasePlatformAdapter {
@@ -20,6 +22,10 @@ export abstract class BasePlatformAdapter {
 
   async getCapabilities() {
     return this.defaultCapabilities;
+  }
+
+  async getRuntimePolicy(): Promise<IntegrationRuntimePolicy> {
+    return getIntegrationRuntimePolicy({ adapterKey: this.sourceInfo.adapterKey as IntegrationAdapterKey, overrides: { mode: this.sourceInfo.mode } });
   }
 
   protected async withEnvelope<T>(
@@ -79,5 +85,9 @@ export abstract class BasePlatformAdapter {
         },
       };
     }
+  }
+
+  protected createWarning(error: unknown, fallback: Omit<IntegrationWarning, 'retryable'> & { retryable?: boolean }): IntegrationWarning {
+    return toIntegrationWarning(error, fallback);
   }
 }
