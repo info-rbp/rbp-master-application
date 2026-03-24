@@ -3,13 +3,6 @@
 Start here if you are new to operating this platform.
 
 ## What to read first
-
-Branch strategy quick view:
-- Open PRs targeting `master`
-- Merge to `master` triggers dev deploy
-- Promote to staging by release tag/manual ref from `master`
-- Deploy to production by manual dispatch of approved `master`-derived release ref
-
 1. `docs/deployment/ci-cd-model.md`
 2. `docs/deployment/release-flow.md`
 3. `docs/deployment/smoke-test-checklist.md`

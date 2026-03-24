@@ -1,6 +1,6 @@
 name: dev-deploy
 trigger:
-  type: merge_to_master
+  type: merge_to_main
 stages:
   - name: deploy-rbp-master-application
     steps:

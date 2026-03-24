@@ -34,13 +34,3 @@ Track in a separate secure system:
 ## References in this repo
 
 Use `envs/<env>/secret-reference-map.yaml` and `apps/*/secret-refs.template.yaml`.
-
-
-## Step 4 contract artifacts
-
-- `config-matrix.md`
-- `secrets-catalog.md`
-- `secret-naming-convention.md`
-- `rotation-and-ownership-policy.md`
-- `local-secret-bootstrap.md`
-- `new-environment-bootstrap.md`

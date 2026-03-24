@@ -4,18 +4,10 @@ This document defines the executable CI/CD automation for `rbp-master-applicatio
 
 ## Workflow inventory
 
-Branch model reference:
-- default branch: `master`
-- integration branch: `master`
-- dev auto-deploy trigger: push to `master`
-- staging promotion source: release tags/manual refs produced from `master`
-- production deploy source: approved release ref (typically tagged from `master`)
-
-
 Workflows live in `.github/workflows/`:
 
 - `pr-validation.yml` — PR quality gates.
-- `deploy-dev.yml` — automatic dev deployment from `master`.
+- `deploy-dev.yml` — automatic dev deployment from `develop`.
 - `promote-staging.yml` — staging promotion from release tag or manual dispatch.
 - `deploy-prod.yml` — manually approved production deployment.
 
@@ -45,8 +37,6 @@ Each environment must define at least:
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_TOKEN`
 - `APP_BASE_URL`
-- `SMOKE_AUTH_COOKIE` (optional, enables authorized smoke checks)
-- `SMOKE_AUTH_HEADER` (optional alternative to cookie auth)
 
 Production approvals are enforced via the protected `production` GitHub environment reviewers.
 
@@ -66,4 +56,4 @@ That script executes real Firebase App Hosting deployment using `firebase-tools`
 
 ## Step 7 integration point
 
-`smoke-test.sh` now invokes `scripts/ci/smoke-test.mjs`, which executes auth/session/control-plane/runtime checks with explicit PASS/FAIL/SKIP output. Later hardening can add deeper contract assertions per upstream integration.
+`smoke-test.sh` is intentionally lightweight and path-driven (`SMOKE_PATHS`) so Step 7 can replace/extend it with richer synthetic checks while keeping workflow contracts stable.

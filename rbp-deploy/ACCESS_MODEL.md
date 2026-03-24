@@ -18,7 +18,7 @@
 
 ## Deployment policy
 
-- Dev deploy: automated on merge to master when checks pass.
+- Dev deploy: automated on merge to main when checks pass.
 - Staging deploy: explicit promotion gate.
 - Prod deploy: manual approval gate + change ticket/incident context.
 

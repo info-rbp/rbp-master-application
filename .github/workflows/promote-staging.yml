@@ -10,7 +10,7 @@ on:
       release_ref:
         description: 'Git ref (tag/sha) to promote to staging'
         required: true
-        default: 'master'
+        default: 'main'
 
 concurrency:
   group: deploy-staging
@@ -29,8 +29,6 @@ jobs:
       FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
       FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
       APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
-      SMOKE_AUTH_COOKIE: ${{ secrets.SMOKE_AUTH_COOKIE }}
-      SMOKE_AUTH_HEADER: ${{ secrets.SMOKE_AUTH_HEADER }}
 
     steps:
       - name: Checkout
