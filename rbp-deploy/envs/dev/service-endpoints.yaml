@@ -1,0 +1,20 @@
+# Environment service endpoint registry (dev)
+environment: dev
+public:
+  app_base_url: "https://app-dev.<replace-domain>"
+  admin_path: "/admin"
+  api_base_url: "https://app-dev.<replace-domain>/api"
+auth:
+  authentik_issuer_url: "<replace-dev-auth-issuer>"
+  callback_url: "https://app-dev.<replace-domain>/api/auth/callback"
+  post_logout_redirect_url: "https://app-dev.<replace-domain>/login"
+upstream_engines:
+  odoo_base_url: "<replace-dev-odoo-url>"
+  lending_base_url: "<replace-dev-lending-url>"
+  marble_base_url: "<replace-dev-marble-url>"
+  n8n_base_url: "<replace-dev-n8n-url>"
+  docspell_base_url: "<replace-dev-docspell-url>"
+  metabase_base_url: "<replace-dev-metabase-url>"
+observability:
+  monitoring_destination: "<replace-dev-monitoring-workspace>"
+  logging_destination: "<replace-dev-logging-sink>"

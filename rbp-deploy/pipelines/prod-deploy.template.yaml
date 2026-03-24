@@ -1,0 +1,20 @@
+name: prod-deploy
+trigger:
+  type: manual_with_approvals
+requirements:
+  approvals:
+    - service_owner
+    - platform_sre
+    - security_for_sensitive_changes
+stages:
+  - name: preflight
+    steps:
+      - run: "./scripts/verify-env-health.sh staging"
+      - run: "./scripts/validate-secret-refs.sh prod"
+  - name: deploy
+    steps:
+      - run: "./scripts/promote.sh staging prod"
+  - name: post-deploy-verification
+    steps:
+      - run: "./scripts/smoke-check.sh prod"
+      - run: "./scripts/business-critical-checks.sh prod"

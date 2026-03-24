@@ -1,0 +1,14 @@
+name: staging-promotion
+trigger:
+  type: manual_or_tag
+stages:
+  - name: verify-dev-baseline
+    steps:
+      - run: "./scripts/verify-env-health.sh dev"
+  - name: promote-to-staging
+    steps:
+      - run: "./scripts/promote.sh dev staging"
+  - name: staging-validation
+    steps:
+      - run: "./scripts/smoke-check.sh staging"
+      - run: "./scripts/integration-check.sh staging"

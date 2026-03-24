@@ -1,0 +1,20 @@
+# Environment service endpoint registry (local)
+environment: local
+public:
+  app_base_url: "http://localhost:3000"
+  admin_path: "/admin"
+  api_base_url: "http://localhost:3000/api"
+auth:
+  authentik_issuer_url: "<replace-local-auth-issuer>"
+  callback_url: "http://localhost:3000/api/auth/callback"
+  post_logout_redirect_url: "http://localhost:3000/login"
+upstream_engines:
+  odoo_base_url: "<replace-local-odoo-url>"
+  lending_base_url: "<replace-local-lending-url>"
+  marble_base_url: "<replace-local-marble-url>"
+  n8n_base_url: "<replace-local-n8n-url>"
+  docspell_base_url: "<replace-local-docspell-url>"
+  metabase_base_url: "<replace-local-metabase-url>"
+observability:
+  monitoring_destination: "local-console"
+  logging_destination: "local-console"

@@ -1,0 +1,49 @@
+# Machine-friendly config contract (dev)
+environment: dev
+contract_version: v1
+variables:
+  fixed:
+    ENVIRONMENT: "dev"
+    ADMIN_PATH: "/admin"
+  environment_provided:
+    APP_BASE_URL: "https://app-dev.<replace-domain>"
+    API_BASE_URL: "https://app-dev.<replace-domain>/api"
+    AUTHENTIK_ISSUER_URL: "<replace-dev-auth-issuer>"
+    AUTHENTIK_REDIRECT_URI: "https://app-dev.<replace-domain>/api/auth/callback"
+    AUTHENTIK_POST_LOGOUT_REDIRECT_URI: "https://app-dev.<replace-domain>/login"
+    FIREBASE_PROJECT_ID: "<replace-dev-firebase-project>"
+    GCP_PROJECT_ID: "<replace-dev-gcp-project>"
+    FIRESTORE_DATABASE: "(default)"
+    ODOO_BASE_URL: "<replace-dev-odoo-url>"
+    LENDING_BASE_URL: "<replace-dev-lending-url>"
+    MARBLE_BASE_URL: "<replace-dev-marble-url>"
+    N8N_BASE_URL: "<replace-dev-n8n-url>"
+    DOCSPELL_BASE_URL: "<replace-dev-docspell-url>"
+    METABASE_BASE_URL: "<replace-dev-metabase-url>"
+    PRIMARY_STORAGE_BUCKET: "rbp-dev-app-assets"
+    DOCUMENT_STORAGE_BUCKET: "rbp-dev-documents"
+    LOGGING_DESTINATION: "<replace-dev-logging-sink>"
+    MONITORING_DESTINATION: "<replace-dev-monitoring-workspace>"
+  secret_backed:
+    AUTHENTIK_CLIENT_SECRET: "ref:rbp/dev/rbp-master-application/AUTHENTIK_CLIENT_SECRET"
+    SESSION_SECRET: "ref:rbp/dev/rbp-master-application/SESSION_SECRET"
+    ODOO_API_KEY: "ref:rbp/dev/odoo/ODOO_API_KEY"
+    LENDING_API_KEY: "ref:rbp/dev/lending/LENDING_API_KEY"
+    LENDING_API_SECRET: "ref:rbp/dev/lending/LENDING_API_SECRET"
+    MARBLE_API_KEY: "ref:rbp/dev/marble/MARBLE_API_KEY"
+    N8N_API_KEY: "ref:rbp/dev/n8n/N8N_API_KEY"
+    METABASE_EMBED_SECRET: "ref:rbp/dev/metabase/METABASE_EMBED_SECRET"
+  operator_supplied:
+    RELEASE_TAG: "<git-sha-or-semver>"
+    CHANGE_TICKET: "<required-for-staging-prod>"
+    INCIDENT_ID: "<required-for-emergency-actions-only>"
+feature_flag_posture:
+  workflows_enabled: true
+  integration_n8n_dispatch_enabled: true
+  integration_marble_evaluation_enabled: true
+  odoo_readonly_mode: false
+  lending_readonly_mode: false
+data_expectations:
+  policy: "synthetic_or_masked"
+  synthetic_vs_masked: "synthetic_or_masked"
+promotion_eligibility: "eligible_to_staging"

@@ -1,0 +1,20 @@
+# Environment service endpoint registry (staging)
+environment: staging
+public:
+  app_base_url: "https://app-stg.<replace-domain>"
+  admin_path: "/admin"
+  api_base_url: "https://app-stg.<replace-domain>/api"
+auth:
+  authentik_issuer_url: "<replace-staging-auth-issuer>"
+  callback_url: "https://app-stg.<replace-domain>/api/auth/callback"
+  post_logout_redirect_url: "https://app-stg.<replace-domain>/login"
+upstream_engines:
+  odoo_base_url: "<replace-staging-odoo-url>"
+  lending_base_url: "<replace-staging-lending-url>"
+  marble_base_url: "<replace-staging-marble-url>"
+  n8n_base_url: "<replace-staging-n8n-url>"
+  docspell_base_url: "<replace-staging-docspell-url>"
+  metabase_base_url: "<replace-staging-metabase-url>"
+observability:
+  monitoring_destination: "<replace-stg-monitoring-workspace>"
+  logging_destination: "<replace-stg-logging-sink>"

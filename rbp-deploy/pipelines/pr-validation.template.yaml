@@ -1,0 +1,16 @@
+name: pr-validation
+trigger:
+  type: pull_request
+stages:
+  - name: validate-structure
+    steps:
+      - run: "./scripts/validate-tree.sh"
+  - name: validate-env-overlays
+    steps:
+      - run: "./scripts/validate-overlays.sh"
+  - name: policy-checks
+    steps:
+      - run: "./scripts/validate-policies.sh"
+  - name: dry-run-manifests
+    steps:
+      - run: "./scripts/dry-run-deploy.sh dev"
