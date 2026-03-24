@@ -1,11 +1,8 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { AnalyticsProvider } from '@/components/analytics/analytics-provider';
 import { RootShell } from '@/components/layout/root-shell';
 import { PlatformSessionProvider } from '@/app/providers/platform-session-provider';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Remote Business Partner',
@@ -19,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className="font-sans">
         <AnalyticsProvider />
         <PlatformSessionProvider>
           <RootShell>{children}</RootShell>

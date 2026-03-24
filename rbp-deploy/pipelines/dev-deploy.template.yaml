@@ -1,0 +1,13 @@
+name: dev-deploy
+trigger:
+  type: merge_to_main
+stages:
+  - name: deploy-rbp-master-application
+    steps:
+      - run: "./scripts/deploy-service.sh dev rbp-master-application"
+  - name: deploy-dependent-services-optional
+    steps:
+      - run: "./scripts/deploy-changed-services.sh dev"
+  - name: smoke-check
+    steps:
+      - run: "./scripts/smoke-check.sh dev"

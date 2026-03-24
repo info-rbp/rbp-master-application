@@ -33,3 +33,8 @@ export function initializeFirebase() {
     }
     return { firebaseApp: app, auth, firestore };
 }
+
+
+const firebaseRuntime = initializeFirebase();
+export const db = firebaseRuntime.firestore;
+export const firebaseAuth = firebaseRuntime.auth;
