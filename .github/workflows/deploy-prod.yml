@@ -1,0 +1,91 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: 'Release tag or commit SHA to deploy to production'
+        required: true
+      change_ticket:
+        description: 'Change management ticket/reference'
+        required: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    name: Validate, Approve, Deploy (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    permissions:
+      contents: read
+
+    env:
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+
+    steps:
+      - name: Checkout selected release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.release_ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate production candidate
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test:platform
+          npm run test:bff
+          npm run build
+
+      - name: Validate production configuration
+        run: ./scripts/ci/validate-env-config.sh prod
+
+      - name: Record change ticket
+        run: |
+          echo "## Production Deployment Request" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Ref: ${{ github.event.inputs.release_ref }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Change ticket: ${{ github.event.inputs.change_ticket }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deployment approval is enforced by the protected 'production' environment reviewers." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy to Firebase App Hosting (production)
+        run: ./scripts/ci/deploy-apphosting.sh prod
+
+      - name: Smoke checks (production)
+        run: ./scripts/ci/smoke-test.sh prod
+
+      - name: Rollback instructions
+        if: always()
+        run: |
+          echo "## Rollback Instructions" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Follow docs/deployment/rollback-model.md and rbp-deploy/runbooks/rollback.md." >> "$GITHUB_STEP_SUMMARY"
+          echo "- If smoke tests fail, trigger rollback runbook immediately and freeze further promotions." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write deployment summary
+        if: always()
+        run: ./scripts/ci/write-deployment-summary.sh prod "${{ job.status }}" "${{ github.event.inputs.release_ref }}"
+
+      - name: Upload deployment artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-prod-artifacts-${{ github.run_id }}
+          retention-days: 60
+          if-no-files-found: ignore
+          path: |
+            artifacts/**/*.md
+            firebase-debug*.log
+            npm-debug.log*
