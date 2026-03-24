@@ -134,13 +134,33 @@ Existing admin APIs remain, with rollout additions:
 
 The feature-controls admin screen now supports:
 
-- viewing rollout-capable flags
-- creating percentage rollout rules
-- selecting `bucketBy`
-- optional salt input
-- previewing target contexts
-- simulating an unsaved rollout rule
-- seeing bucket details, structured reasons, and module blockers in the preview output
+- viewing rollout-capable flags and module controls in dedicated tabs
+- creating, updating, and disabling assignments, rollout rules, and module rules
+- selecting `bucketBy` with optional salt input for rollout operations
+- previewing target contexts and launching preview from selected flag/module context
+- simulating an unsaved rollout rule (explicitly marked as simulation-only)
+- jumping from diagnostics and recent changes directly to affected flag/module detail
+- seeing bucket details, structured reasons, module blockers, and in-context audit rows
+- automatic post-mutation data refresh (`router.refresh`) so operators are not told to manually reload
+
+### Maintainability structure
+
+The Sprint 4 closeout refactors the client surface into shared operator-console modules:
+
+- `feature-controls-client.tsx` keeps workflow orchestration and mutation handlers.
+- `components/feature-controls-utils.ts` centralizes filtering, diagnostics summaries, preview payload creation, mutation response handling, and high-risk classification messaging.
+- `components/feature-controls-shared.tsx` contains reusable visual primitives (panels, badges, stats, rule lists, audit rows, and explainability cards).
+
+This decomposition keeps behavior centralized without returning to a monolithic single-file UI.
+
+### Mutation + verification workflow
+
+The intended operator path is now inspect → preview → mutate → verify in one console:
+
+1. Select target flag/module from catalog, diagnostics, or recent changes.
+2. Run preview with the selected context (and optional simulated rollout rule).
+3. Create/update/disable a rule with risk-aware confirmation messaging.
+4. Console revalidates from backend truth after successful mutation and surfaces updated detail/audit state.
 
 ## Validation rules
 
