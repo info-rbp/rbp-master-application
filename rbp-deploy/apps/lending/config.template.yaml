@@ -1,0 +1,8 @@
+# Non-secret runtime config template for lending
+service: lending
+config:
+  public_base_url: "<replace-me-if-applicable>"
+  internal_base_url: "<replace-me-if-applicable>"
+  log_level: "info"
+  feature_profile: "default"
+  timeout_ms: 8000
