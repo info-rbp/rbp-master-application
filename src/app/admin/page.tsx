@@ -1,10 +1,15 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAdminSummaryMetrics } from '@/lib/reporting';
-import { ADMIN_NAV_SECTIONS } from './components/admin-navigation';
+import { resolveSessionResponse } from '@/lib/platform/session';
+import { createNavigationContextFromSession } from '@/lib/platform/navigation-context';
+import { buildAdminNavigation } from '@/lib/platform/navigation-builder';
 
 export default async function AdminDashboard() {
   const metrics = await getAdminSummaryMetrics();
+  const sessionResponse = await resolveSessionResponse();
+  const context = createNavigationContextFromSession(sessionResponse.authenticated ? sessionResponse.session : null, '/admin');
+  const navigation = buildAdminNavigation(context);
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
@@ -26,15 +31,12 @@ export default async function AdminDashboard() {
       <Card>
         <CardHeader><CardTitle>Platform Operations Domains</CardTitle></CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {ADMIN_NAV_SECTIONS.map((section) => {
-            const href = section.href ?? section.items[0]?.href;
-            return href ? (
-              <Link key={section.title} href={href} className="rounded border p-3 text-sm hover:bg-muted/40">
-                <p className="font-medium">{section.title}</p>
-                <p className="text-muted-foreground">{section.items.length} operational module(s)</p>
-              </Link>
-            ) : null;
-          })}
+          {navigation.map((item) => (
+            <Link key={item.id} href={item.route} className="rounded border p-3 text-sm hover:bg-muted/40">
+              <p className="font-medium">{item.label}</p>
+              <p className="text-muted-foreground">{Math.max(item.children.length, 1)} route(s)</p>
+            </Link>
+          ))}
         </CardContent>
       </Card>
     </div>

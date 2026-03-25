@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createKnowledgeArticle, getKnowledgeArticlesWithFilters } from '@/lib/data';
-import { AuthorizationError, requireAdminRequestContext } from '@/lib/server-auth';
+import { AuthorizationError, requireAdminActionRequestContext } from '@/lib/server-auth';
 import { isKnowledgeContentType, normalizeKnowledgeSlug, parseTagInput } from '@/lib/knowledge-center';
 import { readJsonBody } from '@/lib/http';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdminRequestContext(request);
+    await requireAdminActionRequestContext(request, 'admin.knowledge.read');
   } catch (error) {
     const status = error instanceof AuthorizationError ? error.status : 401;
     return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let auth;
   try {
-    auth = await requireAdminRequestContext(request);
+    auth = await requireAdminActionRequestContext(request, 'admin.knowledge.manage');
   } catch (error) {
     const status = error instanceof AuthorizationError ? error.status : 401;
     return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });

@@ -1,10 +1,21 @@
 import { notFound } from 'next/navigation';
-import { ContentDetailShell } from '@/components/public/content-detail-shell';
-import { resolveKnowledgeBySlug } from '@/lib/content-routing';
+import { resolveKnowledgeBySlugWithAccessControl } from '@/lib/content-routing';
+import { ContentDetailShell } from '@/components/content/content-detail-shell';
+import { getMemberAuth } from '@/lib/member-auth';
 
-export default async function ToolDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const content = await resolveKnowledgeBySlug(slug, 'tool');
-  if (!content) notFound();
-  return <ContentDetailShell content={content} />;
+interface ContentPageProps {
+  params: {
+    slug: string;
+  };
+}
+
+export default async function ContentPage({ params: { slug } }: ContentPageProps) {
+  const auth = await getMemberAuth();
+  const content = await resolveKnowledgeBySlugWithAccessControl(slug, 'tool', auth?.userId);
+
+  if (!content) {
+    notFound();
+  }
+
+  return <ContentDetailShell content={content} userId={auth?.userId} />;
 }

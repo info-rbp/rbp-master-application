@@ -1,0 +1,22 @@
+import { FeatureControlsBffService } from '@/lib/bff/services/feature-controls-bff-service';
+import { fail, ok } from '@/lib/bff/utils/http';
+import { getBffRequestContext, requirePermission } from '@/lib/bff/utils/request-context';
+import type { NextRequest } from 'next/server';
+
+let service: FeatureControlsBffService | undefined;
+
+function getService() {
+  service ??= new FeatureControlsBffService();
+  return service;
+}
+
+export async function GET(request: NextRequest, { params }: { params: Promise<{ moduleKey: string }> }) {
+  let correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
+  try {
+    const context = await getBffRequestContext(request);
+    correlationId = context.correlationId;
+    requirePermission(context, 'module_controls', 'read');
+    const { moduleKey } = await params;
+    return ok({ evaluation: await getService().evaluateModule(context, moduleKey), rules: await getService().getModuleRules(moduleKey) }, correlationId);
+  } catch (error) { return fail(error, correlationId); }
+}

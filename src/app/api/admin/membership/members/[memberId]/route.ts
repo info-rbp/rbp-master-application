@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRequestAuthContext } from '@/lib/server-auth';
+import { AuthorizationError, requireAdminActionRequestContext } from '@/lib/server-auth';
 import { getMemberDetailForAdmin, updateMemberMembershipState } from '@/lib/admin-membership-crm';
 import { MEMBERSHIP_TIERS, type MembershipStatus } from '@/lib/definitions';
 import { readJsonBody } from '@/lib/http';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ memberId: string }> }) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    await requireAdminActionRequestContext(request, 'admin.membership.read');
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const { memberId } = await context.params;
@@ -17,9 +19,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ mem
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ memberId: string }> }) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth || auth.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let auth;
+  try {
+    auth = await requireAdminActionRequestContext(request, 'admin.membership.manage');
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 401;
+    return NextResponse.json({ error: status === 403 ? 'Forbidden' : 'Unauthorized' }, { status });
   }
 
   const { memberId } = await context.params;

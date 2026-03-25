@@ -1,5 +1,3 @@
-import 'server-only';
-
 import { firestore } from '@/firebase/server';
 import { type AnalyticsEvent, type AnalyticsEventType, buildAnalyticsEventRecord } from './analytics-events';
 

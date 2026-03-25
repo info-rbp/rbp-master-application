@@ -1,0 +1,49 @@
+# Machine-friendly config contract (prod)
+environment: prod
+contract_version: v1
+variables:
+  fixed:
+    ENVIRONMENT: "prod"
+    ADMIN_PATH: "/admin"
+  environment_provided:
+    APP_BASE_URL: "https://app.<replace-domain>"
+    API_BASE_URL: "https://app.<replace-domain>/api"
+    AUTHENTIK_ISSUER_URL: "<replace-prod-auth-issuer>"
+    AUTHENTIK_REDIRECT_URI: "https://app.<replace-domain>/api/auth/callback"
+    AUTHENTIK_POST_LOGOUT_REDIRECT_URI: "https://app.<replace-domain>/login"
+    FIREBASE_PROJECT_ID: "<replace-prod-firebase-project>"
+    GCP_PROJECT_ID: "<replace-prod-gcp-project>"
+    FIRESTORE_DATABASE: "(default)"
+    ODOO_BASE_URL: "<replace-prod-odoo-url>"
+    LENDING_BASE_URL: "<replace-prod-lending-url>"
+    MARBLE_BASE_URL: "<replace-prod-marble-url>"
+    N8N_BASE_URL: "<replace-prod-n8n-url>"
+    DOCSPELL_BASE_URL: "<replace-prod-docspell-url>"
+    METABASE_BASE_URL: "<replace-prod-metabase-url>"
+    PRIMARY_STORAGE_BUCKET: "rbp-prod-app-assets"
+    DOCUMENT_STORAGE_BUCKET: "rbp-prod-documents"
+    LOGGING_DESTINATION: "<replace-prod-logging-sink>"
+    MONITORING_DESTINATION: "<replace-prod-monitoring-workspace>"
+  secret_backed:
+    AUTHENTIK_CLIENT_SECRET: "ref:rbp/prod/rbp-master-application/AUTHENTIK_CLIENT_SECRET"
+    SESSION_SECRET: "ref:rbp/prod/rbp-master-application/SESSION_SECRET"
+    ODOO_API_KEY: "ref:rbp/prod/odoo/ODOO_API_KEY"
+    LENDING_API_KEY: "ref:rbp/prod/lending/LENDING_API_KEY"
+    LENDING_API_SECRET: "ref:rbp/prod/lending/LENDING_API_SECRET"
+    MARBLE_API_KEY: "ref:rbp/prod/marble/MARBLE_API_KEY"
+    N8N_API_KEY: "ref:rbp/prod/n8n/N8N_API_KEY"
+    METABASE_EMBED_SECRET: "ref:rbp/prod/metabase/METABASE_EMBED_SECRET"
+  operator_supplied:
+    RELEASE_TAG: "<git-sha-or-semver>"
+    CHANGE_TICKET: "<required-for-staging-prod>"
+    INCIDENT_ID: "<required-for-emergency-actions-only>"
+feature_flag_posture:
+  workflows_enabled: true
+  integration_n8n_dispatch_enabled: true
+  integration_marble_evaluation_enabled: true
+  odoo_readonly_mode: false
+  lending_readonly_mode: false
+data_expectations:
+  policy: "production_live_data"
+  synthetic_vs_masked: "production_live"
+promotion_eligibility: "terminal_environment"

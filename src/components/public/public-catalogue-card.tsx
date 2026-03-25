@@ -31,10 +31,10 @@ export function PublicCatalogueCard({
   ctaLabel = 'View details',
 }: PublicCatalogueCardProps) {
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex h-full flex-col" role="article" aria-labelledby="card-title">
       {imageUrl ? (
         <div className="relative h-40 w-full overflow-hidden rounded-t-lg bg-muted">
-          <Image src={imageUrl} alt={title} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
+          <Image src={imageUrl} alt={`Image for ${title}`} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover" />
         </div>
       ) : null}
       <CardHeader className="space-y-3">
@@ -45,7 +45,7 @@ export function PublicCatalogueCard({
             <Badge variant={previewEnabled ? 'default' : 'outline'}>{previewEnabled ? 'Preview available' : 'Preview unavailable'}</Badge>
           ) : null}
         </div>
-        <CardTitle className="text-xl">{title}</CardTitle>
+        <CardTitle id="card-title" className="text-xl">{title}</CardTitle>
       </CardHeader>
       <CardContent className="flex-grow space-y-3 text-sm text-muted-foreground">
         {summary ? <p>{summary}</p> : <p>View this catalogue item for more details.</p>}

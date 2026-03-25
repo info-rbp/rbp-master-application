@@ -1,4 +1,8 @@
+import '@/lib/server-only';
+
 import * as admin from 'firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 function normalizePrivateKey(value: string): string {
   const trimmed = value.trim();
@@ -17,47 +21,65 @@ function normalizePrivateKey(value: string): string {
   return normalized;
 }
 
+function getFirebaseCredential(): admin.credential.Credential | undefined {
+  const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (projectId && clientEmail && privateKey) {
+    return admin.credential.cert({
+      projectId,
+      clientEmail,
+      privateKey: normalizePrivateKey(privateKey),
+    });
+  }
+
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT) {
+    return admin.credential.applicationDefault();
+  }
+
+  return undefined;
+}
+
 export function getAdminApp(): admin.app.App {
   const existingApp = admin.apps.find((app): app is admin.app.App => Boolean(app));
   if (existingApp) {
     return existingApp;
   }
 
-  if (process.env.NODE_ENV === 'production') {
+  const credential = getFirebaseCredential();
+  const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+  if (credential) {
     return admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-    });
-  }
-
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-  if (projectId && clientEmail && privateKey) {
-    const normalizedPrivateKey = normalizePrivateKey(privateKey);
-
-    return admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        privateKey: normalizedPrivateKey,
-        clientEmail,
-      }),
+      credential,
+      projectId,
       databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
   }
 
   return admin.initializeApp({
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? 'demo-project',
+    projectId: projectId ?? 'demo-project',
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 }
 
-export function getFirestore(): FirebaseFirestore.Firestore {
-  return getAdminApp().firestore();
-}
+export const db = new Proxy({} as FirebaseFirestore.Firestore, {
+  get(_target, prop) {
+    const instance = getFirestore(getAdminApp()) as unknown as Record<PropertyKey, unknown>;
+    const value = instance[prop];
 
-export const firestore: FirebaseFirestore.Firestore = new Proxy({} as FirebaseFirestore.Firestore, {
-  get(_target, prop, _receiver) {
-    const instance = getFirestore() as unknown as Record<PropertyKey, unknown>;
+    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(instance) : value;
+  },
+});
+
+export const firestore = db;
+
+export const auth = new Proxy({} as ReturnType<typeof getAuth>, {
+  get(_target, prop) {
+    const instance = getAuth(getAdminApp()) as unknown as Record<PropertyKey, unknown>;
     const value = instance[prop];
 
     return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(instance) : value;

@@ -1,0 +1,13 @@
+# Template: cloud project references for prod
+environment: prod
+firebase:
+  project_id: "<replace-me>"
+  hosting_backend_id: "rbp-master-application"
+  firestore_database: "(default)"
+gcp:
+  primary_project_id: "<replace-me>"
+  logging_project_id: "<replace-me-or-same>"
+  monitoring_workspace: "<replace-me>"
+service_accounts:
+  deployer: "<replace-me>"
+  runtime: "<replace-me>"

@@ -1,61 +1,226 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { useForm, SubmitHandler } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export function SimpleRequestForm({ action, fields, disabledText, onSubmitted }: { action: string; fields: Array<{ key: string; label: string; type?: 'text' | 'datetime-local'; options?: string[] }>; disabledText?: string; onSubmitted?: () => void }) {
-  const [payload, setPayload] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+const signinSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters long.' }),
+});
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    setSuccess(null);
+type SigninFormValues = z.infer<typeof signinSchema>;
+
+export function SigninForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const form = useForm<SigninFormValues>({
+    resolver: zodResolver(signinSchema),
+    defaultValues: {
+      email: 'admin@rbp.local',
+      password: 'password123!',
+    },
+  });
+
+  const onSubmit: SubmitHandler<SigninFormValues> = async (data) => {
     try {
-      const response = await fetch(action, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-      const body = await response.json();
-      if (!response.ok || !body.ok) {
-        throw new Error(body.error ?? 'Request failed');
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...data,
+          returnTo: searchParams.get('next') ?? '/dashboard',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Failed to sign in' }));
+        throw new Error(error.error ?? 'Failed to sign in');
       }
-      setPayload({});
-      setSuccess('Submitted successfully. You can track this request in your history below.');
-      onSubmitted?.();
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Request failed');
-    } finally {
-      setSubmitting(false);
+
+      const payload = await response.json();
+      toast({
+        title: 'Signed in successfully',
+        description: "You're now signed in.",
+      });
+      router.push(payload.returnTo ?? '/dashboard');
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: 'Error signing in',
+        description: error instanceof Error ? error.message : 'Something went wrong.',
+        variant: 'destructive',
+      });
     }
   };
 
-  if (disabledText) {
-    return <p className="text-sm text-muted-foreground">{disabledText}</p>;
-  }
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input placeholder="you@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input type="password" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full">
+          Sign In
+        </Button>
+      </form>
+    </Form>
+  );
+}
+
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters long.' }),
+  confirmPassword: z.string(),
+  marketingConsent: z.boolean().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+
+type SignupFormValues = z.infer<typeof signupSchema>;
+
+export function SignupForm() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: '',
+      marketingConsent: false,
+    },
+  });
+
+  const onSubmit: SubmitHandler<SignupFormValues> = async (data) => {
+    try {
+      const response = await fetch('/api/lifecycle/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          marketingConsent: data.marketingConsent,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to sign up');
+      }
+
+      toast({
+        title: 'Signed up successfully',
+        description: 'Please check your email to verify your account.',
+      });
+      router.push('/verify-email');
+    } catch (error) {
+      toast({
+        title: 'Error signing up',
+        description: error instanceof Error ? error.message : 'Something went wrong',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      {fields.map((field) => (
-        <div key={field.key}>
-          <label className="text-sm">{field.label}</label>
-          {field.options ? (
-            <select className="h-10 w-full rounded-md border bg-background px-3" value={payload[field.key] ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, [field.key]: e.target.value }))} required>
-              <option value="" disabled>Select an option</option>
-              {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          ) : field.key === 'description' || field.key === 'notes' || field.key === 'requestDescription' || field.key === 'requestedOutcome' ? (
-            <Textarea value={payload[field.key] ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, [field.key]: e.target.value }))} required />
-          ) : (
-            <Input type={field.type ?? 'text'} value={payload[field.key] ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, [field.key]: e.target.value }))} required />
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input placeholder="you@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
-      ))}
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {success ? <p className="text-sm text-emerald-700">{success}</p> : null}
-      <Button type="submit" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit'}</Button>
-    </form>
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input type="password" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirm Password</FormLabel>
+              <FormControl>
+                <Input type="password" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="marketingConsent"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+              <FormControl>
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>I agree to receive marketing emails.</FormLabel>
+              </div>
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full">
+          Sign Up
+        </Button>
+      </form>
+    </Form>
   );
 }

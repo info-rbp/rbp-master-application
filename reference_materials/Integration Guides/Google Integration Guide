@@ -1,0 +1,985 @@
+# Google Cloud Integration Guide for the RBP Web Application
+
+## 1. Purpose
+
+This guide defines how **Google Cloud** should be integrated into the web application to support the platform’s **AI-assisted document operations**, with a specific focus on **Gemini-powered document description, summary, and metadata workflows**.
+
+The current application already includes a lightweight Gemini integration using **Genkit** and the **Google Generative AI plugin**. This guide explains:
+
+- what the application does today
+- what the production-ready Google Cloud architecture should look like
+- which Google Cloud services are required
+- how requests should flow between the web application and Google Cloud
+- how security, data handling, logging, and failure recovery should operate
+- how the AI workflows should fit into the broader content-management system
+
+This is not just a model hookup guide. It is the operating guide for the whole Google Cloud AI subsystem inside the application.
+
+---
+
+## 2. Scope
+
+This guide focuses on the Google Cloud services and patterns needed to support the application’s AI functionality around document management.
+
+### In scope
+
+- Gemini model access
+- Genkit orchestration
+- Google Cloud project and API setup
+- Vertex AI as the recommended production inference layer
+- IAM and service accounts
+- Secret management
+- file preprocessing and document transport
+- logging, monitoring, and auditability
+- document generation lifecycle within the app
+- interaction with Firebase / Firestore and Cloudflare-hosted application components
+
+### Out of scope
+
+- Google Workspace email setup
+- Square billing integration
+- full Firebase core setup outside the AI-specific interaction points
+- ChatGPT / MCP integration except where it intersects with AI workflow boundaries
+
+---
+
+## 3. Current Application State
+
+The current codebase already contains a Gemini-based AI feature.
+
+### Files currently involved
+
+| File | Current responsibility |
+|---|---|
+| `src/ai/genkit.ts` | initializes Genkit and the Google Generative AI plugin |
+| `src/ai/flows/generate-document-description.ts` | defines the document-description flow |
+| `src/app/actions.ts` | exposes a server action wrapper used by the UI |
+| `src/app/admin/components/document-form.tsx` | admin interface trigger for description generation |
+
+### What the current implementation does
+
+The application currently:
+
+1. accepts a document file in the admin document form
+2. reads it into a **data URI**
+3. sends that payload to a **Genkit flow**
+4. calls **Gemini** using the `@genkit-ai/google-genai` plugin
+5. returns a short description
+6. inserts that description into the document form for review
+
+### Current model configuration
+
+The code currently initializes Genkit like this conceptually:
+
+- plugin: `googleAI()`
+- model: `googleai/gemini-2.5-flash`
+
+### Current architectural limitation
+
+The current setup is effective for a prototype, but it is still a **lightweight API-key integration**, not yet a full Google Cloud production architecture.
+
+That means it currently lacks the surrounding platform pieces you want in production, such as:
+
+- enterprise authentication strategy
+- environment-managed model configuration
+- secret rotation discipline
+- structured AI logging
+- cloud-native file handling
+- clear separation between the public web app and the AI execution boundary
+
+---
+
+## 4. Integration Objective
+
+Google Cloud should power the application’s **AI document intelligence layer**.
+
+### Primary responsibilities
+
+| Responsibility | Description |
+|---|---|
+| Document description generation | create short, user-friendly summaries for document listings |
+| Document summarization | produce concise admin-facing summaries |
+| Metadata generation | suggest title, tags, categories, slugs, and SEO text |
+| Document classification | infer type, purpose, audience, or suite placement |
+| Structured content assistance | support future drafting and enrichment workflows |
+| AI operations visibility | provide logging, observability, and access control |
+
+### Core design principle
+
+**The web application owns the workflow. Google Cloud owns the AI execution environment.**
+
+That means the application remains the source of truth for:
+
+- who requested the generation
+- what document is being processed
+- what result was accepted or edited
+- how the result is stored in Firestore
+
+Google Cloud provides the managed model execution and supporting cloud services needed to make the AI subsystem reliable and secure.
+
+---
+
+## 5. Recommended Google Cloud Architecture
+
+The recommended architecture depends on whether you want the smallest possible implementation or the most production-safe implementation.
+
+## 5.1 Option A: minimal change architecture
+
+### Pattern
+
+`Next.js server action -> Genkit -> Google AI API key -> Gemini`
+
+### Characteristics
+
+- fastest to implement
+- closest to the existing code
+- uses `GEMINI_API_KEY`
+- suitable for dev or early-stage staging
+- weaker enterprise controls
+
+### Use this when
+
+- you need the feature live quickly
+- usage volume is low
+- document sizes are small
+- you are comfortable with an API-key model for the first phase
+
+## 5.2 Option B: recommended production architecture
+
+### Pattern
+
+`Admin UI -> Next.js backend -> AI gateway service on Cloud Run -> Vertex AI Gemini -> Firestore + Cloud Logging + Secret Manager`
+
+### Characteristics
+
+- clean separation between web app and AI execution boundary
+- Google Cloud service account authentication
+- no direct Gemini API key dependence in the main app runtime
+- better IAM, logging, rate control, and operational isolation
+- supports future expansion to summaries, metadata, evaluation, and retrieval workflows
+
+### Why this is recommended for your app
+
+Your application appears to be hosted and fronted outside Google Cloud, with Cloudflare handling the infrastructure edge. Because of that, the cleanest production pattern is to keep the primary app where it is, but run the AI boundary inside Google Cloud.
+
+This prevents the main app from becoming a dumping ground for service-account secrets, model logic, and every experimental prompt someone invents after lunch.
+
+---
+
+## 6. Required Google Cloud Services
+
+The production-ready architecture should use the following Google Cloud services.
+
+| Service | Role in the system |
+|---|---|
+| **Vertex AI** | hosts Gemini inference using Google Cloud authentication |
+| **IAM** | controls which services and identities can invoke Vertex AI and secrets |
+| **Service Accounts** | machine identity for the AI gateway and related jobs |
+| **Secret Manager** | stores API keys, prompt secrets, and any fallback credentials |
+| **Cloud Run** | hosts the AI gateway or worker service |
+| **Cloud Logging** | stores structured logs for generation requests and failures |
+| **Cloud Monitoring** | tracks latency, failure rate, and operational health |
+| **Cloud Storage** | optional but recommended for large files and preprocessing workflows |
+| **Artifact Registry** | stores container images for the AI gateway |
+| **Cloud Build or CI/CD** | deploys the Cloud Run service consistently |
+
+### Optional later-stage services
+
+| Service | When to use it |
+|---|---|
+| **Vertex AI evaluation** | when you want automated quality scoring and prompt comparisons |
+| **Vertex AI Vector Search** | when you introduce retrieval across document corpora |
+| **BigQuery** | for large-scale AI operations analytics |
+| **Cloud Tasks / Pub/Sub** | for asynchronous generation jobs |
+
+---
+
+## 7. Recommended Operating Model
+
+The clean operating model is:
+
+1. the admin user triggers an AI function from the web application
+2. the application validates the input and writes a generation request record
+3. the request is sent to a dedicated Google Cloud AI service
+4. the Google Cloud service authenticates to Vertex AI using its service account
+5. Gemini processes the document input
+6. the result is returned to the application
+7. the application stores the result and metadata in Firestore
+8. the admin reviews, edits, and approves the content
+9. logs and metrics are recorded for the entire workflow
+
+### Important design rule
+
+AI output should never bypass the application workflow and go straight live. The application should always remain the gatekeeper for publishing and member-visible content.
+
+---
+
+## 8. High-Level Data Flow
+
+## 8.1 Current flow
+
+`Document Form -> Server Action -> Genkit Flow -> Gemini -> Description -> Form`
+
+## 8.2 Recommended production flow
+
+`Document Form -> Application Backend -> AI Gateway -> Vertex AI Gemini -> Application Backend -> Firestore -> Admin Review -> Publish`
+
+## 8.3 Detailed request sequence
+
+1. Admin uploads or links a document
+2. Application validates document metadata
+3. Application prepares a normalized AI input
+4. Application writes a pending AI generation record in Firestore
+5. Application sends request to the AI gateway
+6. AI gateway validates request and permissions
+7. AI gateway sends request to Vertex AI Gemini
+8. Vertex AI returns generated content
+9. AI gateway logs usage, latency, and outcome
+10. AI gateway returns the result to the application
+11. Application stores result metadata in Firestore
+12. Admin accepts, edits, or regenerates
+13. Final document metadata is saved and optionally published
+
+---
+
+## 9. Role of Each System in the Integration
+
+| System | Role |
+|---|---|
+| **Admin UI** | collects inputs and displays generated outputs |
+| **Next.js server actions / routes** | validates user, orchestrates the generation request |
+| **Firebase Auth** | verifies the user identity and role |
+| **Firestore** | stores documents, metadata, logs, and generation records |
+| **Google Cloud AI gateway** | isolated execution boundary for AI operations |
+| **Vertex AI Gemini** | performs the actual model generation |
+| **Cloud Storage** | optional staging area for large files or extracted content |
+| **Cloud Logging / Monitoring** | captures operational telemetry |
+| **Cloudflare** | continues to front the main web application |
+
+---
+
+## 10. Authentication and Security Model
+
+This is the most important operational part of the design.
+
+## 10.1 Current authentication model
+
+The current Genkit integration can authenticate with a `GEMINI_API_KEY`.
+
+### Good for
+
+- local development
+- prototypes
+- limited proof-of-concept deployments
+
+### Weaknesses
+
+- API-key centric
+- less granular IAM
+- harder to isolate per-environment
+- less clean for enterprise production controls
+
+## 10.2 Recommended production authentication model
+
+Use **Vertex AI with Google Cloud service account authentication**.
+
+### Why
+
+- stronger IAM model
+- cleaner auditability
+- better service isolation
+- no need to expose or juggle Gemini API keys in multiple runtimes
+- aligns with managed Google Cloud deployment patterns
+
+## 10.3 Recommended trust boundary
+
+| Component | Trust level |
+|---|---|
+| browser | untrusted |
+| admin UI | partially trusted but still client-side |
+| app backend | trusted application boundary |
+| AI gateway on Cloud Run | trusted AI execution boundary |
+| Vertex AI | trusted managed provider |
+| Firestore saved result | application source of truth after review |
+
+## 10.4 IAM design
+
+Create dedicated service accounts:
+
+| Service Account | Purpose |
+|---|---|
+| `rbp-ai-gateway@...` | Cloud Run service identity for Vertex AI calls |
+| `rbp-ai-jobs@...` | optional background or queue workers |
+| `rbp-observability@...` | optional logging/metrics exporters if separated |
+
+### Minimum IAM roles for AI gateway
+
+| Role | Why |
+|---|---|
+| Vertex AI User | invoke Gemini models |
+| Secret Manager Secret Accessor | read runtime secrets if needed |
+| Log Writer | write structured logs |
+| Storage Object Viewer | if reading staged files from Cloud Storage |
+
+### Important rule
+
+Use the minimum required roles. Do not give the AI service broad editor or owner access because someone was in a hurry.
+
+---
+
+## 11. Secret Management
+
+Secrets should never live in the browser and should not be loosely scattered across different deployment systems.
+
+## 11.1 Secrets likely needed
+
+| Secret | Purpose |
+|---|---|
+| `GEMINI_API_KEY` | only if you keep a fallback API-key path |
+| prompt-version tokens or internal config secrets | if used in advanced workflows |
+| storage signing keys or related service secrets | only if required by future file flows |
+
+## 11.2 Recommended practice
+
+Store secrets in **Secret Manager** and mount or inject them into the Cloud Run service.
+
+### Why
+
+- central rotation point
+- cleaner access control
+- environment separation
+- safer than pasting secrets into app settings and praying no one screenshots them
+
+## 11.3 App-side recommendation
+
+If the main web app remains on Cloudflare, it should hold as few Google AI secrets as possible.
+
+The preferred model is:
+
+- Cloudflare-hosted app sends an authenticated request to the AI gateway
+- AI gateway accesses Vertex AI using its Google Cloud service account
+- sensitive Google AI credentials remain inside Google Cloud
+
+---
+
+## 12. Project and Environment Structure
+
+Create separate Google Cloud projects for each environment.
+
+| Environment | Recommended project |
+|---|---|
+| local / dev | `rbp-ai-dev` |
+| staging | `rbp-ai-staging` |
+| production | `rbp-ai-prod` |
+
+### Why separate projects
+
+- cleaner quota separation
+- cleaner IAM separation
+- easier audit and billing visibility
+- safer experimentation
+
+### APIs to enable
+
+At minimum:
+
+- Vertex AI API
+- Cloud Run Admin API
+- Artifact Registry API
+- Secret Manager API
+- Cloud Logging API
+- Cloud Monitoring API
+- Cloud Build API if using Google-native deploy pipelines
+- Cloud Storage API if staging large files
+
+---
+
+## 13. Model Strategy
+
+The current code uses `gemini-2.5-flash`, which is sensible for short document descriptions.
+
+### Recommended model roles
+
+| Model role | Recommended class |
+|---|---|
+| document descriptions | Gemini Flash |
+| metadata generation | Gemini Flash |
+| classification | Gemini Flash |
+| richer summaries or complex synthesis | Gemini Pro or higher-capability model if needed |
+
+### Important rule
+
+Do not hardcode the model permanently in source code for all environments.
+
+Instead, use environment-based configuration such as:
+
+- `AI_DESCRIPTION_MODEL`
+- `AI_SUMMARY_MODEL`
+- `AI_METADATA_MODEL`
+
+### Why
+
+- easier rollback
+- easier environment-specific tuning
+- easier cost control
+- cleaner experimentation
+
+---
+
+## 14. Recommended Application Changes
+
+The current app works, but it needs more structure around the AI layer.
+
+## 14.1 Replace hardcoded model configuration
+
+Move model selection from source code into configuration.
+
+### Current pattern
+
+`src/ai/genkit.ts` uses a hardcoded default model.
+
+### Recommended target
+
+Read the model from environment configuration and support separate model assignments per task.
+
+## 14.2 Add feature flags
+
+Recommended flags:
+
+- `AI_GENERATION_ENABLED`
+- `AI_DOCUMENT_DESCRIPTION_ENABLED`
+- `AI_DOCUMENT_SUMMARY_ENABLED`
+- `AI_METADATA_SUGGESTION_ENABLED`
+- `AI_CLASSIFICATION_ENABLED`
+
+### Why
+
+If Gemini or Vertex AI has issues, the rest of the application should continue operating with manual admin input.
+
+## 14.3 Add an AI orchestration service layer
+
+Create a dedicated application service such as:
+
+- `src/lib/ai-service.ts`
+- `src/lib/ai-document-input.ts`
+- `src/lib/ai-logging.ts`
+
+### Responsibilities
+
+- validate inputs
+- normalize documents
+- call AI gateway or Genkit flow
+- return typed responses
+- log usage
+- apply feature flags
+
+## 14.4 Add AI request persistence
+
+Before generation, create a Firestore record such as `ai_generation_jobs`.
+
+### Why
+
+- better traceability
+- operational debugging
+- future async processing support
+
+---
+
+## 15. File and Document Handling Design
+
+The current implementation uses a **data URI** to send a file directly into the flow. This is acceptable for smaller files, but not for a scalable production document pipeline.
+
+## 15.1 Recommended input tiers
+
+### Tier 1: small-file inline processing
+
+Use for:
+
+- PDFs under a controlled size limit
+- text files
+- small documents uploaded in the admin UI
+
+### Tier 2: staged processing using Cloud Storage
+
+Use for:
+
+- larger PDFs
+- future support for DOCX conversion or preprocessing
+- asynchronous or multi-step enrichment workflows
+
+## 15.2 Recommended file rules
+
+Validate:
+
+- MIME type
+- file size
+- page count or extracted text length
+- allowed document categories
+- whether the file needs preprocessing before AI submission
+
+## 15.3 Recommended preprocessing layer
+
+Create a dedicated preprocessing module that:
+
+- inspects the file
+- enforces limits
+- extracts or transforms content if needed
+- prepares the exact payload the model should receive
+- records input metadata for logging
+
+### Why
+
+You do not want every form inventing its own file-to-model logic. That leads to a museum of edge cases.
+
+---
+
+## 16. Firestore Collections Involved
+
+The Google Cloud AI integration should update or interact with the following data structures.
+
+## 16.1 Existing core document records
+
+Likely existing application document records should store:
+
+| Field | Purpose |
+|---|---|
+| `description` | current saved description |
+| `summary` | richer summary if supported |
+| `seoDescription` | metadata derived or edited |
+| `tags` | generated or manually adjusted |
+| `updatedAt` | latest update time |
+
+## 16.2 Recommended AI metadata fields on documents
+
+| Field | Purpose |
+|---|---|
+| `descriptionSource` | `manual` or `ai_generated` |
+| `descriptionModel` | model used |
+| `descriptionGeneratedAt` | timestamp |
+| `descriptionReviewed` | admin reviewed flag |
+| `descriptionPromptVersion` | track prompt version |
+
+## 16.3 Recommended new collection: `ai_generation_jobs`
+
+| Field | Purpose |
+|---|---|
+| `feature` | document description, summary, metadata, etc. |
+| `documentId` | related document |
+| `requestedBy` | admin user ID |
+| `status` | pending, running, succeeded, failed |
+| `model` | model used |
+| `provider` | `vertex_ai` or fallback mode |
+| `inputMimeType` | file diagnostics |
+| `inputSizeBytes` | performance/cost visibility |
+| `latencyMs` | operational visibility |
+| `errorCode` | failure category |
+| `createdAt` | request timestamp |
+| `completedAt` | completion timestamp |
+
+## 16.4 Recommended new collection: `ai_generation_logs`
+
+Use for immutable operational logging if separate from jobs.
+
+---
+
+## 17. AI Gateway Design on Cloud Run
+
+If you adopt the recommended production architecture, the AI gateway becomes the main Google Cloud integration boundary.
+
+## 17.1 Role of the gateway
+
+The gateway should:
+
+- accept authenticated requests from the application backend
+- validate the AI feature and payload
+- invoke Vertex AI Gemini
+- enforce model selection and limits
+- write structured logs
+- return normalized results
+
+## 17.2 What it should not do
+
+The gateway should not:
+
+- publish documents directly
+- decide entitlements
+- own user role resolution independently of the app
+- become a second application backend for unrelated business logic
+
+## 17.3 Recommended endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /generate-description` | create a short description |
+| `POST /generate-summary` | create summary text |
+| `POST /suggest-metadata` | return title, tags, SEO suggestions |
+| `GET /health` | runtime health |
+| `GET /version` | deployment and prompt version visibility |
+
+## 17.4 Request authentication
+
+Requests from the app to the gateway should be authenticated.
+
+### Recommended choices
+
+- signed service-to-service token
+- shared internal secret plus IP/network controls for first phase
+- eventually stronger service identity if the app-side hosting model supports it cleanly
+
+---
+
+## 18. Vertex AI Invocation Strategy
+
+The recommended production inference layer is **Vertex AI Gemini**.
+
+## 18.1 Why Vertex AI instead of only AI Studio API keys
+
+- better fit for Google Cloud-managed production environments
+- Google Cloud IAM and service account authentication
+- cleaner observability and governance
+- easier enterprise expansion later
+
+## 18.2 Invocation pattern
+
+The AI gateway should:
+
+1. authenticate using its service account
+2. choose the model based on environment and task
+3. send the prompt plus document content
+4. enforce generation parameters
+5. return a normalized response object
+
+## 18.3 Recommended generation controls
+
+For document-description workflows:
+
+- low temperature
+- one candidate
+- short output constraint
+- plain text or typed JSON response where applicable
+
+### Why
+
+This is not a creative-writing contest. The task is to produce reliable metadata.
+
+---
+
+## 19. Prompt and Output Design
+
+Prompt discipline matters because the output must fit the application, not just sound plausible.
+
+## 19.1 Prompt layering
+
+Use a structured prompt model:
+
+| Layer | Responsibility |
+|---|---|
+| system instruction | global AI behavior and constraints |
+| task instruction | description vs summary vs metadata generation |
+| document context | title, suite, type, audience |
+| media/content input | document or extracted text |
+
+## 19.2 Recommended description prompt behavior
+
+The prompt should instruct the model to:
+
+- write 1 to 3 sentences
+- be concise and concrete
+- describe purpose and likely audience
+- avoid filler
+- avoid markdown or bullets
+- avoid inventing details not supported by the document
+
+## 19.3 Structured outputs where possible
+
+For metadata generation, prefer structured JSON output such as:
+
+- `title`
+- `summary`
+- `tags`
+- `seoTitle`
+- `seoDescription`
+
+That makes the result much easier to validate and store.
+
+---
+
+## 20. Admin Workflow Integration
+
+The Google Cloud AI subsystem should fit into the admin document workflow, not operate as a detached lab experiment.
+
+## 20.1 Current workflow
+
+1. admin opens document form
+2. admin uploads file
+3. admin clicks generate description
+4. result is inserted into the description field
+
+## 20.2 Recommended future workflow
+
+1. admin uploads or links a document
+2. app validates file
+3. app creates `ai_generation_jobs` record
+4. app sends request to AI gateway
+5. gateway invokes Vertex AI
+6. result returns to the app
+7. app updates job status and displays output
+8. admin can accept, edit, or regenerate
+9. final approved value is written to the document record
+
+## 20.3 UI states to support
+
+- idle
+- validating
+- generating
+- success
+- failed
+- regenerated
+- manually overridden
+
+---
+
+## 21. Logging, Monitoring, and Observability
+
+You will want visibility into what the AI layer is doing before it becomes a mystery tax.
+
+## 21.1 Structured logs to capture
+
+| Field | Purpose |
+|---|---|
+| `feature` | document description, metadata, summary |
+| `documentId` | related entity |
+| `requestedBy` | admin identity |
+| `status` | success/failure |
+| `model` | model used |
+| `latencyMs` | performance |
+| `inputMimeType` | diagnostics |
+| `inputSizeBytes` | diagnostics and cost awareness |
+| `errorCode` | failure analysis |
+| `environment` | dev/staging/prod |
+
+## 21.2 Monitoring metrics to track
+
+- success rate
+- failure rate
+- median latency
+- p95 latency
+- requests by feature
+- requests by environment
+- manual override rate
+- regenerate rate
+
+## 21.3 Why this matters
+
+If admins regenerate everything or rewrite all outputs, the issue is likely your prompt, preprocessing, or model choice. The logs should make that obvious instead of forcing everyone into ritual guesswork.
+
+---
+
+## 22. Error Handling and Fallback Design
+
+The AI layer must fail in a controlled way.
+
+## 22.1 Likely failure modes
+
+| Failure mode | Required handling |
+|---|---|
+| invalid input | return validation error immediately |
+| unsupported MIME type | reject cleanly |
+| oversize file | reject or route to staged processing |
+| model timeout | return retry-safe failure |
+| Vertex AI auth error | log and surface operational alert |
+| quota issue | log and provide fallback/manual option |
+| empty model response | treat as failure, not success |
+| gateway unavailable | manual admin entry remains available |
+
+## 22.2 Fallback rule
+
+If AI generation fails, the document workflow must remain usable.
+
+That means:
+
+- the admin form stays editable
+- manual entry remains available
+- the failed request is logged
+- repeated failures trigger operational review
+
+---
+
+## 23. Deployment Model
+
+## 23.1 Application hosting assumption
+
+The main web application can remain where it is today, with Cloudflare continuing to handle edge, routing, and site delivery.
+
+## 23.2 Google Cloud deployment responsibility
+
+Google Cloud should host the AI subsystem only:
+
+- Cloud Run AI gateway
+- Secret Manager secrets
+- Vertex AI access
+- Cloud Logging / Monitoring
+- optional Cloud Storage staging
+
+## 23.3 Deployment sequence
+
+1. create Google Cloud project
+2. enable required APIs
+3. create service accounts
+4. deploy AI gateway to Cloud Run
+5. connect secrets from Secret Manager
+6. grant Vertex AI permissions
+7. configure environment variables
+8. update the web app to call the AI gateway
+9. test end to end in staging
+10. promote to production
+
+---
+
+## 24. Environment Variables and Config
+
+## 24.1 Current-style application variables
+
+These are appropriate if the app continues to call Genkit directly in a lightweight mode:
+
+- `GEMINI_API_KEY`
+- `AI_DESCRIPTION_MODEL`
+- `AI_GENERATION_ENABLED`
+- `AI_DOCUMENT_DESCRIPTION_ENABLED`
+
+## 24.2 Recommended production application variables
+
+If the main app calls an AI gateway instead of Vertex directly, use:
+
+- `AI_GATEWAY_URL`
+- `AI_GATEWAY_SHARED_SECRET` or equivalent request-auth mechanism
+- `AI_GENERATION_ENABLED`
+- `AI_DOCUMENT_DESCRIPTION_ENABLED`
+- `AI_DOCUMENT_SUMMARY_ENABLED`
+- `AI_METADATA_SUGGESTION_ENABLED`
+
+## 24.3 Recommended AI gateway variables
+
+- `GOOGLE_CLOUD_PROJECT`
+- `GOOGLE_CLOUD_LOCATION`
+- `AI_DESCRIPTION_MODEL`
+- `AI_SUMMARY_MODEL`
+- `AI_METADATA_MODEL`
+- `PROMPT_VERSION`
+- `LOG_LEVEL`
+
+### Configuration rule
+
+Configuration belongs in environment management and secret stores, not embedded in source files where it quietly fossilizes.
+
+---
+
+## 25. Recommended Implementation Phases
+
+## Phase 1: stabilize current Gemini feature
+
+1. move model config into environment variables
+2. add feature flags
+3. add stronger input validation
+4. add AI job logging in Firestore
+5. add structured error codes
+
+## Phase 2: introduce Google Cloud production boundary
+
+6. create Google Cloud projects
+7. enable Vertex AI, Cloud Run, Secret Manager, Logging
+8. build AI gateway service on Cloud Run
+9. wire service account authentication
+10. move model invocation to Vertex AI
+
+## Phase 3: harden document processing
+
+11. add preprocessing layer
+12. define file limits and MIME handling
+13. add optional Cloud Storage staging for larger files
+14. add richer metadata generation paths
+
+## Phase 4: operations and observability
+
+15. add dashboards and alerts
+16. track manual override rate
+17. add prompt version management
+18. add environment-level rollout controls
+
+## Phase 5: expand AI features
+
+19. summaries
+20. metadata suggestions
+21. classification
+22. future retrieval and evaluation workflows
+
+---
+
+## 26. Testing Strategy
+
+## 26.1 Functional tests
+
+- generate description from valid PDF
+- generate description from valid text file
+- reject unsupported file type
+- reject oversize file
+- save reviewed output successfully
+
+## 26.2 Integration tests
+
+- app backend can authenticate to AI gateway
+- gateway can authenticate to Vertex AI
+- successful response is logged and persisted
+- failed response returns stable error format
+
+## 26.3 Security tests
+
+- no client-side model credentials exposed
+- unauthorized users cannot trigger admin-only AI endpoints
+- secrets are only available to approved service identities
+
+## 26.4 UAT tests
+
+- admin finds outputs useful without constant rewriting
+- regenerated descriptions remain consistent
+- model behavior aligns with suite/document expectations
+
+---
+
+## 27. Go-Live Checklist
+
+| Item | Required |
+|---|---|
+| Google Cloud project created for environment | yes |
+| Vertex AI API enabled | yes |
+| Cloud Run AI gateway deployed | recommended for production |
+| service account permissions configured | yes |
+| Secret Manager configured | yes |
+| model config moved to environment variables | yes |
+| admin-only access enforced | yes |
+| logging and monitoring configured | yes |
+| Firestore AI job logging enabled | yes |
+| failure fallback tested | yes |
+| staging end-to-end validation completed | yes |
+
+---
+
+## 28. Final Operating Model
+
+When implemented properly, the Google Cloud integration should operate like this:
+
+- the **web application** owns the document workflow and admin review experience
+- **Firebase / Firestore** remain the platform’s source of truth for document metadata and generation records
+- **Google Cloud** hosts the AI execution boundary
+- **Vertex AI Gemini** performs the actual inference work
+- **Cloud Run** isolates the AI logic from the main app runtime
+- **Secret Manager** protects credentials and configuration
+- **IAM** controls what can call what
+- **Cloud Logging and Monitoring** provide operational visibility
+- **Cloud Storage** can support larger or staged file workflows when needed
+
+That is the intended production model.
+
+The current app already proves the feature concept. Google Cloud is what turns that concept into a controlled, supportable, production-grade subsystem instead of a clever button with trust issues.
+
+

@@ -18,7 +18,15 @@ export const metadata = buildSeoMetadata({ title: 'DocuShare', description: 'Bro
 export const revalidate = 300;
 
 export default async function DocuShareLandingPage() {
-  const [content, allSuites] = await Promise.all([getDocuShareSectionContent('landing'), getDocumentSuites()]);
+  let content: Awaited<ReturnType<typeof getDocuShareSectionContent>> = null;
+  let allSuites: Awaited<ReturnType<typeof getDocumentSuites>> = [];
+
+  try {
+    [content, allSuites] = await Promise.all([getDocuShareSectionContent('landing'), getDocumentSuites()]);
+  } catch (error) {
+    console.error('Failed to load DocuShare landing content', error);
+  }
+
   const suites = filterPublishedDocushareSuites(allSuites);
   const countByType = (type: string) => suites.filter((suite) => suite.contentType === type).length;
   const categories = content?.sections?.[0]?.items?.length ? content.sections[0].items : fallbackCategories;

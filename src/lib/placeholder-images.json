@@ -1,264 +1,264 @@
 {
   "hero": {
-    "src": "https://picsum.photos/seed/hero/1200/800",
+    "src": "/optimized-images/hero.webp",
     "width": 1200,
     "height": 800,
     "hint": "business documents"
   },
   "testimonial1": {
-    "src": "https://picsum.photos/seed/t1/100/100",
+    "src": "/optimized-images/testimonial1.webp",
     "width": 100,
     "height": 100,
     "hint": "person smiling"
   },
   "testimonial2": {
-    "src": "https://picsum.photos/seed/t2/100/100",
+    "src": "/optimized-images/testimonial2.webp",
     "width": 100,
     "height": 100,
     "hint": "business person"
   },
   "testimonial3": {
-    "src": "https://picsum.photos/seed/t3/100/100",
+    "src": "/optimized-images/testimonial3.webp",
     "width": 100,
     "height": 100,
     "hint": "entrepreneur portrait"
   },
   "homeHero": {
-    "src": "https://picsum.photos/seed/homehero/1200/600",
+    "src": "/optimized-images/homeHero.webp",
     "width": 1200,
     "height": 600,
     "hint": "business meeting"
   },
   "servicesHero": {
-    "src": "https://picsum.photos/seed/serviceshero/1200/400",
+    "src": "/optimized-images/servicesHero.webp",
     "width": 1200,
     "height": 400,
     "hint": "strategy planning"
   },
   "projectsHero": {
-    "src": "https://picsum.photos/seed/projectshero/1200/400",
+    "src": "/optimized-images/projectsHero.webp",
     "width": 1200,
     "height": 400,
     "hint": "project management"
   },
   "offersHero": {
-    "src": "https://picsum.photos/seed/offershero/1200/400",
+    "src": "/optimized-images/offersHero.webp",
     "width": 1200,
     "height": 400,
     "hint": "business partnership"
   },
   "contactHero": {
-    "src": "https://picsum.photos/seed/contacthero/1200/400",
+    "src": "/optimized-images/contactHero.webp",
     "width": 1200,
     "height": 400,
     "hint": "contact support"
   },
   "knowledgeCenterHero": {
-    "src": "https://picsum.photos/seed/kchero/1200/400",
+    "src": "/optimized-images/knowledgeCenterHero.webp",
     "width": 1200,
     "height": 400,
     "hint": "library books"
   },
   "articleImage1": {
-    "src": "https://picsum.photos/seed/a1/600/400",
+    "src": "/optimized-images/articleImage1.webp",
     "width": 600,
     "height": 400,
     "hint": "business strategy"
   },
   "articleImage2": {
-    "src": "https://picsum.photos/seed/a2/600/400",
+    "src": "/optimized-images/articleImage2.webp",
     "width": 600,
     "height": 400,
     "hint": "financial growth"
   },
   "articleImage3": {
-    "src": "https://picsum.photos/seed/a3/600/400",
+    "src": "/optimized-images/articleImage3.webp",
     "width": 600,
     "height": 400,
     "hint": "team collaboration"
   },
   "partnerLogo1": {
-    "src": "https://picsum.photos/seed/pl1/200/100",
+    "src": "/optimized-images/partnerLogo1.webp",
     "width": 200,
     "height": 100,
     "hint": "company logo"
   },
   "partnerLogo2": {
-    "src": "https://picsum.photos/seed/pl2/200/100",
+    "src": "/optimized-images/partnerLogo2.webp",
     "width": 200,
     "height": 100,
     "hint": "company logo"
   },
   "partnerLogo3": {
-    "src": "https://picsum.photos/seed/pl3/200/100",
+    "src": "/optimized-images/partnerLogo3.webp",
     "width": 200,
     "height": 100,
     "hint": "company logo"
   },
   "partnerLogo4": {
-    "src": "https://picsum.photos/seed/pl4/200/100",
+    "src": "/optimized-images/partnerLogo4.webp",
     "width": 200,
     "height": 100,
     "hint": "company logo"
   },
   "partnerLogo5": {
-    "src": "https://picsum.photos/seed/pl5/200/100",
+    "src": "/optimized-images/partnerLogo5.webp",
     "width": 200,
     "height": 100,
     "hint": "company logo"
   },
   "partnerLogo6": {
-    "src": "https://picsum.photos/seed/pl6/200/100",
+    "src": "/optimized-images/partnerLogo6.webp",
     "width": 200,
     "height": 100,
     "hint": "company logo"
   },
   "projectImage1": {
-    "src": "https://picsum.photos/seed/pi1/600/400",
+    "src": "/optimized-images/projectImage1.webp",
     "width": 600,
     "height": 400,
     "hint": "project outcome"
   },
   "projectImage2": {
-    "src": "https://picsum.photos/seed/pi2/600/400",
+    "src": "/optimized-images/projectImage2.webp",
     "width": 600,
     "height": 400,
     "hint": "team working"
   },
   "projectImage3": {
-    "src": "https://picsum.photos/seed/pi3/600/400",
+    "src": "/optimized-images/projectImage3.webp",
     "width": 600,
     "height": 400,
     "hint": "data analytics"
   },
   "operationsHero": {
-    "src": "https://picsum.photos/seed/ophero/1200/600",
+    "src": "/optimized-images/operationsHero.webp",
     "width": 1200,
     "height": 600,
     "hint": "operations process"
   },
   "financialHero": {
-    "src": "https://picsum.photos/seed/finhero/1200/600",
+    "src": "/optimized-images/financialHero.webp",
     "width": 1200,
     "height": 600,
     "hint": "financial chart"
   },
   "salesMarketingHero": {
-    "src": "https://picsum.photos/seed/smhero/1200/600",
+    "src": "/optimized-images/salesMarketingHero.webp",
     "width": 1200,
     "height": 600,
     "hint": "marketing campaign"
   },
   "hrHero": {
-    "src": "https://picsum.photos/seed/hrhero/1200/600",
+    "src": "/optimized-images/hrHero.webp",
     "width": 1200,
     "height": 600,
     "hint": "team meeting"
   },
   "managementHero": {
-    "src": "https://picsum.photos/seed/mnghero/1200/600",
+    "src": "/optimized-images/managementHero.webp",
     "width": 1200,
     "height": 600,
     "hint": "leadership"
   },
   "changeManagementHero": {
-    "src": "https://picsum.photos/seed/cmhero/1200/600",
+    "src": "/optimized-images/changeManagementHero.webp",
     "width": 1200,
     "height": 600,
     "hint": "organizational change"
   },
   "aiHero": {
-    "src": "https://picsum.photos/seed/aihero/1200/600",
+    "src": "/optimized-images/aiHero.webp",
     "width": 1200,
     "height": 600,
     "hint": "artificial intelligence"
   },
   "docushareTemplates": {
-    "src": "https://picsum.photos/seed/dstemp/600/400",
+    "src": "/optimized-images/docushareTemplates.webp",
     "width": 600,
     "height": 400,
     "hint": "legal document"
   },
   "docushareGuides": {
-    "src": "https://picsum.photos/seed/dsguide/600/400",
+    "src": "/optimized-images/docushareGuides.webp",
     "width": 600,
     "height": 400,
     "hint": "instruction manual"
   },
   "docushareSuites": {
-    "src": "https://picsum.photos/seed/dssuite/600/400",
+    "src": "/optimized-images/docushareSuites.webp",
     "width": 600,
     "height": 400,
     "hint": "document bundle"
   },
   "docushareProcesses": {
-    "src": "https://picsum.photos/seed/dsproc/600/400",
+    "src": "/optimized-images/docushareProcesses.webp",
     "width": 600,
     "height": 400,
     "hint": "business workflow"
   },
   "docushareCustomisation": {
-    "src": "https://picsum.photos/seed/dscustom/600/400",
+    "src": "/optimized-images/docushareCustomisation.webp",
     "width": 600,
     "height": 400,
     "hint": "tailored solution"
   },
   "membershipHero": {
-    "src": "https://picsum.photos/seed/memhero/1200/400",
+    "src": "/optimized-images/membershipHero.webp",
     "width": 1200,
     "height": 400,
     "hint": "exclusive access"
   },
   "kcHero": {
-    "src": "https://picsum.photos/seed/kchero2/1200/400",
+    "src": "/optimized-images/kcHero.webp",
     "width": 1200,
     "height": 400,
     "hint": "knowledge sharing"
   },
   "basicMembership": {
-    "src": "https://picsum.photos/seed/basicmem/1200/600",
+    "src": "/optimized-images/basicMembership.webp",
     "width": 1200,
     "height": 600,
     "hint": "simple start"
   },
   "standardMembership": {
-    "src": "https://picsum.photos/seed/stdmem/1200/600",
+    "src": "/optimized-images/standardMembership.webp",
     "width": 1200,
     "height": 600,
     "hint": "business growth"
   },
   "premiumMembership": {
-    "src": "https://picsum.photos/seed/premmem/1200/600",
+    "src": "/optimized-images/premiumMembership.webp",
     "width": 1200,
     "height": 600,
     "hint": "premium service"
   },
   "faqHero": {
-    "src": "https://picsum.photos/seed/faqhero/1200/400",
+    "src": "/optimized-images/faqHero.webp",
     "width": 1200,
     "height": 400,
     "hint": "questions answers"
   },
   "articlesHero": {
-    "src": "https://picsum.photos/seed/artcleshero/600/400",
+    "src": "/optimized-images/articlesHero.webp",
     "width": 600,
     "height": 400,
     "hint": "reading blog"
   },
   "guidesHero": {
-    "src": "https://picsum.photos/seed/guideshero/600/400",
+    "src": "/optimized-images/guidesHero.webp",
     "width": 600,
     "height": 400,
     "hint": "step-by-step"
   },
   "toolsHero": {
-    "src": "https://picsum.photos/seed/toolshero/600/400",
+    "src": "/optimized-images/toolsHero.webp",
     "width": 600,
     "height": 400,
     "hint": "business tools"
   },
   "knowledgeBaseHero": {
-    "src": "https://picsum.photos/seed/kbhero/600/400",
+    "src": "/optimized-images/knowledgeBaseHero.webp",
     "width": 600,
     "height": 400,
     "hint": "search database"

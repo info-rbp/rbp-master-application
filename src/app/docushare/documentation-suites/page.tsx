@@ -3,6 +3,8 @@ import { PublicCatalogueCard } from '@/components/public/public-catalogue-card';
 import { getDocumentSuites, getDocuShareSectionContent } from '@/lib/data';
 import { filterPublishedDocushareSuites } from '@/lib/public-catalogue';
 
+export const revalidate = 300;
+
 export default async function DocuShareCategoryPage() {
   const [content, allSuites] = await Promise.all([
     getDocuShareSectionContent('documentation-suites'),

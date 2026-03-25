@@ -1,188 +1,132 @@
-import { getContentObjectPath, getDocushareSegment, toRenderableDocushareSuite, toRenderableKnowledgeArticle, toRenderablePartnerOffer, toRenderableServicePage, type ContentObjectType, type RenderableContentObject } from './content-objects';
-import type { MembershipTier } from './definitions';
-import { getActivePartnerOffers, getDocumentSuites, getKnowledgeArticles, getPublishedServicePages } from './data';
+import {
+  getDocumentSuites,
+  getPublishedDocuments,
+  getPublishedKnowledgeArticles,
+  getPublishedPartnerOffers,
+  getPublishedServicePages,
+  getPublishedSuites,
+} from './data';
+import {
+  getContentObjectPath,
+  toRenderableDocushareSuite,
+  toRenderableDocument,
+  toRenderableKnowledgeArticle,
+  toRenderablePartnerOffer,
+  toRenderableServicePage,
+  type RenderableContentObject,
+} from './content-objects';
+import { resolveRelatedContentCards } from './content-routing';
 
 export type DiscoveryItem = {
   id: string;
-  sourceType: RenderableContentObject['sourceCollection'];
-  sourceId: string;
-  contentType: ContentObjectType;
-  subtype?: string;
   title: string;
-  slug: string;
-  summary?: string;
+  description: string;
+  type: string;
+  contentType: string;
+  category?: string;
   tags: string[];
-  category?: string;
-  accessTier?: MembershipTier;
-  published: boolean;
-  thumbnailUrl?: string;
-  featured?: boolean;
   path: string;
-  keywords: string[];
-  createdAt?: string;
+  published: boolean;
+  featured?: boolean;
   updatedAt?: string;
-  relatedContent: RenderableContentObject['relatedContent'];
-  companionIds: string[];
+  accessTier?: string;
 };
 
-export type DiscoveryFilters = {
-  keyword?: string;
-  category?: string;
-  tag?: string;
-  contentType?: string;
-  tier?: MembershipTier | 'all';
+export type DiscoverySearchFilters = {
+  query?: string;
+  type?: string;
 };
 
-export function getDiscoveryPath(item: RenderableContentObject): string {
-  if (item.contentType.startsWith('docshare_') && item.contentType !== 'docshare_resource') {
-    const map: Record<ContentObjectType, string | undefined> = {
-      docshare_template: 'templates',
-      docshare_companion_guide: 'companion-guides',
-      docshare_documentation_suite: 'documentation-suites',
-      docshare_end_to_end_process: 'end-to-end-processes',
-      docshare_tool: 'tools',
-      docshare_resource: 'resources',
-      partner_offer: undefined,
-      knowledge_center_article: undefined,
-      knowledge_center_guide: undefined,
-      knowledge_center_tool: undefined,
-      knowledge_center_knowledge_base: undefined,
-      service_page: undefined,
-    };
-    return getContentObjectPath(item.contentType, item.slug, map[item.contentType] ?? getDocushareSegment('templates'));
-  }
-  return getContentObjectPath(item.contentType, item.slug);
-}
-
-function normalizeKeywords(item: RenderableContentObject) {
-  const keywords = [
-    item.title,
-    item.summary,
-    item.description,
-    item.category,
-    ...item.tags,
-    item.contentType.replaceAll('_', ' '),
-    item.templateFields?.relatedResourcesSummary,
-    item.templateFields?.relatedTemplatesSummary,
-  ]
-    .filter((x): x is string => Boolean(x))
-    .flatMap((value) => value.split(/[\s,/|]+/g))
-    .map((token) => token.trim().toLowerCase())
-    .filter(Boolean);
-
-  return [...new Set(keywords)];
-}
-
-function toDiscoveryItem(item: RenderableContentObject): DiscoveryItem {
-  const companionIds = Array.from(
-    new Set([
-      ...(item.relatedContent ?? []).map((entry) => entry.id),
-      ...((item.templateFields?.relatedTemplates as string[] | undefined) ?? []),
-      ...((item.templateFields?.relatedResources as string[] | undefined) ?? []),
-    ]),
-  );
-
+function toDiscoveryItem(content: RenderableContentObject): DiscoveryItem {
   return {
-    id: `${item.contentType}:${item.id}`,
-    sourceType: item.sourceCollection,
-    sourceId: item.sourceId,
-    contentType: item.contentType,
-    subtype: item.category,
-    title: item.title,
-    slug: item.slug,
-    summary: item.summary,
-    tags: item.tags,
-    category: item.category,
-    accessTier: item.accessBehavior?.accessTier,
-    published: item.status === 'published',
-    thumbnailUrl: item.heroImageUrl,
-    featured: item.featured,
-    path: getDiscoveryPath(item),
-    keywords: normalizeKeywords(item),
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-    relatedContent: item.relatedContent,
-    companionIds,
+    id: content.id,
+    title: content.title,
+    description: content.summary ?? content.description ?? '',
+    type: content.contentType,
+    contentType: content.contentType,
+    category: content.category,
+    tags: content.tags,
+    path: content.actionTarget?.startsWith('/')
+      ? content.actionTarget
+      : getContentObjectPath(content.contentType, content.slug, content.category),
+    published: content.status === 'published',
+    featured: content.featured,
+    updatedAt: content.updatedAt ?? content.publishedAt ?? content.createdAt,
+    accessTier: content.accessBehavior?.accessTier,
   };
 }
 
 export async function getPublicDiscoveryItems(): Promise<DiscoveryItem[]> {
-  const [suites, offers, knowledge, services] = await Promise.all([
+  const [suites, allSuites, documents, knowledgeArticles, partnerOffers, servicePages] = await Promise.all([
+    getPublishedSuites(),
     getDocumentSuites(),
-    getActivePartnerOffers(),
-    getKnowledgeArticles({ published: true }),
+    getPublishedDocuments(),
+    getPublishedKnowledgeArticles(),
+    getPublishedPartnerOffers(),
     getPublishedServicePages(),
   ]);
 
-  const rows = [
-    ...suites.filter((suite) => suite.status === 'published').map((suite) => toDiscoveryItem(toRenderableDocushareSuite(suite))),
-    ...offers.filter((offer) => offer.active).map((offer) => toDiscoveryItem(toRenderablePartnerOffer(offer))),
-    ...knowledge.filter((article) => article.published).map((article) => toDiscoveryItem(toRenderableKnowledgeArticle(article))),
-    ...services.filter((service) => service.published).map((service) => toDiscoveryItem(toRenderableServicePage(service))),
-  ];
+  const suiteById = new Map(allSuites.map((suite) => [suite.id, suite]));
 
-  return rows.sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
+  return [
+    ...suites.map((suite) => toDiscoveryItem(toRenderableDocushareSuite(suiteById.get(suite.id) ?? { ...suite, documents: [] }))),
+    ...documents.map((document) => toDiscoveryItem(toRenderableDocument(document))),
+    ...knowledgeArticles.map((article) => toDiscoveryItem(toRenderableKnowledgeArticle(article))),
+    ...partnerOffers.map((offer) => toDiscoveryItem(toRenderablePartnerOffer(offer))),
+    ...servicePages.map((service) => toDiscoveryItem(toRenderableServicePage(service))),
+  ];
 }
 
-export function applyDiscoveryFilters(items: DiscoveryItem[], filters: DiscoveryFilters): DiscoveryItem[] {
-  const keyword = filters.keyword?.trim().toLowerCase();
+export async function searchCatalogue(filters: DiscoverySearchFilters): Promise<DiscoveryItem[]> {
+  const items = await getPublicDiscoveryItems();
   return items.filter((item) => {
-    if (!item.published) return false;
-    if (filters.contentType && filters.contentType !== 'all' && item.contentType !== filters.contentType) return false;
-    if (filters.category && filters.category !== 'all' && (item.category ?? '').toLowerCase() !== filters.category.toLowerCase()) return false;
-    if (filters.tag && filters.tag !== 'all' && !item.tags.some((tag) => tag.toLowerCase() === filters.tag?.toLowerCase())) return false;
-    if (filters.tier && filters.tier !== 'all' && item.accessTier !== filters.tier) return false;
-    if (keyword) {
-      const haystack = `${item.title} ${item.summary ?? ''} ${item.category ?? ''} ${item.tags.join(' ')} ${item.keywords.join(' ')}`.toLowerCase();
-      if (!haystack.includes(keyword)) return false;
+    if (filters.query) {
+      const query = filters.query.toLowerCase();
+      const matches = item.title.toLowerCase().includes(query)
+        || item.description.toLowerCase().includes(query)
+        || item.tags.some((tag) => tag.toLowerCase().includes(query));
+      if (!matches) return false;
     }
+
+    if (filters.type && filters.type !== 'all' && item.type !== filters.type) {
+      return false;
+    }
+
     return true;
   });
 }
 
-export function getDiscoveryFilterOptions(items: DiscoveryItem[]) {
-  const categories = Array.from(new Set(items.map((item) => item.category).filter(Boolean) as string[])).sort();
-  const tags = Array.from(new Set(items.flatMap((item) => item.tags).filter(Boolean))).sort();
-  const contentTypes = Array.from(new Set(items.map((item) => item.contentType))).sort();
-  const tiers = Array.from(new Set(items.map((item) => item.accessTier).filter(Boolean) as MembershipTier[])).sort();
+export async function getRelatedResourcesForContent(content: RenderableContentObject, limit = 6) {
+  const relatedCards = await resolveRelatedContentCards(content);
+  const discoveryItems = await getPublicDiscoveryItems();
+  const discoveryById = new Map(discoveryItems.map((item) => [item.id, item]));
 
-  return { categories, tags, contentTypes, tiers };
-}
+  const explicitRelated = relatedCards.map((item) => {
+    const match = discoveryById.get(item.id);
+    return {
+      id: item.id,
+      title: item.title,
+      path: item.path ?? match?.path ?? '#',
+      contentType: item.contentType,
+      category: match?.category,
+      accessTier: match?.accessTier,
+    };
+  }).filter((item) => item.path !== '#');
 
-export function resolveRelatedDiscoveryItems(current: DiscoveryItem, items: DiscoveryItem[], limit = 6): DiscoveryItem[] {
-  const candidates = items.filter((item) => item.id !== current.id && item.published);
+  if (explicitRelated.length > 0) {
+    return explicitRelated.slice(0, limit);
+  }
 
-  const explicitIds = new Set(current.relatedContent.map((item) => `${item.contentType}:${item.id}`));
-  const companionIds = new Set(current.companionIds);
-
-  const scored = candidates
-    .map((candidate) => {
-      let score = 0;
-      if (explicitIds.has(candidate.id) || explicitIds.has(`${candidate.contentType}:${candidate.sourceId}`)) score += 100;
-      if (companionIds.has(candidate.sourceId) || companionIds.has(candidate.id)) score += 60;
-      if (current.category && candidate.category && current.category.toLowerCase() === candidate.category.toLowerCase()) score += 20;
-      const sharedTags = candidate.tags.filter((tag) => current.tags.map((t) => t.toLowerCase()).includes(tag.toLowerCase())).length;
-      score += sharedTags * 10;
-      if (current.contentType === candidate.contentType) score += 5;
-      const docToGuideJourney = current.contentType === 'docshare_template' && candidate.contentType === 'docshare_companion_guide';
-      const guideToTemplateJourney = current.contentType === 'docshare_companion_guide' && (candidate.contentType === 'docshare_template' || candidate.contentType === 'docshare_tool');
-      const serviceToKnowledgeJourney = current.contentType === 'service_page' && candidate.contentType.startsWith('knowledge_center');
-      if (docToGuideJourney || guideToTemplateJourney || serviceToKnowledgeJourney) score += 25;
-      return { candidate, score };
-    })
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)
+  return discoveryItems
+    .filter((item) => item.id !== content.id)
+    .filter((item) => !content.category || item.category === content.category || item.contentType === content.contentType)
     .slice(0, limit)
-    .map((entry) => entry.candidate);
-
-  return scored;
-}
-
-
-export async function getRelatedResourcesForContent(content: RenderableContentObject, limit = 6): Promise<DiscoveryItem[]> {
-  const items = await getPublicDiscoveryItems();
-  const current = items.find((item) => item.sourceId === content.sourceId && item.contentType === content.contentType)
-    ?? items.find((item) => item.slug === content.slug && item.contentType === content.contentType);
-  if (!current) return [];
-  return resolveRelatedDiscoveryItems(current, items, limit);
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      path: item.path,
+      contentType: item.contentType,
+      category: item.category,
+      accessTier: item.accessTier,
+    }));
 }

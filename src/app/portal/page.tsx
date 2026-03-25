@@ -3,22 +3,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireMemberAuth } from './_lib/member-auth';
 import { countMemberRequestsThisMonth, getMemberOverview, listDiscoveryCalls, listRecentActivity, listSavedItems, listSupportRequests } from '@/lib/member-dashboard';
 import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
+import { OnboardingChecklist } from '@/components/portal/onboarding-checklist';
+import { getUserBadges } from '@/lib/gamification/badges';
 
 export default async function PortalOverviewPage() {
   const auth = await requireMemberAuth();
-  const [overview, support, calls, saved, recent, customisationCount] = await Promise.all([
+  const [overview, support, calls, saved, recent, customisationCount, userBadges] = await Promise.all([
     getMemberOverview(auth.userId),
     listSupportRequests(auth.userId),
     listDiscoveryCalls(auth.userId),
     listSavedItems(auth.userId),
     listRecentActivity(auth.userId),
     countMemberRequestsThisMonth(auth.userId),
+    getUserBadges(auth.userId),
   ]);
 
   await safeLogAnalyticsEvent({ eventType: 'member_dashboard_viewed', userId: auth.userId, userRole: 'member' });
 
+  const hasCompletedOnboarding = userBadges.some((badge) => badge.id === 'onboarding_complete');
+
   return (
     <div className="space-y-4">
+      {!hasCompletedOnboarding && <OnboardingChecklist userId={auth.userId} />}
+
       <Card>
         <CardHeader>
           <CardTitle>Account overview</CardTitle>

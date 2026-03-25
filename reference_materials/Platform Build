@@ -1,0 +1,1710 @@
+# New Platform Build
+## Comprehensive Technical Architecture Document
+
+## 1. Document purpose
+
+This document defines the target and current-state technical architecture for **New Platform Build** based on the repository structure, implementation patterns, supporting project documents, runtime configuration, and operational workflows already present in the codebase.
+
+It is intended to serve as the primary architecture reference for engineering, product, delivery, QA, operations, and future platform governance.
+
+This document is deliberately detailed. Humans do love building systems first and naming them accurately later.
+
+---
+
+## 2. Architecture statement
+
+**New Platform Build** is a **modular monolith digital platform** implemented with **Next.js 15 App Router** as the application shell and backend-for-frontend layer, **Firebase Authentication** as the identity provider, **Firestore** as the primary operational data store, **Square** as the subscription and billing integration, and a centralized **entitlement and protected-action model** controlling access to content, service workflows, and membership benefits.
+
+The platform supports three principal experience layers:
+
+1. **Public experience** for catalogue discovery and conversion
+2. **Member experience** for authenticated access and operational requests
+3. **Admin experience** for content, membership, promotions, services, and system operations
+
+The system is primarily **request-response driven**, with selective event-driven behavior for billing lifecycle synchronization, notifications, analytics, audit, and promotional access grants.
+
+---
+
+## 3. Architectural objectives
+
+The architecture must satisfy the following objectives:
+
+### 3.1 Business objectives
+- Support a public-facing digital catalogue of structured resources and services
+- Enable tiered membership access with clear differentiation across Basic, Standard, and Premium
+- Provide protected delivery of digital assets and member actions
+- Support service operations such as discovery calls, customisation requests, implementation support, and strategic checkups
+- Enable admin-led publishing, operational control, user oversight, and promotion management
+- Provide a scalable foundation for future partner offers, recommendations, advanced analytics, and operational automation
+
+### 3.2 Technical objectives
+- Maintain a fast and coherent web application architecture
+- Centralize security and access logic in server-validated layers
+- Preserve a single deployable codebase while enforcing domain boundaries internally
+- Reuse common content and discovery models across multiple user journeys
+- Support staged operational hardening for launch and post-launch maturity
+- Minimize unnecessary distributed-system complexity at the current stage
+
+### 3.3 Delivery objectives
+- Keep the architecture understandable to a small-to-medium engineering team
+- Reduce duplication between public, member, and admin features
+- Allow phased enhancement without large-scale rewrites
+- Provide clear ownership boundaries for future platform governance
+
+---
+
+## 4. Scope of the platform
+
+The platform, as represented in the repository, includes the following functional areas.
+
+### 4.1 Public platform scope
+- Homepage and public landing pages
+- DocuShare catalogue pages
+- Knowledge Center catalogue pages
+- Partner Offers catalogue pages
+- Services catalogue pages
+- Membership landing and conversion pages
+- Contact and general inquiry flows
+- Universal public search and discovery
+- SEO metadata, sitemap, robots, and public route optimization
+
+### 4.2 Member platform scope
+- Authenticated account and membership surfaces
+- Portal-based operational dashboard
+- Membership and subscription visibility
+- Saved items and recent activity
+- Submission of entitled service requests
+- Access to gated and protected resources
+- Membership-driven conversion and upgrade paths
+
+### 4.3 Admin platform scope
+- Admin login and access control
+- Content administration across multiple catalogue families
+- Membership administration and CRM-style member views
+- Services queue management
+- Promotion management and access grants
+- Notifications, audit logs, analytics visibility, and launch readiness checks
+- Roles, settings, operational links, and platform control surfaces
+
+### 4.4 Platform support scope
+- Firebase Authentication integration
+- Firestore security rules and data model enforcement
+- Square billing lifecycle handling
+- Analytics, notifications, audit, and alerting support
+- AI-assisted content metadata generation
+- Launch-readiness and operational preflight validation
+
+---
+
+## 5. Architectural style and rationale
+
+## 5.1 Chosen style: modular monolith
+
+The implemented solution is best described as a **modular monolith**.
+
+That means:
+- The platform deploys as a single application
+- The codebase is separated by internal domains and service modules
+- Shared concerns such as auth, entitlements, discovery, routing, analytics, and audit are centralized
+- Data is mostly persisted in one primary operational store, Firestore
+- Communication between domains happens in-process, not over network calls between services
+
+This is the correct architecture for the current problem space because the system’s core domains are tightly interdependent:
+- membership affects content access
+- billing affects membership status
+- promotions affect entitlements
+- content metadata affects discovery and public visibility
+- service workflows depend on membership tier and admin operations
+- analytics and audit span every domain
+
+Breaking this into microservices now would create more operational burden than architectural value.
+
+## 5.2 Why not microservices yet
+
+A microservice split would introduce:
+- cross-service identity propagation
+- duplicated entitlement logic
+- event consistency challenges
+- more difficult local development
+- operational complexity around deployments, observability, retries, and failure modes
+- multiple data ownership boundaries before the domain model is fully stable
+
+The current codebase does not yet show a need for independent deployability by domain. It shows a need for stronger internal contracts inside one application.
+
+## 5.3 Internal modularity expectations
+
+To keep the monolith healthy, the following architectural rules should apply:
+- Domain logic should live in `src/lib/*` and not be duplicated in page components
+- Access decisions must be made in server-side helpers and route handlers
+- Firestore access should flow through typed helper functions or domain services where possible
+- Public, member, and admin UIs should all use the same canonical domain logic
+- Content rendering and content access must remain separate concerns
+
+---
+
+## 6. High-level system context
+
+The platform interacts with three principal user classes and several platform services.
+
+### 6.1 User classes
+- **Visitors**: anonymous public users browsing public content and membership offerings
+- **Members**: authenticated users with tier-based access and operational capabilities
+- **Admins**: privileged platform operators managing users, content, workflows, promotions, and system readiness
+
+### 6.2 Core system components
+- Next.js application layer
+- Firebase Authentication
+- Firestore operational database
+- Square billing and webhook integration
+- Email and notification services
+- AI content generation through Genkit and Gemini
+
+### 6.3 System context view
+
+```text
+Users
+  - Visitors
+  - Members
+  - Admins
+      |
+      v
+Next.js Platform Application
+  - Public Site
+  - Member Portal
+  - Admin Console
+  - Route Handlers / Server Actions
+      |
+      +--> Firebase Auth
+      +--> Firestore
+      +--> Square APIs + Webhooks
+      +--> Email / Alerts / Notifications
+      +--> AI Metadata Generation
+```
+
+---
+
+## 7. Experience architecture
+
+The platform is organized into three interacting experience layers.
+
+## 7.1 Public experience layer
+
+The public layer serves as the discovery and conversion surface of the platform.
+
+### Responsibilities
+- Render public landing and catalogue pages
+- Allow users to browse available content and services
+- Present preview metadata and category context
+- Drive sign-in, sign-up, upgrade, and paid subscription conversion
+- Maintain SEO-friendly routes and metadata
+- Expose universal search and related-content journeys
+
+### Public routes reflected in the repo
+- `/`
+- `/docushare/*`
+- `/knowledge-center/*`
+- `/partner-offers/*`
+- `/services`
+- `/membership*`
+- `/search`
+- `/contact`
+
+### Design principle
+The public layer should expose content discoverability without necessarily granting protected access. Visibility and entitlement are intentionally decoupled.
+
+## 7.2 Member experience layer
+
+The member layer acts as an **operations hub**, not a private copy of the public catalogue.
+
+### Responsibilities
+- Display membership and billing information
+- Provide operational request submission surfaces
+- Show recent and saved items
+- Provide authenticated access context for protected actions
+- Surface promotions and temporary access grants
+
+### Member routes and flows
+- `/account`
+- `/portal`
+- `/dashboard` redirect behavior
+- member API routes under `/api/member/*`
+
+### Design principle
+The member area should not duplicate catalogue discovery. Discovery belongs to public catalogue surfaces. The member area should optimize for operations, state, benefits, and personalized access.
+
+## 7.3 Admin experience layer
+
+The admin layer is the operational control plane.
+
+### Responsibilities
+- Content publishing and editing
+- Member administration and access review
+- Billing oversight and subscription state visibility
+- Queue operations for service workflows
+- Promotions and temporary grants
+- Notifications, audit, analytics, and readiness checks
+
+### Admin navigation structure in the repo
+- Membership
+- Content
+- Services
+- Promotions
+- System
+
+### Design principle
+The admin layer should be server-verified, domain-grouped, and operationally oriented. It should not rely on client-side trust or UI hiding for security.
+
+---
+
+## 8. Domain architecture
+
+The architecture is most effectively understood through a domain decomposition.
+
+## 8.1 Content domain
+
+### Purpose
+Manage all publishable and renderable content used across the public site, member touchpoints, and related discovery journeys.
+
+### Primary entities
+- `site_pages`
+- `documentation_suites`
+- nested `documents`
+- `knowledge_articles`
+- `service_pages`
+- `partner_offers`
+- `faqs`
+- `testimonials`
+- `past_projects`
+
+### Responsibilities
+- Draft and published state handling
+- Slug management
+- Summary and metadata quality
+- SEO support
+- Hero and preview media support
+- Related content references
+- Access metadata alignment with entitlement controls
+- Page-capable admin editing flows
+
+### Architectural implementation
+The repo introduces shared renderable object patterns and content adapters through `src/lib/content-objects.ts`, with route conventions and normalized path generation.
+
+### Design rule
+The content domain is the **source of truth** for displayable resources. Discovery derives from it. Entitlement gates actions against it. Public pages render it.
+
+## 8.2 Discovery domain
+
+### Purpose
+Provide cross-content search, filtering, structured navigation, and related-resource resolution across multiple content families.
+
+### Core implementation
+`src/lib/discovery.ts`
+
+### Responsibilities
+- Normalize source content into a common `DiscoveryItem`
+- Build public catalogue search results
+- Support filter options derived from live content metadata
+- Resolve related resources through explicit references and heuristics
+- Support future recommendations without changing source models
+
+### Included source families
+- DocuShare suites
+- partner offers
+- knowledge articles
+- service pages
+
+### Design rule
+Discovery is **derived**, not authoritative. It must not become a second uncontrolled content store.
+
+## 8.3 Identity and access domain
+
+### Purpose
+Authenticate users, resolve server auth context, identify admin status, and support authorization checks across routes and services.
+
+### Primary implementation
+- Firebase Authentication
+- `src/lib/server-auth.ts`
+- auth session endpoint `/api/auth/session`
+- admin role anchor collection `roles_admin`
+
+### Responsibilities
+- ID token verification
+- cookie-based session continuity
+- admin vs member role resolution
+- request and server auth context helpers
+- admin route and API protection
+
+### Design rule
+Authentication is externalized to Firebase Auth. Authorization is resolved by server code plus Firestore rules. UI rendering is not security.
+
+## 8.4 Membership and entitlement domain
+
+### Purpose
+Resolve membership state, tier benefits, content access, quotas, and service eligibility.
+
+### Primary implementation
+- `src/lib/definitions.ts`
+- `src/lib/entitlements.ts`
+
+### Core concepts
+- tiers: `basic`, `standard`, `premium`
+- cycles: `free`, `monthly`, `annual`
+- plan codes separating tier identity from billing cycle identity
+- entitlement matrix as a central source of truth
+- effective tier calculation including temporary grants
+
+### Responsibilities
+- map plans to tiers and cycles
+- evaluate feature-level access
+- compute content access
+- apply active temporary grants without downgrading users
+- determine service allowances and discount percentages
+
+### Design rule
+Entitlement logic must be centralized and reused everywhere. Any component-level reimplementation is an architectural defect.
+
+## 8.5 Billing and lifecycle domain
+
+### Purpose
+Integrate with Square for subscription checkout, billing lifecycle events, payment status updates, and user subscription synchronization.
+
+### Primary implementation
+- `/api/square/create-subscription-checkout`
+- `/api/square/webhooks`
+- `src/lib/billing.ts`
+- `src/lib/membership-lifecycle.ts`
+- `src/lib/square.ts`
+
+### Responsibilities
+- checkout creation
+- Square event handling
+- signature verification
+- idempotent webhook event processing
+- synchronization of subscriptions, users, billing history, and membership history
+- alerting on payment failures
+- analytics and audit logging for billing events
+
+### Design rule
+External provider terminology should be normalized into stable internal lifecycle classes. Provider events are inputs, not business truth.
+
+## 8.6 Protected delivery and paywall domain
+
+### Purpose
+Control access to gated assets and member actions through server-side evaluation and protected delivery endpoints.
+
+### Primary implementation
+- `src/lib/protected-actions.ts`
+- `/api/protected-actions/evaluate`
+- `/api/protected-actions/deliver`
+
+### Responsibilities
+- evaluate whether an action is allowed, denied, or requires login/membership/upgrade
+- sanitize and preserve return paths across auth flows
+- prevent direct trusted links to protected assets from public UI
+- re-check authorization immediately before resource delivery
+
+### Design rule
+Public content visibility and protected resource access must remain separate. Catalogue visibility is not equivalent to download permission.
+
+## 8.7 Service operations domain
+
+### Purpose
+Handle member-submitted operational workflows and admin-managed delivery queues.
+
+### Primary implementation
+- `src/lib/service-workflows.ts`
+- member APIs under `/api/member/*`
+- admin pages under `/admin/services/*`
+
+### Workflow families
+- `customisation`
+- `implementation_support`
+- `discovery_call`
+- `strategic_checkup`
+
+### Responsibilities
+- validate tier eligibility and quotas
+- create workflow records
+- support queue status and priority updates
+- support admin assignment and notes
+- surface member-visible updates
+- record analytics and audit trail
+
+### Design rule
+Service operations are first-class business workflows and should be treated as such. They are not contact-form afterthoughts wearing a fake moustache.
+
+## 8.8 Promotions and temporary grants domain
+
+### Purpose
+Support promotional access windows, service-purchase-based grants, and future campaign constructs.
+
+### Primary implementation
+- `membership_access_grants`
+- `promotions`
+- `admin_promotions`
+- `src/lib/promotions.ts`
+- promotion support in lifecycle and admin operations
+
+### Responsibilities
+- create temporary access grants
+- prevent duplicate grant issuance
+- support expiry processing
+- align promotions with billing and member visibility
+- support dashboard and CRM surfacing of promotional access
+
+### Design rule
+Promotions should modify effective entitlement through explicit grant records, not hidden logic branches or manual profile edits.
+
+## 8.9 Admin operations domain
+
+### Purpose
+Provide operational control surfaces and grouped admin information architecture.
+
+### Responsibilities
+- content operations
+- membership administration
+- service queues
+- promotion operations
+- analytics, notifications, audit, readiness, and settings
+
+### Design rule
+Admin operations should mirror platform domains rather than arbitrary page groupings.
+
+## 8.10 Telemetry, analytics, and governance domain
+
+### Purpose
+Provide operational and behavioral visibility across platform usage, protected access, workflow events, billing state, and system readiness.
+
+### Primary implementation
+- `analytics_events`
+- `audit_logs`
+- `notifications`
+- `email_logs`
+- launch-readiness helpers and admin pages
+
+### Responsibilities
+- track user interaction events
+- track gated-flow decisions
+- record admin action history
+- support operational notifications and alerts
+- surface launch-readiness and environment validation
+
+### Design rule
+Telemetry should be additive and centrally named. Event taxonomies should stay typed and consistent.
+
+---
+
+## 9. Component architecture
+
+The system can be described as a set of major technical components.
+
+## 9.1 Web application shell
+
+### Technology
+- Next.js 15.5.x
+- React 19
+- App Router
+- server components, route handlers, and server actions
+- Tailwind and Radix UI primitives
+
+### Responsibilities
+- page composition
+- data fetching for public/member/admin routes
+- orchestration of domain services
+- route-level authorization enforcement
+- metadata generation and route caching
+- user navigation and interaction handling
+
+## 9.2 Backend-for-frontend layer
+
+Although the project is not split into a separate API server, the application acts as a BFF through route handlers and server actions.
+
+### Responsibilities
+- receive browser-side requests
+- validate auth context
+- call domain logic
+- normalize responses
+- enforce security before persistence or delivery
+
+### Major route groups in the repo
+- `/api/auth/*`
+- `/api/analytics/*`
+- `/api/notifications`
+- `/api/lifecycle/*`
+- `/api/member/*`
+- `/api/protected-actions/*`
+- `/api/square/*`
+- `/api/admin/*`
+
+## 9.3 Data access and domain library layer
+
+The `src/lib/*` structure contains the real architectural center of gravity.
+
+### Responsibilities
+- domain types and contracts
+- server auth
+- entitlements
+- billing lifecycle synchronization
+- service workflow logic
+- content routing and adapters
+- discovery and search normalization
+- launch-readiness validation
+- analytics, audit, alerts, and reporting helpers
+
+### Design rule
+This library layer should remain the canonical home for reusable business logic.
+
+## 9.4 Firebase services layer
+
+### Components
+- Firebase Auth
+- Firestore
+- Firestore security rules
+- Firebase Admin SDK on server side
+
+### Responsibilities
+- identity verification
+- role resolution support
+- operational data persistence
+- collection-level security policies
+
+## 9.5 External integration layer
+
+### Square
+- checkout session creation
+- webhook event receipt and verification
+- subscription and payment synchronization
+
+### AI generation
+- Genkit and Gemini flow for document description generation
+
+### Email and alerting
+- notification and alert dispatch support via platform helpers
+
+---
+
+## 10. Repository-aligned structure
+
+The repository structure maps to platform concerns in a clear but evolving way.
+
+## 10.1 Primary code zones
+- `src/app/*` for routes and UI compositions
+- `src/app/api/*` for HTTP handlers
+- `src/lib/*` for reusable domain logic and service helpers
+- `src/ai/*` for AI workflows
+- `docs/*` for feature and architecture notes
+- root config for deployment, runtime, and build tooling
+
+## 10.2 Notable architectural signals from the repo
+- Next.js App Router is the primary UI and request framework
+- OpenNext and Wrangler scripts indicate Cloudflare-oriented deployment support
+- Firebase App Hosting config also exists, introducing deployment ambiguity that must be resolved operationally
+- Firestore rules are comprehensive and show intentional role and visibility modeling
+- Tests exist for unit and smoke flows, but the build config still tolerates some weak enforcement patterns
+
+---
+
+## 11. Public content and catalogue architecture
+
+## 11.1 Content family model
+
+Public catalogue content is sourced from multiple Firestore collections but normalized into shared rendering patterns.
+
+### Public content families
+- DocuShare suites and resources
+- Knowledge Center items
+- Service pages
+- Partner offers
+- Site pages and FAQs as framing content
+
+## 11.2 Visibility model
+
+Public routes only show content marked for public display.
+
+### Visibility rules reflected in docs and rules
+- DocuShare suites and documents: `status == 'published'`
+- Knowledge articles: `published == true`
+- Service pages: `published == true`
+- Partner offers: `active == true`
+- Site pages and FAQs: `published == true`
+
+## 11.3 Shared content object architecture
+
+The repository uses a shared renderable content-object approach to avoid duplicating route and presentation logic.
+
+### Key characteristics
+- normalized slug handling
+- path generation by content type
+- standardized action metadata
+- related-content references
+- access metadata support
+- type-specific detail templates layered on shared contracts
+
+## 11.4 SEO and public route behavior
+
+Public content routes are designed to support:
+- canonical URL generation
+- sitemap inclusion for published items only
+- robots rules excluding admin/private/API surfaces
+- revalidation for catalogue freshness
+
+---
+
+## 12. Discovery and search architecture
+
+## 12.1 Discovery design goals
+- unify multiple catalogue sources into one searchable model
+- avoid introducing a separate search SaaS prematurely
+- keep filters strongly typed and metadata-driven
+- support future personalization without rewriting source models
+
+## 12.2 Discovery pipeline
+
+1. Read published/active source records
+2. Map them into `RenderableContentObject` patterns
+3. Convert those into `DiscoveryItem` objects
+4. Generate filter values dynamically from live metadata
+5. Apply typed filters and keyword matching
+6. Rank related resources using explicit references and heuristics
+
+## 12.3 Filter dimensions
+- keyword
+- category
+- tag
+- content type
+- required membership tier
+
+## 12.4 Related content resolution
+
+Related resources are scored in the following broad order:
+- explicit related-content references
+- companion and related IDs from template fields
+- category and shared tags
+- same-type relevance
+- cross-journey boosts such as template-to-guide or service-to-knowledge
+
+## 12.5 Future evolution path
+
+The current design supports later extension with:
+- async pre-indexing
+- behavior-derived relevance signals
+- personalization and reranking
+- recommendation modules
+
+without replacing source content models.
+
+---
+
+## 13. Identity, authentication, and authorization architecture
+
+## 13.1 Identity provider
+
+Firebase Authentication is the identity system.
+
+### Role in the platform
+- authenticate users
+- issue ID tokens
+- support server verification through Firebase Admin
+- anchor user identity for members and admins alike
+
+## 13.2 Session model
+
+The platform uses a cookie named `rbp_id_token` to persist server-visible auth continuity.
+
+### Benefits
+- supports server-side auth context in App Router flows
+- simplifies protected route checks in route handlers and server contexts
+- allows reuse across member and admin surfaces
+
+## 13.3 Role model
+
+The role model is intentionally simple:
+- `member`
+- `admin`
+
+Admin status is determined by the existence of a user document in `roles_admin`.
+
+## 13.4 Authorization model
+
+Authorization happens in three layers:
+
+### Layer 1: server auth context
+`requireAdminServerContext` and related helpers enforce admin-only actions.
+
+### Layer 2: domain-specific access checks
+Entitlement and protected-action logic resolve what the user may do.
+
+### Layer 3: Firestore rules
+Storage-level protection restricts reads and writes by role and ownership.
+
+## 13.5 Authorization principles
+- Never trust route visibility or hidden buttons
+- Never trust the browser to decide access
+- Re-check protected delivery server-side
+- Use Firestore rules as a defense-in-depth layer, not the only layer
+
+---
+
+## 14. Membership, plans, and entitlement architecture
+
+## 14.1 Membership model
+
+The architecture separates **membership tier** from **billing cycle**.
+
+### Tier values
+- Basic
+- Standard
+- Premium
+
+### Billing cycles
+- Free
+- Monthly
+- Annual
+
+### Plan codes
+- `basic_free`
+- `standard_monthly`
+- `standard_annual`
+- `premium_monthly`
+- `premium_annual`
+
+This is a strong design choice because it preserves entitlement identity while still representing pricing and billing realities.
+
+## 14.2 Entitlement matrix
+
+A central entitlement matrix defines access to:
+- DocuShare content families
+- tools access level
+- partner offer classes
+- customisation limits
+- discovery and strategic calls
+- implementation support
+- service discount percentage
+- Knowledge Center access
+
+## 14.3 Effective entitlement evaluation
+
+The effective-access model works as follows:
+1. Resolve base tier from user plan or subscription
+2. Load any active access grants
+3. Apply the highest available grant tier
+4. Evaluate feature and content rules against the effective tier
+
+This prevents temporary promotional access from being hard-coded into special cases.
+
+## 14.4 Content access metadata
+
+Content models expose structured access metadata through fields such as:
+- `accessTier`
+- `requiresLogin`
+- `requiresMembership`
+- `previewEnabled`
+- `isLimitedAccess`
+- `contentType`
+
+These fields allow rendering and protected-action evaluation to use the same access semantics.
+
+## 14.5 Entitlement enforcement areas
+- public detail CTAs
+- protected download and access delivery
+- service request creation
+- member dashboard benefit display
+- upgrade prompts and conversion flows
+- admin visibility into member access
+
+---
+
+## 15. Billing and subscription lifecycle architecture
+
+## 15.1 Billing provider role
+
+Square provides the external billing and subscription lifecycle system.
+
+## 15.2 Internal billing responsibilities
+
+The application is responsible for:
+- initiating checkout
+- verifying webhook authenticity
+- mapping provider status to internal status
+- recording billing history
+- updating user membership state
+- writing subscription records
+- triggering alerts and telemetry
+
+## 15.3 Lifecycle normalization
+
+External provider events are normalized into internal lifecycle types such as:
+- `subscription_created`
+- `subscription_updated`
+- `subscription_canceled`
+- `subscription_reactivated`
+- `subscription_expired`
+- `payment_succeeded`
+- `payment_failed`
+- `promotion_granted`
+- `promotion_expired`
+
+## 15.4 Idempotency model
+
+Webhook event idempotency is enforced through `square_webhook_events/{eventId}` records.
+
+This is essential because payment systems will retry and humans will act confused when duplicate state changes appear out of nowhere.
+
+## 15.5 Sync targets
+
+Billing synchronization writes to:
+- `subscriptions`
+- `users`
+- `billing_history`
+- `membership_history`
+
+## 15.6 Failure handling
+
+Failed payment transitions trigger:
+- member alerts
+- admin alerts
+- analytics events
+- audit entries
+
+## 15.7 Design considerations
+- billing state must remain server-owned
+- UI should never infer payment success as final truth
+- provider-specific fields may be stored, but internal lifecycle semantics should drive platform behavior
+
+---
+
+## 16. Protected actions and secure resource delivery
+
+## 16.1 Protected action states
+
+The platform supports decision states including:
+- `allowed`
+- `requiresLogin`
+- `requiresMembership`
+- `requiresUpgrade`
+- `limitedAccess`
+- `denied`
+
+## 16.2 Why protected delivery matters
+
+A public page may show that a resource exists, but delivery of the resource must still be checked against:
+- login status
+- membership state
+- current tier
+- content access tier
+- specific action type
+
+## 16.3 Protected delivery flow
+
+1. Public page renders CTA metadata
+2. UI evaluates action via `/api/protected-actions/evaluate`
+3. If allowed, delivery is requested through `/api/protected-actions/deliver`
+4. Server re-evaluates entitlement before redirecting to target resource
+
+## 16.4 Auth-return handling
+
+Return paths are sanitized so that login and signup journeys can preserve context without creating open redirects.
+
+## 16.5 Security rule
+
+Never expose a public page button that directly trusts the underlying file URL for gated content.
+
+---
+
+## 17. Member portal and operational workflow architecture
+
+## 17.1 Member portal concept
+
+The member portal is an operations hub rather than a separate content universe.
+
+### Major areas
+- overview
+- membership
+- subscription
+- customisation requests
+- support requests
+- discovery calls
+- saved and recent
+
+## 17.2 Saved and recent model
+
+The platform tracks:
+- `user_saved_items`
+- `user_recent_activity`
+
+These point back to public detail paths rather than rebuilding a second library.
+
+## 17.3 Service workflows
+
+The service workflow model standardizes status and priority across request types.
+
+### Shared statuses
+- submitted
+- under_review
+- assigned
+- in_progress
+- awaiting_member
+- completed
+- cancelled
+
+### Shared priorities
+- low
+- normal
+- high
+- urgent
+
+## 17.4 Entitlement rules across workflows
+- Basic: discovery calls only
+- Standard: discovery calls and one customisation request per month
+- Premium: unlimited customisation, implementation support, and strategic checkups
+
+## 17.5 Operational records
+
+Workflow collections remain physically separated for operational clarity:
+- `customisation_requests`
+- `support_requests`
+- `discovery_calls`
+
+while sharing a consistent logical model.
+
+## 17.6 Future expansion
+
+This domain can later support:
+- SLA dashboards
+- booking integrations
+- queue aging reports
+- workload balancing
+- escalation policies
+- workflow automations
+
+---
+
+## 18. Admin architecture
+
+## 18.1 Admin information architecture
+
+The admin console is correctly grouped by operational concern:
+- Membership
+- Content
+- Services
+- Promotions
+- System
+
+This should remain the canonical navigation model.
+
+## 18.2 Membership administration capabilities
+- member profile review
+- membership and billing visibility
+- notes and override management
+- access control visibility
+- history and CRM-style tracking
+
+## 18.3 Content administration capabilities
+- DocuShare family management
+- Knowledge Center management
+- Partner offer management
+- site content management
+- publishing controls and metadata alignment
+
+## 18.4 Services administration capabilities
+- queue operations for all workflow types
+- assignment, priority, and status changes
+- internal notes and member-visible updates
+- operational tracking and resolution support
+
+## 18.5 Promotions administration capabilities
+- service-purchase promotions
+- free membership offers
+- annual plan promotions
+- temporary grant tracking
+- admin-only promotion records
+
+## 18.6 System administration capabilities
+- analytics visibility
+- notifications
+- audit logs
+- email automation log visibility
+- launch-readiness checks
+- roles and permissions visibility
+- settings and module entry points
+
+## 18.7 Admin security principles
+- server-side role verification is mandatory
+- Firestore rules must remain admin-restricted for operational collections
+- no client-only admin trust model should be introduced
+
+---
+
+## 19. Data architecture
+
+## 19.1 Primary store
+
+Firestore is the primary operational database.
+
+This is appropriate for the current platform because the data model is document-oriented, domain-driven, and heavily tied to real-time operational records, content metadata, and flexible platform extensions.
+
+## 19.2 Data categories
+
+### Identity and user data
+- `users`
+- `roles_admin`
+
+### Content data
+- `site_pages`
+- `documentation_suites`
+- `documentation_suites/{id}/documents`
+- `knowledge_articles`
+- `service_pages`
+- `partner_offers`
+- `faqs`
+- `testimonials`
+- `past_projects`
+
+### Membership and billing data
+- `membership_plans`
+- `subscriptions`
+- `billing_history`
+- `membership_history`
+- `membership_access_grants`
+- `member_notes`
+- `member_overrides`
+
+### Service operations data
+- `customisation_requests`
+- `support_requests`
+- `discovery_calls`
+
+### Platform operations and telemetry data
+- `notifications`
+- `analytics_events`
+- `audit_logs`
+- `content_revisions`
+- `email_logs`
+- `contact_enquiries`
+- `square_webhook_events`
+- `admin_promotions`
+- `promotions`
+- `announcements`
+
+## 19.3 Data ownership model
+
+A recommended ownership mapping is:
+
+### Content Ops
+Owns public content collections and publishing quality
+
+### Membership/Billing Ops
+Owns membership plans, subscriptions, history, notes, overrides, and grants
+
+### Service Ops
+Owns request queues and workflow state
+
+### Platform Ops
+Owns telemetry, notifications, admin role structures, and readiness checks
+
+### Auth/System
+Owns identity linkage, auth session interpretation, and provider integration points
+
+## 19.4 Firestore design principles
+- use explicit collection names with domain meaning
+- preserve separation between operational queues when it adds clarity
+- keep timestamps normalized and present on mutable records
+- use status fields consistently for lifecycle management
+- document index requirements for query-heavy admin and reporting views
+
+---
+
+## 20. Firestore security architecture
+
+## 20.1 Rules strategy
+
+The repository includes a substantial `firestore.rules` implementation with domain-specific protections.
+
+## 20.2 Security characteristics visible in rules
+- own-user access to profile data
+- admin-only list operations across sensitive collections
+- public read allowed only for published/active content where appropriate
+- member ownership enforced for request and activity collections
+- admin-only creation and mutation of highly sensitive collections
+- immutable relationship enforcement for nested documents
+
+## 20.3 Protection patterns
+
+### Public content pattern
+Published/active content is readable by all; write operations remain admin-only.
+
+### Member-owned records pattern
+Members can create and retrieve their own workflow or saved-item records, with update/delete restricted as appropriate.
+
+### Admin-only operational records pattern
+Promotions, audit logs, role documents, webhook events, and billing control data are admin-only.
+
+## 20.4 Security observations
+
+The ruleset is a strong foundation, but launch-grade governance should add:
+- rule test coverage
+- documented allowed field mutations per collection
+- index review aligned with rule and query design
+- periodic role-audit procedures
+
+---
+
+## 21. API and server-side interaction architecture
+
+## 21.1 API style
+
+The application uses internal HTTP APIs via Next.js route handlers rather than a separate external API platform.
+
+This is appropriate for the current stage because:
+- consumers are the web application itself
+- auth context is tightly coupled to the application
+- domain logic is shared with server-side rendering flows
+- external partner APIs are not yet a core requirement
+
+## 21.2 Key API groups
+
+### Authentication
+- `/api/auth/session`
+
+### Analytics
+- `/api/analytics`
+- `/api/analytics/public`
+
+### Lifecycle
+- `/api/lifecycle/signup`
+- `/api/lifecycle/membership-status`
+
+### Member operations
+- `/api/member/customisation-requests`
+- `/api/member/support-requests`
+- `/api/member/discovery-calls`
+- `/api/member/saved-items`
+- `/api/member/recent-activity`
+
+### Protected actions
+- `/api/protected-actions/evaluate`
+- `/api/protected-actions/deliver`
+
+### Billing
+- `/api/square/create-subscription-checkout`
+- `/api/square/webhooks`
+
+### Admin operations
+- `/api/admin/*`
+
+## 21.3 Server actions
+
+The repo also uses server actions for selected admin workflows and content operations.
+
+### Design note
+Server actions are useful for tightly bound UI-to-server mutation patterns, but sensitive operations should still route through clear domain-service boundaries and auth enforcement.
+
+---
+
+## 22. AI-assisted metadata architecture
+
+## 22.1 Implemented capability
+
+The repository includes AI flows using Genkit and Gemini, particularly for generating document descriptions.
+
+### Files of note
+- `src/ai/genkit.ts`
+- `src/ai/flows/generate-document-description.ts`
+
+## 22.2 Intended role
+
+AI is not the architecture center. It is a supporting capability for content quality and operational efficiency.
+
+### Good uses
+- document summaries
+- description generation
+- metadata assistance
+- admin workflow acceleration
+
+### Bad uses
+- bypassing human publishing review
+- inventing entitlement logic
+- mutating critical business records autonomously
+
+## 22.3 Architectural guidance
+
+AI outputs should remain advisory and reviewable unless a future workflow explicitly supports safe automation with approval checkpoints.
+
+---
+
+## 23. Notifications, analytics, audit, and reporting
+
+## 23.1 Analytics architecture
+
+Analytics events are centralized via typed event definitions and helper functions.
+
+### Notable event categories in project docs
+- catalogue search and filtering
+- content detail views
+- related-resource clicks
+- gated CTA decisions
+- resource downloads
+- service workflow submissions
+- billing lifecycle changes
+
+## 23.2 Notification architecture
+
+The platform supports notifications and alerts for:
+- members
+- admins
+- billing issues
+- operational events
+
+## 23.3 Audit architecture
+
+Audit logging captures privileged and significant operational changes, especially around admin actions and billing state changes.
+
+## 23.4 Reporting architecture
+
+Current reporting appears operational rather than warehouse-driven.
+
+### Good for current stage
+- queue views
+- membership/admin visibility
+- launch checks
+- billing state summaries
+
+### Future reporting evolution
+If data volume or reporting complexity grows, event capture can remain in Firestore while aggregated reporting is exported to a warehouse or analytics sink.
+
+---
+
+## 24. Launch readiness and non-functional architecture
+
+## 24.1 Launch-readiness framework
+
+The project already includes `src/lib/launch-readiness.ts` and an admin page at `/admin/system/launch-readiness`.
+
+This is an excellent signal because most systems wait until launch week to discover that their environments, content, and alerts were held together by wishful thinking.
+
+## 24.2 Launch checks already represented
+- environment validation
+- homepage and landing-page completeness
+- service page presence
+- active offer presence
+- content readiness warnings
+
+## 24.3 Performance architecture
+
+Signals in the project include:
+- public route revalidation
+- optimized images via `next/image`
+- structured route organization
+
+### Recommended additions
+- response-time monitoring on protected endpoints
+- cache strategy documentation for high-traffic public pages
+- performance budgets for page payloads
+- webhook processing timing visibility
+
+## 24.4 Accessibility architecture
+
+The project shows some explicit accessible labels on CTAs.
+
+### Recommended standard
+- semantic heading structures
+- keyboard navigation for admin and member flows
+- focus management for modal/dialog interactions
+- contrast and interaction-state verification
+
+## 24.5 Availability and resilience
+
+At present, resilience is primarily application-level rather than distributed.
+
+### Current resilience strengths
+- webhook idempotency
+- centralized auth helpers
+- server-side protected delivery checks
+- launch-readiness preflight patterns
+
+### Needed hardening
+- retry patterns for alert/email side effects
+- explicit failure handling for external integrations
+- operational dashboards for background failures and webhook issues
+
+---
+
+## 25. Deployment and runtime architecture
+
+## 25.1 Runtime signals in the repository
+
+The repository contains both:
+- Firebase App Hosting configuration (`apphosting.yaml`)
+- Cloudflare/OpenNext deployment scripts and Wrangler configuration
+
+This means the current deployment story is ambiguous.
+
+## 25.2 Recommended runtime decision
+
+The best interpretation of the current repo is:
+- **Cloudflare/OpenNext** as the primary application runtime and edge delivery platform
+- **Firebase** as the backend services platform for auth and Firestore
+
+## 25.3 Why this is the right articulation
+- package scripts explicitly support OpenNext build and deploy flows
+- Cloudflare tooling is present and intentional
+- Firebase is deeply embedded as an application dependency, but not necessarily as the preferred app runtime
+
+## 25.4 Required deployment clarification
+
+The project should explicitly declare one of the following:
+1. Cloudflare is primary and Firebase App Hosting is legacy or backup only
+2. Firebase App Hosting is primary and Cloudflare scripts are experimental or obsolete
+
+Without this, operations and release processes will drift.
+
+## 25.5 Environment groups
+
+Launch-readiness checks indicate the following environment groups matter:
+- Firebase configuration
+- Square configuration
+- email/notification configuration
+- runtime URL configuration
+
+## 25.6 Recommended environment separation
+- local
+- development
+- staging
+- production
+
+Each should have controlled configuration management and deployment promotion rules.
+
+---
+
+## 26. CI/CD and release architecture
+
+## 26.1 Existing tooling signals
+
+The project contains scripts for:
+- build
+- preview
+- deploy
+- typecheck
+- lint
+- unit tests
+- smoke tests
+
+## 26.2 Current release concern
+
+The repo configuration suggests the build still tolerates lenient enforcement in some areas. That is fine for prototyping and a terrible habit for launch readiness.
+
+## 26.3 Required pipeline stages
+
+A launch-grade pipeline should include:
+1. dependency install
+2. typecheck
+3. lint
+4. unit tests
+5. smoke tests
+6. build artifact generation
+7. staging deployment
+8. post-deploy smoke verification
+9. manual approval for production if required
+10. production deployment
+
+## 26.4 Release governance
+
+Production release should require:
+- environment validation passing
+- launch-readiness admin checks passing
+- Square integration verification in target environment
+- rollback procedure confirmation
+- on-call/incident contact readiness
+
+---
+
+## 27. Observability architecture
+
+## 27.1 Current state
+
+Observability exists in fragments:
+- analytics events
+- audit logs
+- notifications and alerts
+- launch readiness checks
+- email logs
+
+## 27.2 Required target state
+
+The platform should define observability across four layers:
+
+### Application observability
+- structured logs
+- server error tracking
+- route handler latency
+
+### Integration observability
+- Square webhook success/failure dashboards
+- checkout failure tracking
+- email dispatch status visibility
+
+### Business observability
+- conversion funnel events
+- entitlement decision events
+- service workflow submissions and completion metrics
+- churn and payment failure tracking
+
+### Operational observability
+- admin action audit review
+- launch readiness status
+- queue aging and SLA views
+
+## 27.3 Key recommendation
+
+Separate **product analytics** from **operational telemetry** conceptually even if they currently land in the same underlying store.
+
+---
+
+## 28. Scalability and growth architecture
+
+## 28.1 Current scalability posture
+
+The current architecture is suitable for early-to-mid scale usage where:
+- application traffic is moderate
+- content volume is manageable
+- billing events are not massive in volume
+- operational workflows are handled by a bounded admin team
+
+## 28.2 Likely future scaling pressures
+- larger search/discovery corpus
+- more member workflow volume
+- more admin reporting demands
+- increased analytics event volume
+- broader partner and offer complexity
+
+## 28.3 Planned scale path
+
+### Near-term
+- keep modular monolith
+- add stronger indexing and query governance
+- add background job processing for retries and deferred work
+
+### Mid-term
+- introduce asynchronous processing for heavy side effects
+- consider read-model projections for reporting-heavy views
+- introduce search pre-indexing if discovery volume grows substantially
+
+### Long-term
+Only consider service extraction when a domain shows:
+- materially different scaling needs
+- independent release cadence
+- stable interfaces
+- unacceptable contention inside the monolith
+
+---
+
+## 29. Background processing and async architecture
+
+## 29.1 Current state
+
+The platform is mostly synchronous, with some event-triggered patterns driven by webhooks and side effects.
+
+## 29.2 Why async support is needed
+
+Some operations should not remain inline forever:
+- email retries
+- notification fan-out
+- promotion expiry processing
+- analytics rollups
+- search pre-indexing
+- long-running report generation
+
+## 29.3 Recommended target
+
+Introduce a lightweight background job mechanism or scheduled task framework while keeping domain ownership in existing service modules.
+
+## 29.4 Architectural rule
+
+Async processing should be used for resilience and throughput, not to hide broken synchronous domain design.
+
+---
+
+## 30. Technical risks and architectural constraints
+
+## 30.1 Key current risks
+
+### Runtime ambiguity
+Conflicting deployment signals between Cloudflare/OpenNext and Firebase App Hosting.
+
+### Release discipline risk
+If type and lint enforcement remain soft, architectural drift and hidden defects will accumulate.
+
+### Firestore governance risk
+Without documented indexes, query patterns, and schema evolution rules, admin reporting and growth will become harder.
+
+### Side-effect coupling risk
+Too many inline notification, billing, or alert side effects may increase fragility.
+
+### Authorization drift risk
+If entitlements and protected actions are reimplemented in page components or admin screens, inconsistent access behavior will result.
+
+## 30.2 Architectural constraints
+- Firebase Auth and Firestore are already deeply embedded
+- Next.js App Router is the central application framework
+- billing is already modeled around Square
+- public, member, and admin experiences are intentionally unified in one codebase
+
+These are not bad constraints. They are simply the realities the architecture should respect.
+
+---
+
+## 31. Recommended target operating model
+
+## 31.1 Product ownership model
+- Public catalogue and conversion
+- Membership and subscriptions
+- Member operations
+- Admin operations
+
+## 31.2 Engineering ownership model
+- Platform shell and application runtime
+- Content and discovery services
+- Identity and access
+- Membership and billing
+- Service workflows
+- Telemetry and operations
+
+## 31.3 Operations ownership model
+- release management
+- runtime configuration
+- webhook monitoring
+- launch-readiness control
+- incident coordination
+
+## 31.4 Governance model
+
+Recommended governance forums:
+- architecture review for domain changes
+- release readiness review
+- security and access review
+- data model and index review
+- platform KPI review
+
+---
+
+## 32. Implementation priorities
+
+## 32.1 Priority 1: formalize the runtime architecture
+- declare the production runtime target
+- retire or demote unused hosting configuration
+- document environment and deployment flow end to end
+
+## 32.2 Priority 2: harden release quality gates
+- enforce typecheck and lint on release branches
+- require smoke tests before deploy promotion
+- document rollback steps and production gates
+
+## 32.3 Priority 3: formalize domain contracts
+- publish collection ownership and schema notes
+- standardize server-side access patterns
+- codify event names and workflow status values
+
+## 32.4 Priority 4: strengthen observability
+- structured application logging
+- webhook monitoring dashboards
+- protected-action failure tracking
+- queue and SLA visibility
+
+## 32.5 Priority 5: introduce async operational processing
+- retryable email/notification dispatch
+- promotion expiry jobs
+- future discovery indexing jobs
+
+## 32.6 Priority 6: expand data governance
+- Firestore indexes
+- migration/change standards
+- seed data strategy for non-production
+- rule test coverage
+
+---
+
+## 33. Final architecture position
+
+New Platform Build should be treated as a **platform business system**, not merely a document portal.
+
+It already contains the foundations of:
+- managed content publishing
+- public discovery
+- membership and billing control
+- protected asset delivery
+- member operations
+- admin operations
+- promotions and temporary grants
+- launch-readiness governance
+
+The correct architectural framing is therefore:
+
+> A modular monolith platform built with Next.js, Firebase, Firestore, and Square, organized around shared content, discovery, entitlement, billing lifecycle, service workflow, and admin operations domains, with strong server-side access control and a unified public/member/admin experience model.
+
+The immediate architectural priority is not service decomposition. It is **operational hardening, deployment clarity, domain formalization, and governance discipline**.
+
+That is how this project gets executed effectively rather than merely described impressively.
+
+---
+
+## 34. Appendix: concise technical inventory
+
+### Core frameworks and runtime
+- Next.js 15
+- React 19
+- TypeScript
+- Tailwind
+- Radix UI
+- OpenNext Cloudflare tooling
+- Firebase SDK and Firebase Admin SDK
+- Genkit + Gemini
+
+### Key application domains in code
+- content administration
+- content routing and rendering
+- public catalogue
+- discovery
+- protected actions
+- server auth
+- entitlements
+- billing and lifecycle sync
+- member dashboard utilities
+- service workflows
+- notifications
+- alerts
+- analytics
+- audit
+- launch readiness
+
+### Major operational collections
+- users
+- roles_admin
+- documentation_suites
+- knowledge_articles
+- service_pages
+- partner_offers
+- membership_plans
+- subscriptions
+- billing_history
+- membership_history
+- membership_access_grants
+- customisation_requests
+- support_requests
+- discovery_calls
+- notifications
+- analytics_events
+- audit_logs
+- promotions
+- admin_promotions
+- square_webhook_events
+
+### Principal architectural decisions
+- modular monolith over microservices
+- Firebase Auth for identity
+- Firestore as operational database
+- Square as billing provider
+- public visibility separated from protected access
+- member portal as operations hub, not private catalogue clone
+- discovery as derived view, not second source of truth
+- admin console organized by operations domain
+

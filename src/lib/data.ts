@@ -347,7 +347,7 @@ export async function updateSuite(
     status: (docData.status as DocumentSuite['status'] | undefined) ?? 'published',
     featured: Boolean(docData.featured),
     heroImageUrl: docData.heroImageUrl ? String(docData.heroImageUrl) : undefined,
-    previewContent: docData.previewContent ? String(docData.previewContent) : undefined,
+    previewContent: docData.previewContent ? String(data.previewContent) : undefined,
     seoTitle: docData.seoTitle ? String(docData.seoTitle) : undefined,
     seoDescription: docData.seoDescription ? String(docData.seoDescription) : undefined,
     actionType: docData.actionType as DocumentSuite['actionType'] | undefined,
@@ -1228,4 +1228,24 @@ export async function getMembershipAccessGrantsForUser(userId: string): Promise<
       updatedAt: toIsoString(data.updatedAt),
     } as MembershipAccessGrant;
   });
+}
+
+export async function getPublishedSuites(): Promise<Omit<DocumentSuite, 'documents'>[]> {
+  const suites = await getSuites();
+  return suites.filter(suite => suite.status === 'published');
+}
+
+export async function getPublishedDocuments(): Promise<Document[]> {
+  const documents = await getAllDocuments();
+  return documents.filter(document => document.status === 'published');
+}
+
+export async function getPublishedKnowledgeArticles(): Promise<KnowledgeArticle[]> {
+  const articles = await getKnowledgeArticles({ published: true });
+  return articles;
+}
+
+export async function getPublishedPartnerOffers(): Promise<PartnerOffer[]> {
+  const offers = await getPartnerOffers();
+  return offers.filter(offer => offer.active);
 }

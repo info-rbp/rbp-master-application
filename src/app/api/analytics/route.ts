@@ -1,34 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { type AnalyticsEventType } from '@/lib/analytics-events';
-import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
-import { getRequestAuthContext } from '@/lib/server-auth';
-import { readJsonBody } from '@/lib/http';
+import { NextResponse } from 'next/server';
+import { firestore } from '@/firebase/server';
+import { AnalyticsEvent } from '@/lib/analytics/taxonomy';
+import { Timestamp } from 'firebase-admin/firestore';
 
-export async function POST(request: NextRequest) {
-  const auth = await getRequestAuthContext(request);
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function POST(request: Request) {
+    const body = await request.json();
 
-  const parsed = await readJsonBody<{ eventType?: AnalyticsEventType; targetId?: string; targetType?: string; metadata?: Record<string, unknown>; sessionId?: string }>(request);
-  if (!parsed.ok) {
-    return parsed.response;
-  }
+    const event: AnalyticsEvent = {
+        ...body,
+        timestamp: Timestamp.now(),
+    };
 
-  const body = parsed.data;
-  if (!body?.eventType) {
-    return NextResponse.json({ error: 'Missing eventType' }, { status: 400 });
-  }
+    if (!event.name || !event.category || !event.payload) {
+        return NextResponse.json({ error: 'Invalid event structure' }, { status: 400 });
+    }
 
-  await safeLogAnalyticsEvent({
-    eventType: body.eventType,
-    userId: auth.userId,
-    userRole: auth.role,
-    targetId: body.targetId,
-    targetType: body.targetType,
-    metadata: body.metadata,
-    sessionId: body.sessionId,
-  });
-
-  return NextResponse.json({ ok: true });
+    try {
+        await firestore.collection('analyticsEvents').add(event);
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Error writing analytics event to Firestore:', error);
+        return NextResponse.json({ error: 'Could not process event' }, { status: 500 });
+    }
 }

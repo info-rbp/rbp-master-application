@@ -1,0 +1,1000 @@
+# ChatGPT MCP Server Integration Guide for the RBP Web Application
+
+## 1. Purpose
+
+This guide defines how **ChatGPT via a remote MCP Server** should be integrated into the web application to support **structured document generation, metadata assistance, content transformation, and admin productivity workflows**.
+
+This guide covers the full operating model, including:
+
+- what ChatGPT via MCP should do in the platform
+- how it should be architected
+- how to set it up with the OpenAI platform
+- how to build and expose the MCP server
+- how to integrate it with the current web application
+- how to secure, test, operate, and monitor it
+- how it should interact with Firebase, Firestore, Cloudflare, Gemini, and your admin workflows
+
+This is not a generic MCP explainer. It is the application-specific operating guide for using **ChatGPT plus a remote MCP server** as an internal document-generation subsystem.
+
+---
+
+## 2. Executive Summary
+
+The application already has the beginnings of an AI layer using **Gemini via Genkit** for short document descriptions. That is useful, but it is not enough for structured drafting.
+
+**ChatGPT via MCP** should become the application’s **advanced document generation and transformation engine**.
+
+### Division of responsibilities
+
+| AI service | Best role in the platform |
+|---|---|
+| **Gemini via Genkit** | short descriptions, summaries, lightweight metadata assistance |
+| **ChatGPT via MCP Server** | template-based drafting, document generation, rewrites, multi-section outputs, structured metadata generation, reference-aware content assembly |
+
+### Core principle
+
+**The application owns workflow, permissions, review, and publishing. ChatGPT via MCP provides controlled generation and tool-assisted context retrieval.**
+
+That means ChatGPT should never publish directly. It should generate drafts that the application stores, displays, tracks, and requires admins to review before content becomes live.
+
+---
+
+## 3. Current Application State
+
+The codebase currently does **not** contain a real ChatGPT MCP implementation.
+
+### What exists today
+
+| File / area | Current state |
+|---|---|
+| `src/ai/genkit.ts` | Gemini integration exists |
+| `src/ai/flows/generate-document-description.ts` | generates short descriptions only |
+| `src/app/actions.ts` | wraps Gemini generation |
+| admin document form | already supports AI-assisted description insertion |
+
+### What does not exist yet
+
+| Capability | Current state |
+|---|---|
+| OpenAI SDK integration | not yet implemented |
+| Responses API with remote MCP tools | not yet implemented |
+| remote MCP server | not yet implemented |
+| document template registry | not yet implemented |
+| document generation jobs model | not yet implemented |
+| admin draft-generation UI | not yet implemented |
+| review/approval workflow for ChatGPT drafts | not yet implemented |
+
+So this guide is a **target-state implementation guide**, not a description of a finished feature.
+
+---
+
+## 4. What ChatGPT via MCP Should Do in This Platform
+
+This is the most important section because it defines the business purpose of the integration.
+
+ChatGPT via MCP should serve as the platform’s **admin-only document generation assistant**.
+
+## 4.1 Primary responsibilities
+
+| Capability | What it should do |
+|---|---|
+| **Template-based document generation** | draft structured documents such as policies, SOPs, implementation guides, operational documents, partner resources, and member-facing templates |
+| **Document transformation** | turn notes, uploaded files, meeting summaries, forms, or outlines into structured draft documents |
+| **Context-aware drafting** | use suite context, document type, service type, member tier, and business rules provided by MCP tools |
+| **Metadata generation** | generate title, summary, tags, slug, SEO title, SEO description, and audience suggestions |
+| **Draft revision** | rewrite sections for clarity, brevity, tone, structure, or audience |
+| **Reference-aware drafting** | search and fetch internal reference documents via MCP tools before composing output |
+| **Operational support output** | draft service-response documents, action plans, implementation notes, discovery outputs, and internal operating docs |
+
+## 4.2 What it should not do
+
+| Capability | Why it should not do it |
+|---|---|
+| publish content directly | publishing must remain an app-controlled admin action |
+| grant access or entitlements | access remains controlled by Firebase + Firestore business state |
+| bypass admin review | generated content must be reviewed |
+| write to arbitrary application records without guardrails | write actions are high risk and should be tightly scoped or avoided initially |
+| replace Gemini’s lightweight role | that would create overlap and unnecessary complexity |
+
+## 4.3 Recommended first-phase workflows
+
+| Workflow | Trigger | Output |
+|---|---|---|
+| Generate draft from template | admin selects template and context | structured draft document |
+| Generate from uploaded source | admin uploads notes or a source file | first-pass draft |
+| Suggest metadata | admin requests title, tags, SEO | structured metadata output |
+| Revise draft | admin selects existing text | improved version |
+| Create suite overview | admin selects suite | suite-level overview text |
+
+## 4.4 Recommended later-phase workflows
+
+- transform meeting notes into implementation documents
+- generate discovery-call summaries and action plans
+- convert internal guidance into member-facing versions
+- create multi-document packs based on template bundles
+- generate draft responses for service request workflows
+
+---
+
+## 5. Why MCP Is the Right Pattern for This App
+
+MCP is the right architecture because the model needs access to **business-specific tools and context** without hardcoding all that logic directly into prompts.
+
+### Why not plain prompt-only generation
+
+Because this platform has:
+
+- documentation suites
+- document types
+- internal templates
+- service request context
+- business rules
+- reference content
+- structured metadata requirements
+
+Trying to stuff all of that into a single giant prompt would produce a fragile little monster.
+
+### Why MCP fits
+
+A remote MCP server lets the model use **tools** such as:
+
+- search for relevant internal references
+- fetch document templates
+- fetch suite rules
+- fetch content-type requirements
+- generate or revise structured content under controlled rules
+
+That gives you a cleaner separation between:
+
+- **OpenAI model reasoning and generation**
+- **application-specific business tools**
+- **application-controlled review and storage**
+
+---
+
+## 6. Recommended Architecture
+
+The cleanest architecture for this application is:
+
+`Admin UI -> App Backend -> OpenAI Responses API -> Remote MCP Server -> Firestore / reference services -> App Backend -> Firestore -> Admin Review`
+
+## 6.1 Core components
+
+| Component | Responsibility |
+|---|---|
+| **Admin UI** | collects template choice, source material, generation instructions, and displays results |
+| **Next.js backend** | validates admin access, orchestrates requests, stores jobs and versions |
+| **OpenAI Responses API** | runs the model with MCP tools enabled |
+| **Remote MCP server** | exposes controlled business tools to the model |
+| **Firestore** | stores templates, documents, jobs, results, and logs |
+| **Cloudflare** | fronts the main app and can protect API ingress |
+| **Gemini** | continues to handle lightweight assistive tasks separately |
+
+## 6.2 Preferred operating pattern
+
+Use the **application backend** as the caller of the OpenAI API.
+
+### Why
+
+- better security
+- easier audit logging
+- easier role enforcement
+- easier environment management
+- easier to attach application context and Firestore IDs
+
+### Do not do this initially
+
+Do not put the OpenAI call directly in the browser. That would be a needlessly creative way to leak secrets and lose control.
+
+---
+
+## 7. Integration Modes
+
+There are two distinct ways ChatGPT via MCP can be used.
+
+## 7.1 Mode A: Application-integrated MCP via API
+
+This is the primary model for your app.
+
+### Flow
+
+Your backend calls the **Responses API** and configures a remote MCP server in the `tools` array.
+
+### Best for
+
+- in-app admin document generation
+- full auditability
+- structured outputs returned into your UI
+- controlled tool usage
+- app-owned workflows
+
+## 7.2 Mode B: ChatGPT Developer Mode app connection
+
+This is optional and secondary.
+
+### Flow
+
+Your team connects the remote MCP server in **ChatGPT Developer Mode**, and can use the tools directly in ChatGPT for experimentation or manual drafting.
+
+### Best for
+
+- prototyping workflows
+- manual admin exploration
+- testing tools before app integration
+
+### Important boundary
+
+Mode B is useful, but it should **not** replace the application-integrated path for production business workflows.
+
+The app needs deterministic records, review states, and saved outputs. Chat conversations alone are not an operating system, no matter how much people want them to be.
+
+---
+
+## 8. OpenAI Platform Capabilities Relevant Here
+
+The current OpenAI documentation supports this integration pattern directly.
+
+### Relevant platform capabilities
+
+| Capability | Relevance to your app |
+|---|---|
+| **Responses API tools** | lets your backend configure remote MCP tools during generation |
+| **Remote MCP servers** | gives the model access to your custom business tools |
+| **allowed_tools** | restricts which MCP tools the model can call in a given request |
+| **require_approval** | controls whether tools require approval in the request context |
+| **ChatGPT Developer Mode** | lets you connect the same server for manual testing/use in ChatGPT |
+| **OAuth / dynamic client registration** | recommended auth pattern for custom remote MCP servers |
+
+---
+
+## 9. Recommended System Roles
+
+## 9.1 The application backend
+
+The backend should:
+
+- verify the admin user
+- decide which workflow is being run
+- choose which MCP tools are allowed
+- create generation job records
+- call the Responses API
+- validate the response format
+- save draft outputs and metadata
+- return results to the admin UI
+
+## 9.2 The MCP server
+
+The MCP server should:
+
+- expose business tools only
+- validate auth and permissions
+- return safe, scoped data
+- avoid becoming a giant copy of your backend
+- remain modular and auditable
+
+## 9.3 Firestore
+
+Firestore should remain the operational source of truth for:
+
+- templates
+n- generation jobs
+- generated versions
+- final approved documents
+- AI logs
+- audit trails
+
+Yes, that typo-shaped bullet almost escaped. Civilization endures.
+
+---
+
+## 10. MCP Server Scope and Tool Design
+
+The MCP server should start narrow.
+
+## 10.1 Minimum useful toolset
+
+| Tool | Purpose |
+|---|---|
+| `list_document_templates` | list available templates |
+| `get_document_template` | return full template structure and rules |
+| `get_suite_context` | return documentation suite context |
+| `get_content_type_rules` | return document-type requirements |
+| `search_reference_content` | find supporting content |
+| `fetch_reference_content` | return the selected reference content |
+| `suggest_document_metadata` | generate title, summary, tags, slug |
+| `create_document_outline` | return a structured outline |
+| `revise_document_section` | rewrite a specific section |
+
+## 10.2 Recommended optional tools after MVP
+
+| Tool | Purpose |
+|---|---|
+| `create_document_draft` | server-side business wrapper around generation if needed |
+| `generate_service_response` | document outputs for service workflows |
+| `list_style_guides` | retrieve editorial or brand guidance |
+| `fetch_prompt_policy` | retrieve policy-controlled generation instructions |
+
+## 10.3 Connector-compatible tools
+
+If you also want the server to work cleanly with ChatGPT connectors or deep research, implement at least:
+
+- `search`
+- `fetch`
+
+These are the most portable tool shapes for generalized retrieval workflows.
+
+---
+
+## 11. Recommended Tool Governance
+
+Not all tools should be available in all workflows.
+
+## 11.1 Per-workflow tool restrictions
+
+| Workflow | Allowed tools |
+|---|---|
+| metadata suggestion | `get_document_template`, `get_suite_context`, `suggest_document_metadata` |
+| outline generation | `get_document_template`, `get_content_type_rules`, `search_reference_content`, `fetch_reference_content`, `create_document_outline` |
+| section revision | `revise_document_section` plus retrieval tools if needed |
+| manual ChatGPT Developer Mode testing | broader tool set, but still not full write access |
+
+## 11.2 Rule
+
+Always restrict `allowed_tools` as tightly as possible per request.
+
+This reduces:
+
+- accidental overreach
+- irrelevant tool calls
+- security exposure
+- prompt-injection blast radius
+
+---
+
+## 12. Authentication and Authorization Model
+
+This is one of the most important parts of the design.
+
+## 12.1 Between browser and app backend
+
+Use the existing application auth model:
+
+- Firebase Auth for identity
+- admin role resolution via Firestore roles/admin model
+
+Only admin users should access the document-generation controls.
+
+## 12.2 Between app backend and OpenAI
+
+Use a server-side `OPENAI_API_KEY` in your backend environment.
+
+The key must remain server-side only.
+
+## 12.3 Between OpenAI and your MCP server
+
+The recommended pattern is **OAuth**, with **dynamic client registration** supported where appropriate.
+
+### Why
+
+- aligns with OpenAI’s recommended MCP auth pattern
+- avoids brittle shared-secret-only setups for long-term use
+- supports safer workspace and user-level authorization flows if you also connect the server in ChatGPT
+
+## 12.4 First-phase acceptable fallback
+
+For an initial internal-only application integration, you can start with a simpler server authentication pattern if needed, such as:
+
+- network restrictions
+- signed internal headers
+- application-to-MCP shared secret
+
+But this should be treated as a stepping stone, not the final security model.
+
+---
+
+## 13. Recommended Deployment Architecture
+
+## 13.1 Main application
+
+Your web application remains where it is today, fronted by Cloudflare.
+
+## 13.2 MCP server
+
+Deploy the MCP server as a separate service.
+
+### Recommended hosting options
+
+| Option | Why it may fit |
+|---|---|
+| **Cloudflare Workers / Containers** | consistent with your existing Cloudflare setup if supported by your MCP framework |
+| **Node service on your current infrastructure** | simple if you already operate Node backends |
+| **Cloud Run or equivalent** | clean separation and scalable stateless service |
+
+## 13.3 Recommendation
+
+Use a dedicated server or service boundary for MCP rather than embedding it directly inside the main Next.js runtime.
+
+### Why
+
+- cleaner scaling
+- better security boundary
+- easier auth handling
+- easier tooling version control
+- easier to test independently
+
+---
+
+## 14. Recommended Protocol Support
+
+For ChatGPT compatibility, your remote MCP server should support one of the accepted protocols used by ChatGPT Developer Mode.
+
+### Supported protocols to target
+
+- **SSE**
+- **Streaming HTTP**
+
+When possible, use the most modern stable transport your chosen framework supports well.
+
+---
+
+## 15. Data Sources the MCP Server Should Use
+
+The server should not invent business context. It should read controlled data sources.
+
+## 15.1 Primary sources
+
+| Source | Purpose |
+|---|---|
+| Firestore `document_templates` | template structures |
+| Firestore `document_suites` or equivalent | suite context |
+| Firestore content-type config | document rules |
+| Firestore existing documents | reference examples where appropriate |
+| curated internal reference content | search/fetch source |
+| style guide or editorial policy docs | writing rules |
+
+## 15.2 Source quality rule
+
+Use curated, admin-approved sources for drafting tools. Do not let the model freely rummage through untrusted user content and then act shocked when it learns bad habits.
+
+---
+
+## 16. Firestore Collections to Add
+
+The application needs first-class persistence for this feature.
+
+## 16.1 `document_templates`
+
+Stores the reusable structures that guide generation.
+
+### Recommended fields
+
+| Field | Purpose |
+|---|---|
+| `key` | stable template identifier |
+| `name` | display name |
+| `category` | policy, SOP, guide, checklist, etc. |
+| `description` | what this template is for |
+| `sections` | required structure |
+| `instructions` | generation guidance |
+| `status` | active / archived |
+| `version` | template version |
+| `createdAt` | governance |
+| `updatedAt` | governance |
+
+## 16.2 `document_generation_jobs`
+
+Tracks each generation request.
+
+### Recommended fields
+
+| Field | Purpose |
+|---|---|
+| `workflowType` | draft, metadata, revision, outline |
+| `requestedBy` | admin user ID |
+| `documentId` | related document if applicable |
+| `templateKey` | selected template |
+| `status` | queued / running / completed / failed |
+| `model` | OpenAI model used |
+| `mcpServerLabel` | server used |
+| `allowedTools` | tools available for this run |
+| `toolCalls` | actual tools used |
+| `latencyMs` | performance tracking |
+| `errorCode` | failure analysis |
+| `createdAt` | timestamp |
+| `completedAt` | timestamp |
+
+## 16.3 `document_generation_versions`
+
+Stores generation outputs and revisions.
+
+### Recommended fields
+
+| Field | Purpose |
+|---|---|
+| `jobId` | parent job |
+| `versionNumber` | sequence number |
+| `content` | generated draft |
+| `structuredOutput` | JSON metadata or section structure |
+| `reviewStatus` | pending / approved / edited / rejected |
+| `editedBy` | admin ID |
+| `editedAt` | timestamp |
+| `createdAt` | timestamp |
+
+## 16.4 `ai_generation_logs`
+
+Immutable operational log if you want it separate from jobs.
+
+---
+
+## 17. Backend Integration Pattern
+
+The application backend should expose service methods or routes that map to specific document workflows.
+
+## 17.1 Recommended internal service layer
+
+Create files such as:
+
+- `src/lib/openai.ts`
+- `src/lib/mcp.ts`
+- `src/lib/document-generation.ts`
+- `src/lib/document-templates.ts`
+- `src/lib/ai-logging.ts`
+
+## 17.2 Responsibilities
+
+| Module | Responsibility |
+|---|---|
+| `openai.ts` | OpenAI client setup |
+| `mcp.ts` | MCP tool/server configuration |
+| `document-generation.ts` | workflow orchestration |
+| `document-templates.ts` | template loading and validation |
+| `ai-logging.ts` | usage, errors, and audit enrichment |
+
+## 17.3 API or server actions
+
+You can use either:
+
+- **server actions** for simple admin-triggered workflows
+- **API routes** for longer-running jobs or richer job-status handling
+
+### Recommended pattern
+
+Use API routes or dedicated service functions for draft generation jobs, because the workflow is too important to bury inside an anonymous little callback and hope future you remembers what it does.
+
+---
+
+## 18. Responses API Request Design
+
+Your backend should call the **Responses API** and attach the MCP server in the `tools` array.
+
+## 18.1 Required high-level request elements
+
+| Element | Role |
+|---|---|
+| `model` | the OpenAI model used for generation |
+| `input` | developer and user instructions plus structured context |
+| `tools` | includes one or more `mcp` tool configurations |
+| `allowed_tools` | restricts tool access on the MCP entry |
+| `require_approval` | controls tool approval behavior |
+
+## 18.2 Recommended request construction
+
+Each request should include:
+
+1. **developer instruction**
+   - platform-wide drafting rules
+   - do not invent unsupported facts
+   - follow template structure
+   - produce structured output where requested
+
+2. **user/content instruction**
+   - what to generate
+   - document purpose
+   - target audience
+   - tone and constraints
+
+3. **MCP tool configuration**
+   - remote server URL
+   - server label
+   - allowed tools for this run
+   - approval policy
+
+4. **optional structured output expectation**
+   - JSON schema or internal typed expectation in your app layer
+
+## 18.3 Approval strategy
+
+For app-controlled backend workflows, you will usually want a non-interactive approval model for the specific tools you trust.
+
+That means you should keep:
+
+- the tool set narrow
+- the workflow specific
+- the auth tight
+
+---
+
+## 19. Admin UI Workflow Design
+
+ChatGPT via MCP should appear in the admin experience as a controlled assistant, not a mysterious black box.
+
+## 19.1 Recommended UI controls
+
+| Control | Purpose |
+|---|---|
+| **Generate Draft** | create a structured first-pass draft |
+| **Generate Outline** | create section structure before full drafting |
+| **Suggest Metadata** | title, summary, tags, SEO |
+| **Revise Section** | rewrite a selected section |
+| **Regenerate** | rerun with same or modified instructions |
+
+## 19.2 Recommended UI states
+
+- idle
+- preparing context
+- generating
+- success
+- failed
+- pending review
+- manually edited
+- approved
+
+## 19.3 Recommended review controls
+
+Admins should be able to:
+
+- compare versions
+- edit generated content before save
+- approve or reject generated output
+- see which template and tools were used
+- see if the result came from ChatGPT or manual entry
+
+---
+
+## 20. Operational Workflow Examples
+
+## 20.1 Generate a document from a template
+
+1. admin opens the document-generation form
+2. admin selects a template
+3. admin enters title, audience, purpose, and optional notes
+4. backend validates template and admin permissions
+5. backend creates a generation job record
+6. backend calls the Responses API with the MCP server attached
+7. model uses tools such as:
+   - `get_document_template`
+   - `get_suite_context`
+   - `search_reference_content`
+   - `fetch_reference_content`
+8. model returns a structured draft
+9. backend stores version 1
+10. admin reviews and edits
+11. final draft is saved to the target document record
+
+## 20.2 Suggest metadata for an uploaded document
+
+1. admin uploads a document
+2. app extracts or normalizes document text
+3. backend creates a metadata job
+4. backend enables only metadata-safe tools
+5. model returns title, summary, tags, slug, and SEO fields
+6. admin accepts or edits them
+7. final metadata is saved
+
+## 20.3 Revise an existing section
+
+1. admin selects a section of text
+2. admin chooses a revision instruction such as simplify, shorten, or adapt for executive audience
+3. backend sends the current text and relevant context
+4. model returns revised text only
+5. admin accepts, edits, or rejects
+
+---
+
+## 21. Security and Safety Model
+
+This is where adults earn their pay.
+
+## 21.1 Core risks
+
+| Risk | Why it matters |
+|---|---|
+| prompt injection | malicious reference content could influence model behavior |
+| over-broad tool access | model could call tools outside the intended workflow |
+| sensitive data leakage | too much context may be sent to the model or MCP |
+| unsafe write actions | model-triggered writes can damage data |
+| untrusted MCP servers | third-party or proxy servers can exfiltrate data |
+
+## 21.2 Safety rules for this application
+
+### 1. Start read-heavy and write-light
+The MCP server should begin primarily as a read/retrieval and structured-assistance server.
+
+### 2. Avoid direct data writes from model tool calls
+At least in the first implementation phase, the model should not directly write to Firestore through MCP tools.
+
+### 3. Keep admin review mandatory
+Generated content must be reviewed before publishing.
+
+### 4. Restrict tool access per workflow
+Never expose the full toolset if only two tools are needed.
+
+### 5. Do not pass unnecessary sensitive data
+Only send the minimum needed context.
+
+### 6. Use trusted servers only
+Your own MCP server should be the trusted endpoint. Do not route the app through unofficial third-party proxy MCP servers just because they have a cute README.
+
+---
+
+## 22. Logging, Audit, and Observability
+
+This subsystem needs visibility.
+
+## 22.1 What to log
+
+| Field | Purpose |
+|---|---|
+| `workflowType` | draft / metadata / revision |
+| `requestedBy` | admin identity |
+| `documentId` | target entity |
+| `templateKey` | template used |
+| `model` | OpenAI model |
+| `allowedTools` | approved tools for the request |
+| `toolCalls` | actual calls used |
+| `latencyMs` | performance |
+| `status` | success / failed |
+| `errorCode` | diagnostics |
+| `versionSaved` | resulting generation version |
+
+## 22.2 What to audit
+
+Audit logs should capture:
+
+- who requested the generation
+- what was generated
+- which version was approved
+- whether the output was edited
+- whether metadata was AI-generated or manual
+
+## 22.3 What to monitor
+
+- generation success rate
+- failure rate by workflow
+- latency by workflow
+- regenerate rate
+- manual edit rate
+- approval rate
+- tool-call frequency
+
+If admins always rewrite everything, your prompt strategy or templates are broken. Or both. Life is rich with possibilities.
+
+---
+
+## 23. Error Handling and Fallback Design
+
+The system must degrade gracefully.
+
+## 23.1 Likely failure modes
+
+| Failure mode | Required handling |
+|---|---|
+| OpenAI API failure | log, show recoverable admin error |
+| MCP server unavailable | log, show fallback/manual option |
+| tool auth failure | fail cleanly, keep job record |
+| invalid template | reject before model call |
+| malformed model output | treat as failed generation |
+| timeout | log timeout and allow retry |
+
+## 23.2 Fallback rule
+
+If generation fails:
+
+- the admin UI remains usable
+- manual entry remains available
+- the failure is logged
+- the job record remains visible for debugging
+
+---
+
+## 24. Environment Variables and Configuration
+
+## 24.1 Application backend variables
+
+| Variable | Purpose |
+|---|---|
+| `OPENAI_API_KEY` | server-side OpenAI authentication |
+| `OPENAI_MODEL` | default model |
+| `OPENAI_DOCUMENT_MODEL` | model for document workflows |
+| `OPENAI_REASONING_EFFORT` | optional reasoning configuration |
+| `MCP_SERVER_URL` | remote MCP endpoint |
+| `MCP_SERVER_LABEL` | server label used in requests |
+| `MCP_REQUIRE_APPROVAL` | approval policy |
+| `AI_DOCUMENT_GENERATION_ENABLED` | feature flag |
+| `AI_DOCUMENT_METADATA_ENABLED` | feature flag |
+| `AI_DOCUMENT_REVISION_ENABLED` | feature flag |
+
+## 24.2 MCP server variables
+
+| Variable | Purpose |
+|---|---|
+| `FIREBASE_PROJECT_ID` | Firestore access |
+| `FIREBASE_CLIENT_EMAIL` | service access if needed |
+| `FIREBASE_PRIVATE_KEY` | service access if needed |
+| `MCP_AUTH_MODE` | oauth / internal / mixed |
+| `MCP_ALLOWED_ORIGINS` | ingress control |
+| `LOG_LEVEL` | observability |
+| `PROMPT_POLICY_VERSION` | governance |
+
+---
+
+## 25. Recommended Setup Sequence
+
+## Phase 1: foundation
+
+1. add server-side OpenAI client integration
+2. create `document_templates` collection
+3. create generation job and version collections
+4. add admin-only feature flags
+5. design initial workflow types
+
+## Phase 2: build the MCP server
+
+6. choose MCP framework and deployment target
+7. implement minimal retrieval and template tools
+8. add auth and ingress controls
+9. test tools independently
+10. implement `search` and `fetch` if you want connector portability
+
+## Phase 3: integrate with the app backend
+
+11. build the Responses API wrapper
+12. configure remote MCP tool usage
+13. restrict tools per workflow
+14. create job and version persistence
+15. validate structured responses
+
+## Phase 4: integrate with admin UI
+
+16. add Generate Draft button
+17. add Suggest Metadata button
+18. add Revise Section button
+19. add review and approval UI
+20. add version history display
+
+## Phase 5: harden operations
+
+21. add logs and metrics
+22. add audit records
+23. add retry and failure handling
+24. add prompt/version governance
+25. test in staging with real admin workflows
+
+## Phase 6: optional ChatGPT Developer Mode support
+
+26. connect the MCP server in ChatGPT Developer Mode
+27. test manual tool usage in ChatGPT
+28. use it for internal experimentation and debugging
+
+---
+
+## 26. Testing Strategy
+
+## 26.1 Functional tests
+
+- admin can generate draft from template
+- admin can generate metadata
+- admin can revise existing text
+- non-admin cannot access the feature
+- failed calls produce stable error states
+
+## 26.2 Integration tests
+
+- app backend can call OpenAI successfully
+- OpenAI can reach the MCP server
+- MCP server can read Firestore template/context data
+- resulting output is stored correctly in Firestore
+
+## 26.3 Security tests
+
+- no OpenAI key exposed to the client
+- tool access is restricted per workflow
+- unauthorized users cannot trigger generation
+- MCP auth rejects invalid callers
+
+## 26.4 Quality tests
+
+- output follows the selected template
+- metadata fields are populated correctly
+- results are useful without extreme rewriting
+- revision workflows preserve meaning
+
+---
+
+## 27. Recommended Operating Policies
+
+## 27.1 Template governance
+
+Templates should be curated and versioned.
+
+## 27.2 Prompt governance
+
+Use prompt policies and version them.
+
+## 27.3 Approval governance
+
+No generated content should auto-publish.
+
+## 27.4 Data minimization
+
+Only send the minimum business context needed.
+
+## 27.5 Trusted source policy
+
+Only retrieval from trusted internal sources should be allowed in production drafting workflows.
+
+---
+
+## 28. ChatGPT Developer Mode Setup Guidance
+
+This is optional but useful.
+
+## 28.1 Purpose
+
+Use Developer Mode to:
+
+- test the MCP server manually
+- validate tool descriptions and behavior
+- experiment with prompt patterns
+- demo internal workflows before they are fully productized
+
+## 28.2 Setup concept
+
+1. enable ChatGPT Developer Mode in settings
+2. create an app from your remote MCP server
+3. configure auth
+4. refresh tools
+5. test the available tools in conversations
+
+## 28.3 Caution
+
+Developer Mode is powerful and intentionally dangerous. Treat it as a controlled testing environment, not a shortcut around product engineering.
+
+---
+
+## 29. Go-Live Checklist
+
+| Item | Required |
+|---|---|
+| OpenAI backend integration complete | yes |
+| remote MCP server deployed | yes |
+| auth model implemented | yes |
+| admin-only access enforced | yes |
+| templates configured | yes |
+| generation jobs and versions stored | yes |
+| review/approval flow implemented | yes |
+| logs and audit in place | yes |
+| per-workflow tool restrictions configured | yes |
+| fallback/manual path tested | yes |
+| staging validation completed | yes |
+
+---
+
+## 30. Final Operating Model
+
+When implemented correctly, ChatGPT via MCP should operate in this web application as follows:
+
+- the **admin user** starts a document-generation workflow in the web app
+- the **app backend** validates the request, creates a job, and calls the OpenAI Responses API
+- the **model** uses the configured **remote MCP server** to retrieve templates, business context, and supporting references
+- the **MCP server** returns controlled, scoped data to support generation
+- the **model** produces a structured draft or metadata output
+- the **application** stores the output in Firestore as a draft version
+- the **admin** reviews, edits, and approves the result
+- the **application** saves the approved output to the final document record
+- **audit logs and operational logs** record what happened
+
+That is the intended operating model.
+
+ChatGPT via MCP is not supposed to be a novelty feature bolted onto the side of the platform. It is supposed to be a governed, admin-facing document-generation subsystem that works alongside your existing Firebase, Firestore, Cloudflare, and Gemini layers.
+

@@ -1,0 +1,1496 @@
+# Service Content Generation and Integration Guide
+
+## Source of Truth Document
+**Purpose:** This document defines the full content, page structure, SEO framework, UX layout, and implementation rules for the Services section of the new web application. It is intended to serve as the master reference for strategy, copywriting, design, development, and future expansion.
+
+---
+
+# 1. Document Purpose and Scope
+
+This guide covers:
+
+1. The strategic role of the **Services Landing Page**
+2. The purpose and structure of **Service Category Pages**
+3. The purpose and structure of **Individual Service Offering Pages**
+4. Content generation rules for all service-related pages
+5. SEO architecture, metadata, internal linking, schema opportunities, and keyword mapping logic
+6. UX, page layout, conversion design, and content hierarchy
+7. Implementation guidance for integrating this content into the web application
+8. Governance rules to maintain consistency as the site grows
+
+This document applies to the following advisory categories:
+
+- Operations Advisory
+- Financial Advisory
+- Sales & Marketing Advisory
+- Human Resources Advisory
+- Management Advisory
+- Change Management Advisory
+- AI Advisory
+- Custom Solutions
+
+---
+
+# 2. Strategic Objective of the Services Section
+
+The Services section must achieve six things simultaneously:
+
+1. **Explain the breadth of the business clearly**
+2. **Demonstrate capability without becoming too narrow**
+3. **Create search visibility across category, service, and problem-based queries**
+4. **Support conversion through trust, clarity, and relevance**
+5. **Allow flexible sales conversations without boxing the business into fixed packages**
+6. **Create a scalable content architecture that can expand over time**
+
+The services area should position the business as a **multi-disciplinary advisory partner** capable of solving strategic, operational, financial, people, growth, and transformation problems.
+
+The copy should be:
+- Commercially credible
+- Outcome-oriented
+- Broad enough to support discovery
+- Specific enough to rank and convert
+- Consistent across every page
+
+---
+
+# 3. Master Service Architecture
+
+## 3.1 Service Categories and Service Offerings
+
+### A. Operations Advisory
+**Category Purpose:** Improve how the business runs through stronger systems, processes, governance, efficiency, and delivery.
+
+**Service Offerings:**
+- Operational Diagnostics
+- Process Mapping & Optimisation
+- Workflow Automation & Systems Integration
+- SOP & Documentation Development
+- Business Process Reengineering
+- Operating Model Design
+- Capacity & Resource Planning
+- Cost Reduction & Efficiency Programs
+- Supply Chain & Vendor Optimisation
+- Service Delivery Optimisation
+- Quality Assurance & Process Governance
+
+### B. Financial Advisory
+**Category Purpose:** Improve financial visibility, planning, decision support, and commercial performance.
+
+**Service Offerings:**
+- Financial Health Assessments
+- Cashflow Forecasting & Management
+- Financial Modelling & Scenario Planning
+- Budgeting & Forecasting Frameworks
+- Profitability & Margin Analysis
+- Pricing Strategy
+- Financial Reporting & Dashboarding
+- Strategic Growth Planning
+- Cost Structure & Expense Optimisation
+- Investment & Capital Planning
+- Break-even & Unit Economics Analysis
+- Financial Systems & Tools Implementation
+
+### C. Sales & Marketing Advisory
+**Category Purpose:** Build more reliable revenue generation, stronger customer acquisition, and better conversion systems.
+
+**Service Offerings:**
+- Sales Process Design & Optimisation
+- CRM Selection & Implementation
+- Marketing Strategy Development
+- Lead Generation Systems
+- Funnel Design & Conversion Optimisation
+- Customer Journey Mapping
+- Brand Positioning & Messaging
+- Performance Analytics & Reporting
+- Go-to-Market Strategy
+- Sales Forecasting & Pipeline Management
+- Customer Retention & Lifetime Value Optimisation
+- Digital Marketing & Campaign Strategy
+- Partnerships & Channel Strategy
+
+### D. Human Resources Advisory
+**Category Purpose:** Strengthen team performance, people systems, organisational structure, and leadership capability.
+
+**Service Offerings:**
+- Organisational Structure Design
+- Role Design & Accountability Frameworks
+- Recruitment Strategy & Hiring Support
+- Performance Management Systems
+- Leadership Development Programs
+- Employee Engagement & Retention Strategy
+- HR Process & Policy Development
+- Workforce Planning
+- Talent Strategy & Succession Planning
+- Compensation & Incentive Design
+- Onboarding & Training Program Design
+- Culture Transformation Initiatives
+- Remote & Distributed Workforce Strategy
+
+### E. Management Advisory
+**Category Purpose:** Support owners and leaders with strategic direction, decision-making, governance, and business growth.
+
+**Service Offerings:**
+- Strategic Planning & Facilitation
+- Business Performance Reviews
+- Leadership Alignment Workshops
+- Governance Frameworks
+- Decision-Making Frameworks
+- Business Model Design
+- Growth Strategy Development
+- Risk Management & Mitigation
+- Business Transformation Strategy
+- Market Expansion Strategy
+- Mergers & Acquisitions Support
+- Turnaround & Restructuring Strategy
+- OKR & KPI Framework Development
+
+### F. Change Management Advisory
+**Category Purpose:** Ensure transformation initiatives are planned, adopted, embedded, and sustained.
+
+**Service Offerings:**
+- Change Readiness Assessments
+- Transformation Strategy & Roadmaps
+- Stakeholder Engagement & Communication
+- Change Adoption Frameworks
+- Training & Capability Uplift
+- Post-Implementation Reviews
+- Culture & Behaviour Change Programs
+- Transformation Program Management
+- System Implementation Change Support
+- Communication & Change Planning
+
+### G. AI Advisory
+**Category Purpose:** Help clients apply AI in practical ways that improve productivity, insight, decision support, and automation.
+
+**Service Offerings:**
+- AI Opportunity Assessments
+- AI Strategy & Roadmaps
+- Workflow Automation using AI
+- AI Tool Selection & Implementation
+- Data Utilisation & Insight Generation
+- AI Governance & Risk Considerations
+- Internal AI Capability Development
+- AI Use Case Development
+- Generative AI Implementation
+- AI Integration with Business Systems
+- Process Automation using AI
+
+### H. Custom Solutions
+**Category Purpose:** Provide tailored support where the need spans multiple disciplines or does not fit neatly into a standard service line.
+
+**Service Offering:**
+- Customised Business Advisory & Consulting
+
+---
+
+# 4. Page Types and Their Roles
+
+## 4.1 Services Landing Page
+This page is the entry point to the full service ecosystem.
+
+**Primary job:**
+- Present the full breadth of capability
+- Help users find the right category quickly
+- Establish authority and relevance
+- Drive visitors into category pages and service pages
+
+**Audience intent:**
+- Broad exploratory intent
+- Users comparing firms
+- Users seeking a business advisor but not yet sure what they need
+- Users arriving from branded and non-branded discovery searches
+
+## 4.2 Service Category Pages
+These pages sit between the Services Landing Page and individual service pages.
+
+**Primary job:**
+- Define the advisory category
+- Explain major business challenges in that domain
+- Show the range of service offerings within that category
+- Strengthen topical authority for category-level SEO
+- Create a clean jump-off point to individual services
+
+**Audience intent:**
+- Users with a rough problem area in mind
+- Users looking for advisory support in a business function
+- Users evaluating fit and depth of expertise
+
+## 4.3 Individual Service Offering Pages
+These are the highest-intent and most SEO-valuable pages.
+
+**Primary job:**
+- Explain the service clearly
+- Align the service to business pain points and outcomes
+- Show how the engagement works
+- Capture service-specific and problem-specific search demand
+- Convert visitors into enquiries
+
+**Audience intent:**
+- Users with a more defined problem
+- Users actively comparing suppliers or consultants
+- Users searching for solutions rather than general guidance
+
+---
+
+# 5. Global Content Principles
+
+All service-related content must follow these rules.
+
+## 5.1 Voice and Positioning Rules
+- Write as a premium, commercially aware advisory firm
+- Focus on business outcomes, not generic buzzwords
+- Avoid sounding like a freelancer listing tasks
+- Avoid sounding too narrow or too rigid
+- Use practical language rather than inflated corporate filler
+- Prefer clarity over abstraction
+
+## 5.2 Messaging Balance
+Every page must balance:
+- **Breadth** so the firm appears flexible and capable
+- **Specificity** so the page ranks and feels credible
+- **Commercial clarity** so users know the value
+- **Advisory tone** so the site feels strategic rather than transactional
+
+## 5.3 Content Priorities
+Each page should answer these questions:
+1. What is this page about?
+2. What problems does this help solve?
+3. What does the service/category include?
+4. What outcomes can a client expect?
+5. How would a client engage with this service?
+6. What should the visitor do next?
+
+## 5.4 Writing Rules
+- Use descriptive H2 and H3 headings
+- Keep paragraphs digestible
+- Use lists when scanning matters
+- Lead with user pain points and outcomes
+- Avoid internal jargon unless defined
+- Keep promises credible
+- Do not overuse broad claims like "end-to-end" unless backed by detail
+
+---
+
+# 6. Services Landing Page Content Guide
+
+## 6.1 Strategic Purpose
+The Services Landing Page must communicate the total advisory capability in a way that is easy to scan, easy to navigate, and strategically broad.
+
+It should not attempt to explain every individual service in depth. Its role is to frame the offer and route visitors deeper into the site.
+
+## 6.2 Recommended Page Sections
+
+### Section 1. Hero
+**Goal:** Immediately establish who the services are for and what value they create.
+
+**Content requirements:**
+- Main headline describing the full advisory offer
+- Supporting paragraph explaining the breadth of support
+- Primary CTA leading to enquiry/contact/discovery
+- Secondary CTA leading to category exploration or process overview
+
+**Recommended content elements:**
+- Headline focused on business performance, growth, transformation, or capability building
+- Supporting copy referencing strategy, operations, finance, people, change, and AI
+- Optional proof point strip under hero
+
+**Example messaging formula:**
+- Headline = broad capability + client outcome
+- Subheading = who it is for + how support is delivered
+
+### Section 2. Services Overview / Positioning Block
+**Goal:** Explain how the service architecture works.
+
+**Content requirements:**
+- 1 short section explaining that support is structured across advisory categories
+- Position the firm as both strategic and implementation-capable
+- Emphasise customised delivery without making the offer feel undefined
+
+### Section 3. Advisory Categories Grid
+**Goal:** Help users quickly self-select into the relevant category.
+
+**Content requirements for each category card:**
+- Category title
+- 1 short category descriptor
+- 2 to 4 example services or challenge areas
+- CTA link to category page
+
+**UX guidance:**
+- Use clean card grid or stacked module layout
+- Keep descriptions tightly controlled to preserve visual consistency
+- Include iconography only if it improves scanability and does not feel decorative for its own sake
+
+### Section 4. Common Business Challenges
+**Goal:** Capture problem-aware users and reinforce relevance.
+
+**Content requirements:**
+- Section headline framed around challenges, not internal service labels
+- Grouped challenge statements such as growth, inefficiency, margin pressure, team structure, system change, AI adoption
+- Link relevant challenge clusters to category pages where sensible
+
+### Section 5. How We Work
+**Goal:** Explain the advisory delivery model.
+
+**Recommended stages:**
+1. Discovery and diagnosis
+2. Strategy and prioritisation
+3. Design and planning
+4. Implementation support
+5. Review and ongoing optimisation
+
+**Content requirements:**
+- 1 short explanation of each stage
+- Reinforce that engagements can be project-based or ongoing
+- Show structured delivery without implying rigid methodology where flexibility is needed
+
+### Section 6. Featured Service Offerings or Priority Focus Areas
+**Goal:** Highlight commercially important services or strong search targets.
+
+**Content requirements:**
+- 4 to 8 featured services
+- Each with short summary and direct link
+- Prioritise services with strong demand and commercial relevance
+
+### Section 7. Cross-Functional / Custom Solutions
+**Goal:** Provide a safety net for users who do not fit neatly into one category.
+
+**Content requirements:**
+- Introduce Customised Business Advisory & Consulting
+- Explain that some client needs span multiple service areas
+- Invite discussion for tailored advisory support
+
+### Section 8. Trust / Proof Section
+**Goal:** Reduce friction and increase credibility.
+
+**Content options:**
+- Industries served
+- Common engagement types
+- Project types
+- Outcome categories
+- Short case study snapshots when available
+
+### Section 9. Final CTA
+**Goal:** Convert visitors who have reached the bottom of the page.
+
+**CTA themes:**
+- Discuss your business requirements
+- Explore advisory support
+- Start a strategic conversation
+
+## 6.3 Services Landing Page Layout Specification
+
+### Recommended layout order
+1. Hero
+2. Services overview / positioning
+3. Advisory categories grid
+4. Common challenges
+5. How we work
+6. Featured services
+7. Custom solutions
+8. Trust/proof block
+9. Final CTA
+
+### Layout rules
+- Keep first screen high clarity and low clutter
+- Ensure category navigation is visible before heavy text sections
+- Use visual rhythm through alternating section backgrounds or spacing
+- Keep mobile stacking order clean and logical
+- Avoid oversized text blocks before the category grid
+
+## 6.4 Services Landing Page SEO Rules
+
+### Primary keyword intent
+Target broad non-brand keywords related to:
+- business advisory services
+- business consulting services
+- operational and strategic consulting
+- advisory services for small business / SME / growing businesses
+
+### On-page SEO requirements
+- One H1 only
+- H2s for main sections
+- Internal links to every category page
+- Internal links to at least 4 to 8 priority service pages
+- Descriptive anchor text, not generic "learn more"
+- Strong introductory copy above the fold
+
+### Metadata guidance
+- Title tag should include services term + brand or market position
+- Meta description should describe breadth and outcomes
+- Avoid stuffing all categories into the title tag
+
+### Schema opportunities
+- Service schema at page level if appropriate
+- Breadcrumb schema
+- Organisation schema site-wide
+
+---
+
+# 7. Service Category Page Content Guide
+
+## 7.1 Strategic Purpose
+A Service Category Page must establish depth in one advisory domain while acting as a structured gateway to the individual service pages underneath it.
+
+It should explain:
+- What the category means
+- What business problems it addresses
+- What services exist under it
+- What outcomes clients can expect
+- How engagements are delivered
+
+## 7.2 Recommended Page Sections
+
+### Section 1. Hero
+**Content requirements:**
+- Category title as H1
+- Category positioning statement
+- Supporting copy that frames the business issues this category helps address
+- Primary CTA
+
+### Section 2. Category Definition / Why This Matters
+**Goal:** Translate the category into real business value.
+
+**Content requirements:**
+- Explain the importance of this capability area
+- Reference business performance, growth, efficiency, decision support, leadership, transformation, or adoption depending on the category
+- Make the category relevant to businesses at different stages
+
+### Section 3. Common Challenges
+**Goal:** Speak directly to search and buying intent.
+
+**Content requirements:**
+- List practical challenges clients may experience
+- Phrase them in plain business language
+- Use a mix of strategic and operational pain points
+
+### Section 4. Service Offerings Within This Category
+**Goal:** Present the individual services clearly.
+
+**Content requirements for each service item:**
+- Service title
+- Short summary of what it covers
+- Optional ideal use case
+- CTA link to service page
+
+**UX guidance:**
+- Use cards, accordions, grouped list modules, or a split-content layout
+- Keep naming and description length consistent
+
+### Section 5. What This Category Can Help Deliver
+**Goal:** Show outcomes rather than activities.
+
+**Content requirements:**
+- Outcome list tailored to the category
+- Examples: improved visibility, clearer processes, stronger leadership alignment, better adoption, increased conversion, stronger margins
+
+### Section 6. Engagement Models
+**Goal:** Reduce uncertainty around how support is delivered.
+
+**Content options:**
+- Strategy workshops
+- Diagnostic reviews
+- Project-based engagements
+- Ongoing advisory support
+- Implementation support
+- Executive/fractional support where relevant
+
+### Section 7. Related Insights / Articles
+**Goal:** Support SEO and authority.
+
+**Content requirements:**
+- Link to future supporting articles, case studies, templates, or guides
+- This section becomes more important as the content library grows
+
+### Section 8. Final CTA
+**Goal:** Encourage direct enquiry or deeper exploration.
+
+## 7.3 Category Page Layout Specification
+
+### Recommended layout order
+1. Hero
+2. Category definition
+3. Common challenges
+4. Service offerings list/grid
+5. Outcomes
+6. Engagement models
+7. Related insights/resources
+8. Final CTA
+
+### Layout rules
+- The service offerings section must be prominent and easy to scan
+- Keep the category definition concise enough to preserve momentum
+- Use challenge and outcome sections to create emotional and commercial relevance
+- Ensure strong internal navigation to each underlying service page
+- Consider sticky in-page navigation on desktop where pages are long
+
+## 7.4 Category Page SEO Rules
+
+### Keyword approach
+Each category page should target:
+- Category term
+- Synonym/variant terms
+- Challenge-oriented modifiers
+- Business consulting/advisory variations
+
+**Example for Operations Advisory:**
+- operations advisory
+- operations consulting
+- operational improvement consulting
+- business process consulting
+- operational efficiency consulting
+
+### SEO requirements
+- Unique H1 for each category page
+- Unique title tag and meta description
+- Introductory copy above services list
+- Unique page copy, not repeated across categories
+- Internal links down to all child service pages
+- Internal links back up to Services Landing Page
+- Links across relevant sibling categories when contextually relevant
+
+### Semantic SEO guidance
+Use related terms naturally within body copy, such as:
+- efficiency, process, systems, planning, governance, capability, growth, performance, delivery, implementation, visibility, optimisation
+
+Do not force synonyms unnaturally. The page must sound credible first and search-friendly second.
+
+---
+
+# 8. Individual Service Offering Page Content Guide
+
+## 8.1 Strategic Purpose
+These pages are the most commercially important in the Services architecture. They must rank, inform, and convert.
+
+Each service page should feel specific, commercially grounded, and useful, without becoming so narrow that it limits delivery flexibility.
+
+## 8.2 Standard Page Template
+
+### Section 1. Hero
+**Content requirements:**
+- Service name as H1
+- Clear statement of what the service helps achieve
+- Optional short subheading describing common use cases
+- Primary CTA
+
+### Section 2. The Business Problem
+**Goal:** Establish immediate relevance.
+
+**Content requirements:**
+- Describe the pain points that trigger the need for this service
+- Use symptom-based phrasing users recognise
+- Show commercial consequences where possible
+
+### Section 3. What the Service Covers
+**Goal:** Define scope clearly.
+
+**Content requirements:**
+- Explain what is included
+- Break into logical components or workstreams
+- Avoid listing only tasks; frame them as advisory and delivery components
+
+### Section 4. Our Approach / How the Engagement Works
+**Recommended stages:**
+1. Discovery
+2. Assessment and analysis
+3. Recommendations / design
+4. Implementation support
+5. Review and optimisation
+
+**Content requirements:**
+- Tailor the steps to the specific service
+- Keep process practical and clear
+- Reinforce that scope can be adapted to the client context
+
+### Section 5. Deliverables
+**Goal:** Make the service tangible.
+
+**Examples:**
+- Assessment reports
+- Roadmaps
+- KPI frameworks
+- System recommendations
+- Process documentation
+- Planning tools
+- Governance structures
+- Dashboards
+- Training resources
+
+### Section 6. Outcomes and Benefits
+**Goal:** Connect service delivery to business value.
+
+**Content requirements:**
+- Include strategic and practical outcomes
+- Phrase in business language
+- Avoid inflated promises
+
+### Section 7. Ideal Use Cases / When This Service Is Relevant
+**Goal:** Help users self-identify.
+
+**Content requirements:**
+- Business scenarios where this service is useful
+- Growth stage, restructuring, inefficiency, change, margin pressure, technology rollout, leadership scaling, etc.
+
+### Section 8. Related Services
+**Goal:** Support cross-navigation and cross-sell.
+
+**Content requirements:**
+- Link to adjacent or upstream/downstream services
+- Example: Cashflow Forecasting should link to Financial Modelling, Profitability Analysis, Strategic Growth Planning
+
+### Section 9. Related Insights / Resources
+**Goal:** Build topical authority and support SEO.
+
+### Section 10. Final CTA
+**Goal:** Convert the visitor.
+
+## 8.3 Service Page Layout Specification
+
+### Recommended layout order
+1. Hero
+2. Business problem
+3. What the service covers
+4. Approach
+5. Deliverables
+6. Outcomes
+7. Use cases
+8. Related services
+9. Related insights/resources
+10. Final CTA
+
+### Layout rules
+- Use modular sections with clear headings
+- Avoid long, undifferentiated text blocks
+- Place the most persuasive and differentiating content in the top half of the page
+- Keep CTA accessible without being intrusive
+- Consider summary sidebar or sticky contact prompt on desktop
+
+## 8.4 Service Page SEO Rules
+
+### Keyword targeting approach
+Each page should target:
+- Core service keyword
+- Synonym/variant
+- Problem-based queries
+- Outcome-based modifiers
+- Industry or business-size modifiers where relevant
+
+**Example: Cashflow Forecasting & Management**
+- cashflow forecasting services
+- cashflow management consulting
+- business cashflow planning
+- cashflow advisory for growing businesses
+
+### Content SEO requirements
+- Unique H1
+- Unique title tag
+- Unique meta description
+- 700 to 1,500+ words depending on importance and available differentiation
+- Use related terms naturally across headings and body copy
+- Add FAQs where appropriate for search capture
+- Use internal links to category page, sibling services, and supporting articles
+
+### FAQ opportunities
+Add FAQ blocks to service pages where the topic supports informational search intent.
+
+**Examples:**
+- What is operational diagnostics?
+- When should a business undertake process optimisation?
+- What does a cashflow forecasting service include?
+
+### Schema opportunities
+- Service schema
+- FAQ schema where FAQ content is present
+- Breadcrumb schema
+
+---
+
+# 9. Content Generation Instructions by Page Type
+
+## 9.1 Content Production Workflow for Services Landing Page
+
+### Step 1. Define the page objective
+Document:
+- The primary business purpose
+- The primary audience
+- The primary CTA
+- The main keyword theme
+
+### Step 2. Draft positioning statement
+Write:
+- One headline
+- One support paragraph
+- One short positioning paragraph defining the full advisory scope
+
+### Step 3. Build category summaries
+For each category, create:
+- 1 line descriptor
+- 2 to 4 example focus areas
+- Link destination
+
+### Step 4. Draft challenge-led section
+List cross-functional business challenges that naturally map to categories.
+
+### Step 5. Draft process section
+Create the 4 to 5-step advisory model.
+
+### Step 6. Select featured services
+Prioritise high-value service offerings with strong search intent or conversion potential.
+
+### Step 7. Draft CTA blocks
+Create both mid-page and bottom-page CTA copy.
+
+### Step 8. Review for cohesion
+Check that the page:
+- Feels broad but structured
+- Does not duplicate category page detail too heavily
+- Routes users deeper into the site effectively
+
+## 9.2 Content Production Workflow for Category Pages
+
+### Step 1. Define category role
+Document:
+- The category purpose
+- Its relevance to business performance
+- Target search themes
+- Primary CTA
+
+### Step 2. Identify business pain points
+List 6 to 10 common problems in this domain.
+
+### Step 3. Draft category overview copy
+Write 2 to 4 paragraphs explaining:
+- What the category includes
+- When it becomes important
+- How it supports broader business goals
+
+### Step 4. Create service summaries
+For each child service:
+- 1 short service definition
+- 1 sentence on value or use case
+- Link destination
+
+### Step 5. Draft outcomes section
+Write a practical outcomes list relevant to the category.
+
+### Step 6. Draft engagement model section
+Explain how support may be delivered in this domain.
+
+### Step 7. Add related resources plan
+List future article topics and case study ideas to support the category.
+
+## 9.3 Content Production Workflow for Service Pages
+
+### Step 1. Define the service intent
+Document:
+- Service purpose
+- Typical client trigger
+- Primary and secondary keywords
+- Related services
+- Likely CTA
+
+### Step 2. Write the business problem section
+Describe the signs, symptoms, and business consequences.
+
+### Step 3. Write the scope section
+Break the service into components. Cover what is assessed, designed, recommended, built, reviewed, or supported.
+
+### Step 4. Write the engagement approach
+Define the typical stages of delivery.
+
+### Step 5. Identify tangible outputs
+List deliverables or engagement artefacts.
+
+### Step 6. Write the outcomes section
+Translate the work into strategic and practical benefits.
+
+### Step 7. Write use cases
+Describe the business situations where this service is relevant.
+
+### Step 8. Add related links
+Connect to:
+- Parent category
+- Relevant sibling services
+- Supporting insight content
+
+### Step 9. Add FAQ block where appropriate
+Target informational intent without bloating the page.
+
+### Step 10. Optimise metadata
+Create unique title, description, URL slug, and internal anchor text.
+
+---
+
+# 10. Detailed Content Instructions by Service Category
+
+## 10.1 Operations Advisory
+
+### Category page content focus
+- Operational efficiency
+- Process maturity
+- scalability and repeatability
+- systems and workflows
+- governance and delivery quality
+
+### Key pain points to feature
+- Inefficient or undocumented processes
+- Too much manual work
+- Inconsistent service delivery
+- Bottlenecks and poor resource allocation
+- Lack of operational visibility
+- Difficulty scaling the business
+
+### Tone guidance
+Commercial, structured, improvement-focused.
+
+### Priority services for early build
+- Operational Diagnostics
+- Process Mapping & Optimisation
+- Workflow Automation & Systems Integration
+- Operating Model Design
+- Cost Reduction & Efficiency Programs
+
+### Supporting article themes
+- Signs your business needs an operational review
+- How to improve process efficiency without disrupting delivery
+- When to automate workflows in a growing business
+
+## 10.2 Financial Advisory
+
+### Category page content focus
+- Financial clarity
+- forecasting and planning
+- profitability improvement
+- decision support
+- reporting and modelling
+
+### Key pain points to feature
+- Limited visibility into financial performance
+- Cashflow pressure
+- Unclear margins
+- Growth decisions made without modelling
+- Weak reporting
+- Rising costs without clear control
+
+### Tone guidance
+Strategic, analytical, commercially mature.
+
+### Priority services for early build
+- Cashflow Forecasting & Management
+- Financial Modelling & Scenario Planning
+- Profitability & Margin Analysis
+- Financial Reporting & Dashboarding
+- Cost Structure & Expense Optimisation
+
+### Supporting article themes
+- Why growing businesses need better cashflow forecasting
+- How profitability analysis supports better decisions
+- Financial dashboards that matter for small and mid-sized businesses
+
+## 10.3 Sales & Marketing Advisory
+
+### Category page content focus
+- Revenue growth
+- customer acquisition systems
+- conversion performance
+- positioning and demand generation
+- sales discipline
+
+### Key pain points to feature
+- Inconsistent lead flow
+- Weak conversion performance
+- Limited pipeline visibility
+- Poor CRM usage
+- Unclear market positioning
+- Low retention and repeat value
+
+### Tone guidance
+Growth-oriented, commercial, practical.
+
+### Priority services for early build
+- Lead Generation Systems
+- Funnel Design & Conversion Optimisation
+- CRM Selection & Implementation
+- Go-to-Market Strategy
+- Brand Positioning & Messaging
+
+### Supporting article themes
+- Why many sales funnels underperform
+- CRM mistakes growing businesses make
+- How positioning affects conversion and lead quality
+
+## 10.4 Human Resources Advisory
+
+### Category page content focus
+- organisational structure
+- role clarity
+- leadership development
+- performance systems
+- retention and engagement
+
+### Key pain points to feature
+- Unclear roles and accountabilities
+- Hiring without structure
+- Weak performance management
+- High employee turnover
+- Leadership capability gaps
+- Remote team inconsistency
+
+### Tone guidance
+People-focused but commercially grounded.
+
+### Priority services for early build
+- Organisational Structure Design
+- Recruitment Strategy & Hiring Support
+- Performance Management Systems
+- Leadership Development Programs
+- Remote & Distributed Workforce Strategy
+
+### Supporting article themes
+- How to scale team structure as your business grows
+- Why role clarity improves performance
+- What strong performance management should actually look like
+
+## 10.5 Management Advisory
+
+### Category page content focus
+- strategic direction
+- governance
+- leadership alignment
+- growth planning
+- decision support
+- transformation and business performance
+
+### Key pain points to feature
+- Growth without direction
+- Strategy that is not being executed
+- Leadership team misalignment
+- Weak decision-making frameworks
+- Poor governance discipline
+- Lack of performance visibility
+
+### Tone guidance
+Executive-level, strategic, direct.
+
+### Priority services for early build
+- Strategic Planning & Facilitation
+- Business Performance Reviews
+- Growth Strategy Development
+- Governance Frameworks
+- OKR & KPI Framework Development
+
+### Supporting article themes
+- Why strategy often fails in execution
+- Governance structures for growing businesses
+- How to improve leadership alignment across a business
+
+## 10.6 Change Management Advisory
+
+### Category page content focus
+- adoption
+- communication
+- transformation discipline
+- stakeholder alignment
+- implementation support
+
+### Key pain points to feature
+- Resistance to change
+- Poor adoption of new systems or processes
+- Confused internal communication
+- Transformation fatigue
+- Weak readiness planning
+- Post-implementation drop-off
+
+### Tone guidance
+Calm, structured, implementation-aware.
+
+### Priority services for early build
+- Change Readiness Assessments
+- Transformation Strategy & Roadmaps
+- Stakeholder Engagement & Communication
+- Change Adoption Frameworks
+- System Implementation Change Support
+
+### Supporting article themes
+- Why change initiatives fail to stick
+- What change readiness actually involves
+- How to support system adoption across a business
+
+## 10.7 AI Advisory
+
+### Category page content focus
+- practical AI application
+- automation
+- productivity uplift
+- insight generation
+- governance and implementation
+
+### Key pain points to feature
+- Uncertainty about where AI fits
+- Too much manual knowledge work
+- Disconnected tools and processes
+- Weak internal AI capability
+- AI experimentation without strategy
+- Concern around risks or misuse
+
+### Tone guidance
+Practical, grounded, non-hyped.
+
+### Priority services for early build
+- AI Opportunity Assessments
+- AI Strategy & Roadmaps
+- Workflow Automation using AI
+- Generative AI Implementation
+- AI Integration with Business Systems
+
+### Supporting article themes
+- Where AI creates value in growing businesses
+- How to evaluate AI opportunities without chasing hype
+- Risks to manage when implementing AI in operations
+
+## 10.8 Custom Solutions
+
+### Category page content focus
+- cross-functional complexity
+- tailored advisory support
+- non-standard business problems
+- integrated solution design
+
+### Key pain points to feature
+- Problems spanning multiple business functions
+- Undefined or evolving project scope
+- Need for tailored senior advisory support
+- Transformation not fitting a single workstream
+
+### Tone guidance
+Premium, tailored, strategic.
+
+### Priority service for build
+- Customised Business Advisory & Consulting
+
+### Supporting article themes
+- When a business needs integrated advisory support
+- Solving complex business problems across multiple functions
+
+---
+
+# 11. Page Layout Specifications by Page Type
+
+## 11.1 Shared UX Rules
+- Clear heading hierarchy
+- Strong whitespace and section separation
+- Consistent CTA styling
+- Responsive card layouts
+- Mobile-first scanability
+- Visible breadcrumbs
+- Fast load performance
+- No overloaded dropdowns or buried key pages
+
+## 11.2 Services Landing Page Layout Rules
+- Hero should establish breadth quickly
+- Category grid should appear high on page
+- Cross-functional challenge section should sit before deeper explanatory content
+- Featured services should be curated, not exhaustive
+- Final CTA must feel like the natural next step
+
+## 11.3 Category Page Layout Rules
+- Service offering list should be one of the most visible elements
+- Challenge and outcome sections should frame commercial relevance
+- Support resource links should sit lower unless a campaign requires otherwise
+- Sticky side navigation can help long category pages
+
+## 11.4 Service Page Layout Rules
+- Business problem and service coverage must appear early
+- Deliverables and outcomes should be visually distinct
+- Use cases help qualification and should not be hidden
+- Related services support deeper browsing and stronger internal linking
+- Final CTA must be clear and low-friction
+
+---
+
+# 12. Search Engine Optimisation Framework
+
+## 12.1 SEO Objectives
+The Services section should generate search visibility across three levels:
+
+1. **Broad intent** via the Services Landing Page
+2. **Topical/functional intent** via category pages
+3. **High-intent problem/service intent** via individual service pages
+
+## 12.2 Keyword Architecture
+
+### Tier 1: Broad category intent
+Examples:
+- business advisory services
+- consulting services for businesses
+- strategic business consulting
+
+### Tier 2: Functional/category intent
+Examples:
+- operations consulting
+- financial advisory for business
+- HR consulting services
+- change management consulting
+- AI consulting for business
+
+### Tier 3: Service intent
+Examples:
+- cashflow forecasting service
+- process optimisation consulting
+- CRM implementation consultant
+- leadership development advisory
+- change readiness assessment
+- AI strategy consulting
+
+### Tier 4: Problem intent
+Examples:
+- how to improve business processes
+- how to reduce operational inefficiency
+- how to improve cashflow visibility
+- how to increase team accountability
+- how to improve system adoption
+- how to implement AI in business operations
+
+## 12.3 On-Page SEO Rules
+Every page must include:
+- Unique H1
+- Unique title tag
+- Unique meta description
+- Descriptive URL slug
+- Internal links to parent and related pages
+- Clear heading structure
+- Optimised image alt text if images are used
+- Introductory body copy before cards or modules where relevant
+
+## 12.4 Internal Linking Strategy
+
+### Linking principles
+- Services Landing Page links to all category pages
+- Category pages link to all child service pages
+- Service pages link back to parent category page
+- Service pages link to related sibling services
+- Service and category pages link to relevant insights and case studies
+- Blog and insight articles link back into relevant service pages
+
+### Anchor text rules
+Use descriptive anchors such as:
+- operational diagnostics services
+- cashflow forecasting support
+- strategic planning advisory
+
+Avoid generic anchors such as:
+- click here
+- read more
+- learn more
+
+## 12.5 Content Cluster Strategy
+Each category should function as a content hub.
+
+**Example cluster: Operations Advisory**
+- Category page: Operations Advisory
+- Service pages: diagnostics, process optimisation, operating model, automation, service delivery
+- Supporting articles: process bottlenecks, operational review signs, automation opportunities
+- Case studies: operational efficiency improvements, workflow redesign, scaling operations
+
+## 12.6 Metadata Rules
+
+### Title tag formula
+Primary keyword + value proposition | Brand
+
+### Meta description formula
+What the page covers + who it helps + implied outcome
+
+### URL rules
+- Keep concise
+- Use hyphenated words
+- Avoid dates or unnecessary filler
+- Use parent-child URL logic where appropriate
+
+**Examples:**
+- /services/
+- /services/operations-advisory/
+- /services/operations-advisory/operational-diagnostics/
+
+## 12.7 Structured Data Opportunities
+Implement where appropriate:
+- BreadcrumbList
+- Organization
+- Service
+- FAQPage when FAQ content exists
+- Article for supporting insights
+
+## 12.8 Technical SEO Considerations
+- Ensure pages are indexable
+- Avoid duplicate metadata
+- Avoid duplicate service summaries copied across multiple pages
+- Generate XML sitemap including all service URLs
+- Ensure canonical tags are set properly
+- Use compressed images and lightweight assets
+- Optimise Core Web Vitals
+- Ensure mobile layout is stable and readable
+
+---
+
+# 13. Content Integration Guide for the Web Application
+
+## 13.1 CMS / Content Model Requirements
+Each page type should have structured fields rather than one large free-text blob.
+
+### Services Landing Page fields
+- Hero headline
+- Hero body copy
+- Hero CTA 1
+- Hero CTA 2
+- Services overview intro
+- Category cards collection
+- Common challenges block
+- Process steps collection
+- Featured services collection
+- Custom solutions block
+- Trust/proof block
+- Final CTA block
+- SEO fields
+
+### Category Page fields
+- Category title
+- Category slug
+- Hero summary
+- Category overview body
+- Challenges list
+- Service offerings collection
+- Outcomes list
+- Engagement models list
+- Related resources collection
+- Final CTA block
+- SEO fields
+
+### Service Offering Page fields
+- Service title
+- Service slug
+- Parent category
+- Hero summary
+- Business problem body
+- Scope/components block
+- Approach steps collection
+- Deliverables list
+- Outcomes list
+- Use cases block
+- Related services collection
+- Related resources collection
+- FAQ collection
+- Final CTA block
+- SEO fields
+
+## 13.2 Reusable Components Required
+Design and development should build reusable components for:
+- Hero block
+- CTA block
+- Service card grid
+- Challenge list section
+- Outcomes list section
+- Process steps section
+- FAQ accordion
+- Breadcrumbs
+- Related services block
+- Related resources block
+- Testimonial/proof block
+
+## 13.3 Navigation Rules
+- Services must be accessible from primary navigation
+- Category pages must be linked from Services Landing Page
+- Individual service pages must be discoverable both through category pages and internal links
+- Breadcrumbs must be present on category and service pages
+- Avoid orphan pages
+
+## 13.4 Content Publishing Workflow
+1. Finalise service taxonomy
+2. Approve page templates
+3. Create content briefs for each page
+4. Draft copy
+5. SEO review
+6. UX/layout review
+7. Load into CMS
+8. QA on staging
+9. Publish
+10. Monitor indexing and engagement
+
+## 13.5 QA Checklist Before Publishing
+- H1 is unique and correct
+- Metadata is completed
+- URL slug matches taxonomy
+- All internal links work
+- Parent category assigned correctly
+- CTA points to correct destination
+- Mobile layout is clean
+- No placeholder copy remains
+- No duplicated paragraphs from other pages
+- Breadcrumbs render correctly
+- Schema validated where used
+
+---
+
+# 14. Conversion and UX Considerations
+
+## 14.1 Conversion Goals
+The primary conversion goal is enquiry generation.
+Secondary goals include:
+- Page depth
+- Service exploration
+- article/resource clicks
+- case study engagement
+
+## 14.2 CTA Strategy
+Use CTAs appropriate to the page type.
+
+### Services Landing Page CTAs
+- Explore services
+- Discuss your business needs
+- View advisory categories
+
+### Category Page CTAs
+- Explore this advisory area
+- Discuss your requirements
+- View related service offerings
+
+### Service Page CTAs
+- Discuss this service
+- Explore how this could apply to your business
+- Request tailored advisory support
+
+## 14.3 Trust Signals
+Add as available:
+- Industry experience
+- Types of businesses supported
+- Common outcomes achieved
+- Project examples
+- Thought leadership content
+- Certifications or associations if relevant
+
+---
+
+# 15. Recommended Build Prioritisation
+
+## 15.1 Phase 1: Core architecture
+- Services Landing Page
+- All category pages
+- Priority service pages across each category
+
+## 15.2 Priority first-wave service pages
+Recommended first build based on likely commercial value and SEO opportunity:
+- Operational Diagnostics
+- Process Mapping & Optimisation
+- Cashflow Forecasting & Management
+- Financial Modelling & Scenario Planning
+- Lead Generation Systems
+- CRM Selection & Implementation
+- Organisational Structure Design
+- Performance Management Systems
+- Strategic Planning & Facilitation
+- Business Performance Reviews
+- Change Readiness Assessments
+- System Implementation Change Support
+- AI Opportunity Assessments
+- Generative AI Implementation
+- Customised Business Advisory & Consulting
+
+## 15.3 Phase 2: Expand topical depth
+Build additional service pages and supporting articles.
+
+## 15.4 Phase 3: Strengthen authority
+Add:
+- case studies
+- industry pages
+- insight articles
+- downloadable resources/templates
+
+---
+
+# 16. Governance Rules for Ongoing Expansion
+
+## 16.1 When adding a new service
+Check:
+- Does it fit within an existing category?
+- Is it distinct enough to warrant its own page?
+- Does it overlap with an existing service?
+- What keyword opportunity does it target?
+- What related pages need to link to it?
+
+## 16.2 Avoiding duplication
+- Do not create pages that differ only by wording
+- Consolidate overlapping services where intent is too similar
+- Use category pages to capture broad themes and service pages to capture specific intent
+
+## 16.3 Maintaining consistency
+Every new page must follow:
+- approved layout structure
+- tone rules
+- CTA rules
+- metadata standards
+- internal linking standards
+
+---
+
+# 17. Service Page Brief Template
+
+Use this template before drafting any new page.
+
+## Page Brief
+- Page type:
+- Page title:
+- Parent category:
+- Target audience:
+- Primary keyword:
+- Secondary keywords:
+- Main business problem:
+- Core promise/outcome:
+- Primary CTA:
+- Related services:
+- Related articles/resources:
+- Notes on differentiation:
+
+## Required sections
+- Hero
+- Business problem
+- What the service covers
+- Approach
+- Deliverables
+- Outcomes
+- Use cases
+- Related services
+- Related resources
+- CTA
+- SEO metadata
+
+---
+
+# 18. Final Strategic Guidance
+
+The Services section should not read like a random list of consulting tasks. It must function as a coherent advisory system.
+
+That means:
+- The Services Landing Page explains the full offer
+- The Category Pages organise expertise into clear domains
+- The Service Pages capture intent, rank for specific searches, and convert visitors
+- Supporting insight content deepens authority and strengthens internal linking over time
+
+The core positioning should remain consistent throughout:
+
+**The business helps organisations improve performance, solve complex operational and strategic challenges, and build stronger foundations for growth through flexible, cross-functional advisory support.**
+
+This is the standard every services page should align to.
+
+---
+
+# 19. Next Document to Produce
+
+After this guide, the next logical deliverable is a **page-by-page implementation matrix** covering:
+- URL structure
+- page titles
+- target keywords
+- page purpose
+- CTA mapping
+- internal links
+- content status
+- design component requirements
+
+That matrix should become the production tracker for writing and implementation.
+

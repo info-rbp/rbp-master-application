@@ -1,0 +1,123 @@
+import json
+
+guidelines = {
+  "project_name": "Remote Business Partner",
+  "app_type": "hybrid_fullstack",
+  "archetype": "Old Money Tech (B2B SaaS Hybrid)",
+  "typography": {
+    "headline_font": "Cormorant Garamond",
+    "body_font": "Inter",
+    "code_font": "JetBrains Mono",
+    "typesetting_rules": [
+      "Headings (Size > 32px): MUST use tight letter spacing: tracking-tight or tracking-tighter.",
+      "Overlines / Labels: MUST be Uppercase + Tiny + Wide Spacing (tracking-[0.2em]).",
+      "Line Height: Tight (leading-none) for headers, Loose (leading-relaxed) for body.",
+      "Use font-light for elegance or font-black for impact instead of standard bold."
+    ]
+  },
+  "colors": {
+    "strategy": "Swiss & High-Contrast mixed with Old Money Tech. Premium B2B consulting aesthetic.",
+    "brand_primary": "hsl(217, 91%, 60%)",
+    "brand_secondary": "hsl(215, 28%, 17%)",
+    "backgrounds": "Tinted neutral greys. Pure #000000 or #ffffff is allowed but prefer tinted surfaces like hsl(220, 14%, 96%) for muted sections.",
+    "forbidden_colors": ["Limetech lime-green", "Purple/violet gradients", "Teal green/blue for dashboards"],
+    "contrast_rules": [
+      "Normal Text: Minimum 4.5:1 contrast ratio",
+      "Large Text: Minimum 3:1 contrast ratio",
+      "Interactive Elements: Minimum 3:1 against adjacent colors"
+    ]
+  },
+  "visual_enhancers": {
+    "surface_strategies": [
+      "Glassmorphism (The Crystal Variant): Use for Sticky Headers, Floating Navs. Heavy blur (backdrop-blur-xl), high opacity background (bg-white/70 or bg-black/60), 1px delicate inner stroke.",
+      "Neumorphism (The Tactile Variant): Dashboard Widgets, Action Buttons. Soft shadows mixed with sharp inner contrasts and a sharp 1px border.",
+      "Grid Borders: Expose the skeleton for Data-heavy Dashboards and Feature Sections."
+    ],
+    "shape_language": {
+      "panels": "24px",
+      "cards": "20px",
+      "buttons": "16px",
+      "inputs": "14px",
+      "pills": "999px"
+    },
+    "textures": "Subtle grain textures, noise overlays to kill digital flatness. Avoid generic SaaS look."
+  },
+  "grids_and_layouts": {
+    "spacing_system": "Generous Spacing. Use 2-3x more spacing than typical designs. Tailwind scale: p-4, p-6, p-8, p-12, p-16, p-24, p-32.",
+    "bento_grid": [
+      "MODE A (Marketing): The Tetris Grid. Asymmetry, Visual Tension. grid-cols-1 md:grid-cols-8 lg:grid-cols-12 with wide gaps (gap-8 to gap-12).",
+      "MODE B (Dashboards): High Density Grid. grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with tight gaps (gap-4 or gap-6)."
+    ],
+    "container_width": "Max content width 1280px. Mobile-first responsive always."
+  },
+  "components": {
+    "shadcn_overrides": "MUST customize Shadcn components to match the brand radius (buttons 16px, inputs 14px, cards 20px) and typography. DO NOT use raw HTML for complex interactions (use Shadcn Select, Dialog, Calendar).",
+    "cards": "For marketing pages, go cardless or use sharp edges/subtle roundness. Use the shape_language defined.",
+    "buttons": "Pill-shaped or rounded-16px. Always explicitly set text color on hover. Use primary color sparingly.",
+    "tables_and_data": "Use Shadcn table, compact spacing for member portal. Recharts for data visualization."
+  },
+  "motion_and_interactions": {
+    "philosophy": "Subtle motion only — fade-up reveals, hover elevations, accordion transitions.",
+    "hover_states": "ALWAYS explicitly set text color on hover. Slight lift (-translate-y-1), subtle shadow (shadow-lg).",
+    "animations": "Use tailwindcss-animate for accordion transitions. Framer Motion for subtle fade-ups on scroll if needed, but keep it lightweight.",
+    "accessibility": "MUST respect prefers-reduced-motion. Focus States must have HIGHER contrast than default state."
+  },
+  "accessibility": {
+    "guidelines": "WCAG 2.2 AA minimum. All interactive elements MUST include data-testid attribute (e.g., data-testid='login-submit-button')."
+  },
+  "3d_and_creative_libraries": {
+    "charts": "Recharts (already in package.json)",
+    "icons": "lucide-react (already in use)"
+  },
+  "media": {
+    "image_constraints": "Mobile Height Limit: Images MUST NOT exceed 80vh on mobile devices. Use max-h-[80vh] md:max-h-none."
+  },
+  "image_urls": [
+    {
+      "category": "Hero / Meeting",
+      "url": "https://images.unsplash.com/photo-1758518731706-be5d5230e5a5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwzfHxidXNpbmVzcyUyMHByb2Zlc3Npb25hbHMlMjBtZWV0aW5nfGVufDB8fHx8MTc3NDQxMTMzNXww&ixlib=rb-4.1.0&q=85",
+      "description": "Diverse business team collaborating in a modern office."
+    },
+    {
+      "category": "Dashboard / Office",
+      "url": "https://images.pexels.com/photos/1957477/pexels-photo-1957477.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "A tranquil modern home office featuring a wooden desk, ergonomic chair, and soft natural light."
+    },
+    {
+      "category": "Services / Consulting",
+      "url": "https://images.unsplash.com/photo-1758518729711-1cbacd55efdb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwyfHxidXNpbmVzcyUyMHByb2Zlc3Npb25hbHMlMjBtZWV0aW5nfGVufDB8fHx8MTc3NDQxMTMzNXww&ixlib=rb-4.1.0&q=85",
+      "description": "Business people collaborating in a modern office meeting."
+    }
+  ],
+  "component_path": "/app/src/components/ui/",
+  "instructions_to_main_agent": {
+    "step_1": "Update globals.css and tailwind.config.ts to inject Cormorant Garamond for the headline font, and adjust border radii to the specific shape language (panels 24px, cards 20px, buttons 16px, inputs 14px, pills 999px).",
+    "step_2": "Implement the layout and base components using raw HTML/Tailwind for marketing sections, and customized Shadcn components for forms, inputs, and the member portal.",
+    "step_3": "Apply 'Old Money Tech' aesthetic: high contrast, elegant serif headers, clean sterile sans body text, and generous spacing.",
+    "step_4": "Ensure all interactive elements have data-testid attributes.",
+    "step_5": "Do not center-align app containers. Use optical alignment and maintain B2B premium feel."
+  },
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use `sonner` for toasts. Sonner component are located in /app/src/components/ui/sonner.tsx"
+  ]
+}
+
+with open('/app/design_guidelines.json', 'w') as f:
+    json.dump(guidelines, f, indent=2)
+

@@ -1,0 +1,529 @@
+# RBP Website and Application High-Level Build Structure
+
+## 1. Platform Architecture
+
+```text
+Platform
+│
+├── Public Website
+├── Membership / Account Console
+├── Admin Console
+└── Shared System Services
+```
+
+## 2. Public Website Structure
+
+The public website is the primary content, discovery, SEO, and conversion layer.
+
+```text
+Public Website
+│
+├── Home
+│
+├── Membership
+│   ├── Membership Overview
+│   ├── Basic Membership
+│   ├── Standard Membership
+│   ├── Premium Membership
+│   ├── Membership FAQ
+│   └── Sign Up / Join
+│
+├── DocShare
+│   ├── DocShare Landing
+│   ├── Templates
+│   │   ├── Category Listing Pages
+│   │   └── Individual Template Pages
+│   ├── Companion Guides
+│   │   ├── Category Listing Pages
+│   │   └── Individual Guide Pages
+│   ├── Documentation Suites
+│   │   ├── Category Listing Pages
+│   │   └── Individual Suite Pages
+│   ├── End-to-End Processes
+│   │   ├── Category Listing Pages
+│   │   └── Individual Process Pages
+│   ├── Tools
+│   │   ├── Category Listing Pages
+│   │   └── Individual Tool Pages
+│   └── Search / Filter Results
+│
+├── Partner Marketplace
+│   ├── Partner Marketplace Landing
+│   ├── Top Offers
+│   ├── New Offers
+│   ├── Exclusive Deals
+│   ├── Our Picks
+│   ├── All Offers
+│   ├── Category Pages
+│   └── Individual Offer Pages
+│
+├── Knowledge Center
+│   ├── Knowledge Center Landing
+│   ├── Articles
+│   │   ├── Category Listing Pages
+│   │   └── Individual Article Pages
+│   ├── Guides & Playbooks
+│   │   ├── Category Listing Pages
+│   │   └── Individual Guide Pages
+│   ├── Tools & Frameworks
+│   │   ├── Category Listing Pages
+│   │   └── Individual Tool / Framework Pages
+│   ├── Knowledge Base
+│   │   ├── Topic Pages
+│   │   └── Individual Entry Pages
+│   └── Search Results
+│
+├── Services
+│   ├── Services Landing
+│   ├── Operations Advisory
+│   ├── Financial Advisory
+│   ├── Sales & Marketing Advisory
+│   ├── Human Resources Advisory
+│   ├── Management Advisory
+│   ├── Change Management Advisory
+│   ├── AI Advisory
+│   ├── Discovery Call
+│   └── Case Studies / Past Projects
+│
+├── About
+│   ├── About RBP
+│   ├── How We Work
+│   └── Why RBP
+│
+├── Contact
+│
+├── Legal
+│   ├── Privacy Policy
+│   ├── Terms of Service
+│   └── Cookie / Data Policy
+│
+└── Authentication
+    ├── Login
+    ├── Sign Up
+    ├── Forgot Password
+    ├── Reset Password
+    └── Verify Email
+```
+
+## 3. Public Content Experience
+
+All core content lives on the public-facing website and supports gated access where required.
+
+```text
+Public Content Experience
+│
+├── Fully Public Content
+├── Preview + Locked Content
+└── Fully Accessible Member Content
+```
+
+### Shared Page Elements
+
+```text
+Shared Page Elements
+│
+├── Breadcrumbs
+├── Content Header
+├── Metadata
+├── Preview / Summary
+├── Main Content or Download Area
+├── Access / Lock State
+├── Related Resources
+└── Upgrade / Sign In CTA
+```
+
+## 4. Membership / Account Console Structure
+
+The account console is lightweight and operational. It is used for membership management, billing, requests, and profile settings rather than content delivery.
+
+```text
+Membership / Account Console
+│
+├── Dashboard
+│   ├── Account Summary
+│   ├── Current Membership
+│   ├── Billing Snapshot
+│   ├── Recent Requests
+│   └── Recommended Next Actions
+│
+├── Membership
+│   ├── Current Plan
+│   ├── Compare / Upgrade / Downgrade
+│   ├── Membership Benefits
+│   └── Renewal / Status
+│
+├── Billing
+│   ├── Payment Method
+│   ├── Billing History
+│   ├── Invoices / Receipts
+│   ├── Subscription Settings
+│   └── Cancel / Pause / Reactivate
+│
+├── Requests
+│   ├── Customisation Requests
+│   │   ├── Submit Request
+│   │   ├── Active Requests
+│   │   └── Request History
+│   ├── Support Requests
+│   │   ├── Submit Request
+│   │   ├── Open Requests
+│   │   └── Closed Requests
+│   └── Implementation Support
+│
+├── Discovery Calls
+│   ├── Book Discovery Call
+│   ├── Upcoming Calls
+│   └── Call History
+│
+├── Profile
+│   ├── Personal Details
+│   ├── Business Details
+│   ├── Password & Security
+│   └── Notification Preferences
+│
+└── Logout
+```
+
+## 5. Admin Console Structure
+
+The admin console runs the platform across membership, billing, content, requests, analytics, and security.
+
+```text
+Admin Console
+│
+├── Dashboard
+│   ├── Revenue Snapshot
+│   ├── Membership Snapshot
+│   ├── Content Snapshot
+│   ├── Engagement Snapshot
+│   └── Action Items
+│
+├── Membership Administration
+│   ├── Members
+│   ├── Member Profiles
+│   ├── Segments / Tags
+│   ├── Manual Overrides
+│   ├── Internal Notes
+│   ├── Bulk Actions
+│   ├── Imports / Exports
+│   └── Member Activity Timeline
+│
+├── Plans & Access
+│   ├── Membership Plans
+│   ├── Tier Rules
+│   ├── Feature Access Matrix
+│   ├── Paywall Rules
+│   ├── Access Overrides
+│   └── Drip / Release Rules
+│
+├── Billing & Subscriptions
+│   ├── Transactions
+│   ├── Subscriptions
+│   ├── Failed Payments
+│   ├── Refunds
+│   ├── Coupons / Promotions
+│   ├── Dunning Settings
+│   └── Billing Events
+│
+├── Content Management
+│   ├── DocShare Manager
+│   │   ├── Templates
+│   │   ├── Companion Guides
+│   │   ├── Documentation Suites
+│   │   ├── End-to-End Processes
+│   │   └── Tools
+│   ├── Partner Marketplace Manager
+│   │   ├── Offers
+│   │   ├── Categories
+│   │   ├── Partners
+│   │   └── Expiry / Validity
+│   ├── Knowledge Center Manager
+│   │   ├── Articles
+│   │   ├── Guides & Playbooks
+│   │   ├── Tools & Frameworks
+│   │   └── Knowledge Base
+│   ├── Services Manager
+│   │   ├── Service Pages
+│   │   ├── Discovery Call Setup
+│   │   └── Case Studies
+│   └── Media / Assets
+│
+├── Requests & Delivery
+│   ├── Customisation Requests
+│   ├── Implementation Support Requests
+│   ├── Discovery Call Bookings
+│   ├── Advisory Leads
+│   └── Staff Assignment
+│
+├── Communications
+│   ├── Email Templates
+│   ├── Transactional Emails
+│   ├── Campaigns / Broadcasts
+│   ├── Notification Logs
+│   └── Member Messaging
+│
+├── Reporting & Analytics
+│   ├── Membership Reports
+│   ├── Revenue Reports
+│   ├── Content Usage Reports
+│   ├── Engagement Reports
+│   ├── Churn / Retention
+│   └── Export Reports
+│
+├── Admin & Security
+│   ├── Admin Users
+│   ├── Roles & Permissions
+│   ├── Audit Logs
+│   ├── Login / Session History
+│   └── Security Settings
+│
+└── System Settings
+    ├── Global Settings
+    ├── Navigation
+    ├── Integrations
+    ├── SEO Defaults
+    └── Environment / Deployment Settings
+```
+
+## 6. Required Page Templates
+
+The build should rely on reusable templates rather than one-off page structures.
+
+```text
+Page Templates
+│
+├── Home Page Template
+├── Listing Page Template
+├── Content Detail Template
+├── Downloadable Resource Template
+├── Partner Offer Template
+├── Article Template
+├── Guide Template
+├── Service Template
+├── Membership Plan Template
+├── FAQ Template
+├── Account Page Template
+└── Admin Data Table / Detail Template
+```
+
+## 7. Required Listing Pages
+
+```text
+Listing Pages Required
+│
+├── DocShare Landing + Resource Listings
+├── Partner Offer Landing + Offer Listings
+├── Knowledge Center Landing + Content Listings
+├── Services Landing + Service Listings
+├── Case Study Listing
+└── Search Results Listing
+```
+
+## 8. Required Detail Pages
+
+```text
+Detail Pages Required
+│
+├── Individual Template Page
+├── Individual Companion Guide Page
+├── Individual Documentation Suite Page
+├── Individual Process Page
+├── Individual Tool Page
+├── Individual Partner Offer Page
+├── Individual Article Page
+├── Individual Guide Page
+├── Individual Knowledge Base Page
+├── Individual Service Page
+└── Individual Case Study Page
+```
+
+## 9. Cross-Cutting System Requirements
+
+These need to be built across the platform rather than bolted on later.
+
+```text
+Shared System Requirements
+│
+├── Authentication
+├── Membership Tier Logic
+├── Paywall / Locked Content Logic
+├── Search
+├── Filtering
+├── Tagging / Categories
+├── SEO Metadata
+├── Redirect Logic
+├── Analytics Tracking
+├── CRM / Lead Capture
+├── Billing Integration
+├── Request Workflows
+├── Notifications
+└── Role-Based Access Control
+```
+
+## 10. Membership Logic Across the Platform
+
+```text
+Membership Logic
+│
+├── Public visitor can browse listings and previews
+├── Signed-in user can access entitled content
+├── Locked content shows plan requirement
+├── Membership tier controls downloads / claims / requests
+├── Standard includes limited customisation allowance
+├── Premium includes expanded support and deeper access
+└── Account area manages subscription, requests and billing
+```
+
+## 11. Navigation Model
+
+### Primary Navigation
+
+```text
+Primary Navigation
+│
+├── Resources
+│   ├── DocShare
+│   ├── Knowledge Center
+│   └── Partner Marketplace
+├── Services
+├── Membership
+├── About
+└── Contact
+```
+
+### Account Navigation
+
+```text
+Account Navigation
+│
+├── Dashboard
+├── Membership
+├── Billing
+├── Requests
+├── Discovery Calls
+└── Profile
+```
+
+### Admin Navigation
+
+```text
+Admin Navigation
+│
+├── Dashboard
+├── Membership Administration
+├── Plans & Access
+├── Billing & Subscriptions
+├── Content Management
+├── Requests & Delivery
+├── Communications
+├── Reporting
+├── Admin & Security
+└── System Settings
+```
+
+## 12. Build Order
+
+### Phase 1
+
+```text
+Phase 1
+│
+├── Public site architecture
+├── Authentication
+├── Membership plan pages
+├── DocShare listings + detail templates
+├── Knowledge Center listings + detail templates
+├── Partner Offers listings + detail templates
+└── Services structure
+```
+
+### Phase 2
+
+```text
+Phase 2
+│
+├── Paywall logic
+├── Account console
+├── Billing / subscription management
+├── Request management
+└── Discovery call workflows
+```
+
+### Phase 3
+
+```text
+Phase 3
+│
+├── Admin console
+├── Content management
+├── Membership CRM
+├── Reporting / analytics
+└── RBAC / audit logging
+```
+
+## 13. Final Recommended High-Level Sitemap
+
+```text
+Website
+│
+├── Home
+├── Resources
+│   ├── DocShare
+│   │   ├── Templates
+│   │   ├── Companion Guides
+│   │   ├── Documentation Suites
+│   │   ├── End-to-End Processes
+│   │   ├── Tools
+│   │   └── Individual Resource Pages
+│   ├── Knowledge Center
+│   │   ├── Articles
+│   │   ├── Guides & Playbooks
+│   │   ├── Tools & Frameworks
+│   │   ├── Knowledge Base
+│   │   └── Individual Content Pages
+│   └── Partner Marketplace
+│       ├── Top Offers
+│       ├── New Offers
+│       ├── Exclusive Deals
+│       ├── Our Picks
+│       ├── All Offers
+│       └── Individual Offer Pages
+├── Services
+│   ├── Advisory Categories
+│   ├── Discovery Call
+│   └── Case Studies
+├── Membership
+│   ├── Overview
+│   ├── Basic
+│   ├── Standard
+│   ├── Premium
+│   ├── FAQ
+│   └── Sign Up
+├── About
+├── Contact
+├── Login / Sign Up
+└── Legal
+
+Account Console
+│
+├── Dashboard
+├── Membership
+├── Billing
+├── Requests
+├── Discovery Calls
+└── Profile
+
+Admin Console
+│
+├── Dashboard
+├── Membership Administration
+├── Plans & Access
+├── Billing & Subscriptions
+├── Content Management
+├── Requests & Delivery
+├── Communications
+├── Reporting
+├── Admin & Security
+└── System Settings
+```
+

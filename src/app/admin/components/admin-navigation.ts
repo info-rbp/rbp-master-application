@@ -40,6 +40,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     pathPrefix: '/admin/membership',
     items: [
       { title: 'Members', href: '/admin/membership/member-administration', icon: Users, matchPrefixes: ['/admin/membership/member-administration', '/admin/membership/members'] },
+      { title: 'CRM', href: '/admin/crm', icon: Users },
       { title: 'Membership Plans', href: '/admin/membership/plans', icon: BadgeDollarSign },
       { title: 'Billing', href: '/admin/membership/subscription-and-billing-oversight', icon: BadgeDollarSign },
       { title: 'Access Permissions', href: '/admin/membership/access-control', icon: ShieldCheck },
@@ -89,6 +90,8 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
       { title: 'Admin Users', href: '/admin/users', icon: UserCog },
       { title: 'Roles & Permissions', href: '/admin/system/roles-and-permissions', icon: ShieldCheck },
       { title: 'Settings', href: '/admin/system/settings', icon: Settings },
+      { title: 'Platform Contract', href: '/admin/system/platform-contract', icon: FileText },
+      { title: 'Feature Controls', href: '/admin/system/feature-controls', icon: ShieldCheck },
       { title: 'Notifications', href: '/admin/notifications', icon: Bell },
       { title: 'Analytics', href: '/admin/analytics', icon: LineChart },
       { title: 'Audit Logs', href: '/admin/audit-logs', icon: ShieldCheck },

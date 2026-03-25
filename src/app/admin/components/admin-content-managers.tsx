@@ -3,12 +3,14 @@
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { KnowledgeArticle, PartnerOffer, PastProject, Testimonial } from '@/lib/definitions';
 import { removeKnowledgeArticle, removePartnerOffer, removePastProject, removeTestimonial, saveKnowledgeArticle, savePartnerOffer, savePastProject, saveTestimonial } from '../content-actions';
+import { generateTestimonialContent } from '../site-content/testimonials/actions';
+import { featureFlags } from '@/lib/feature-flags';
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleString() : '—');
 
@@ -16,11 +18,29 @@ function ContentListShell({ title, onAdd, children, isEmpty }: { title: string; 
   return <div className="space-y-4"><div className="flex justify-between"><h3 className="text-xl font-semibold capitalize">{title}</h3><Button onClick={onAdd}>Create</Button></div>{isEmpty ? <Card><CardContent className="p-6 text-muted-foreground">No records yet.</CardContent></Card> : <div className="space-y-2">{children}</div>}</div>;
 }
 
+function ConfirmDeleteDialog({ open, onOpenChange, onConfirm, title, description }: { open: boolean; onOpenChange: (open: boolean) => void; onConfirm: () => void; title: string; description: string; }) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                </DialogHeader>
+                <p>{description}</p>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button variant="destructive" onClick={() => { onConfirm(); onOpenChange(false); }}>Delete</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function PartnerOffersManager({ initial }: { initial: PartnerOffer[] }) {
   const [items, setItems] = useState(initial);
   const [editing, setEditing] = useState<PartnerOffer | null>(null);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   async function submit(formData: FormData) {
@@ -69,14 +89,16 @@ export function PartnerOffersManager({ initial }: { initial: PartnerOffer[] }) {
     toast({ title: 'Saved', description: 'Partner offer saved.' });
   }
 
-  async function onDelete(id: string) {
-    if (!window.confirm('Delete this partner offer? This cannot be undone.')) return;
-    await removePartnerOffer(id);
-    setItems((p) => p.filter((x) => x.id !== id));
-    toast({ title: 'Deleted', description: 'Partner offer removed.' });
+  async function onDelete() {
+    if (deletingId) {
+        await removePartnerOffer(deletingId);
+        setItems((p) => p.filter((x) => x.id !== deletingId));
+        toast({ title: 'Deleted', description: 'Partner offer removed.' });
+        setDeletingId(null);
+    }
   }
 
-  return <ContentListShell title="Partner offers" onAdd={() => { setEditing(null); setOpen(true); }} isEmpty={items.length === 0}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between gap-4"><div><p className="font-semibold">{item.title}</p><p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p><p className="text-xs">Public URL: /partner-offers/{item.slug ?? item.id}</p><p className="text-xs">Redeem URL: {item.link}</p><p className="text-xs text-muted-foreground">Active: {String(item.active)} • Order: {item.displayOrder ?? 0}</p><p className="text-xs text-muted-foreground">Created: {formatDate(item.createdAt)} • Updated: {formatDate(item.updatedAt)}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="outline" onClick={async () => { const saved = await savePartnerOffer({ id: item.id, title: item.title, description: item.description, link: item.link, active: !item.active, displayOrder: item.displayOrder ?? 0, imageUrl: item.imageUrl, expiresAt: item.expiresAt ?? null }); if (saved) { setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); toast({ title: saved.active ? 'Offer activated' : 'Offer deactivated' }); } }}>Toggle</Button><Button size="sm" variant="destructive" onClick={() => onDelete(item.id)}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit offer' : 'Create offer'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="title" defaultValue={editing?.title} placeholder="Title" required /><Textarea name="description" defaultValue={editing?.description} placeholder="Description" required /><Input name="link" defaultValue={editing?.link} placeholder="https://" required /><Input name="slug" defaultValue={editing?.slug} placeholder="slug (auto if blank)" /><Input name="summary" defaultValue={editing?.summary} placeholder="Summary" /><Input name="partnerName" defaultValue={editing?.partnerName} placeholder="Partner name" /><Input name="offerValue" defaultValue={editing?.offerValue} placeholder="Offer value" /><Textarea name="offerDetails" defaultValue={editing?.offerDetails} placeholder="Offer details" /><Textarea name="partnerOverview" defaultValue={editing?.partnerOverview} placeholder="Partner overview" /><Input name="partnerServices" defaultValue={editing?.partnerServices?.join(', ')} placeholder="Partner services (comma separated)" /><Textarea name="whyWeRecommend" defaultValue={editing?.whyWeRecommend} placeholder="Why we recommend it" /><Textarea name="claimInstructions" defaultValue={editing?.claimInstructions} placeholder="Claim instructions" /><Input name="redemptionCode" defaultValue={editing?.redemptionCode} placeholder="Redemption code" /><Textarea name="termsAndConditions" defaultValue={editing?.termsAndConditions} placeholder="Terms and conditions" /><Input name="seoTitle" defaultValue={editing?.seoTitle} placeholder="SEO title" /><Textarea name="seoDescription" defaultValue={editing?.seoDescription} placeholder="SEO description" /><Input name="imageUrl" defaultValue={editing?.imageUrl} placeholder="Image URL (optional)" /><Input name="displayOrder" defaultValue={editing?.displayOrder ?? 0} type="number" min={0} /><Input name="expiresAt" defaultValue={editing?.expiresAt ?? ''} type="datetime-local" /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Active</label><Button disabled={submitting} type="submit">{submitting ? 'Saving...' : 'Save'}</Button></form></DialogContent></Dialog></ContentListShell>;
+  return <ContentListShell title="Partner offers" onAdd={() => { setEditing(null); setOpen(true); }} isEmpty={items.length === 0}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between gap-4"><div><p className="font-semibold">{item.title}</p><p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p><p className="text-xs">Public URL: /partner-offers/{item.slug ?? item.id}</p><p className="text-xs">Redeem URL: {item.link}</p><p className="text-xs text-muted-foreground">Active: {String(item.active)} • Order: {item.displayOrder ?? 0}</p><p className="text-xs text-muted-foreground">Created: {formatDate(item.createdAt)} • Updated: {formatDate(item.updatedAt)}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="outline" onClick={async () => { const saved = await savePartnerOffer({ id: item.id, title: item.title, description: item.description, link: item.link, active: !item.active, displayOrder: item.displayOrder ?? 0, imageUrl: item.imageUrl, expiresAt: item.expiresAt ?? null }); if (saved) { setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); toast({ title: saved.active ? 'Offer activated' : 'Offer deactivated' }); } }}>Toggle</Button><Button size="sm" variant="destructive" onClick={() => setDeletingId(item.id)}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit offer' : 'Create offer'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="title" defaultValue={editing?.title} placeholder="Title" required /><Textarea name="description" defaultValue={editing?.description} placeholder="Description" required /><Input name="link" defaultValue={editing?.link} placeholder="https://" required /><Input name="slug" defaultValue={editing?.slug} placeholder="slug (auto if blank)" /><Input name="summary" defaultValue={editing?.summary} placeholder="Summary" /><Input name="partnerName" defaultValue={editing?.partnerName} placeholder="Partner name" /><Input name="offerValue" defaultValue={editing?.offerValue} placeholder="Offer value" /><Textarea name="offerDetails" defaultValue={editing?.offerDetails} placeholder="Offer details" /><Textarea name="partnerOverview" defaultValue={editing?.partnerOverview} placeholder="Partner overview" /><Input name="partnerServices" defaultValue={editing?.partnerServices?.join(', ')} placeholder="Partner services (comma separated)" /><Textarea name="whyWeRecommend" defaultValue={editing?.whyWeRecommend} placeholder="Why we recommend it" /><Textarea name="claimInstructions" defaultValue={editing?.claimInstructions} placeholder="Claim instructions" /><Input name="redemptionCode" defaultValue={editing?.redemptionCode} placeholder="Redemption code" /><Textarea name="termsAndConditions" defaultValue={editing?.termsAndConditions} placeholder="Terms and conditions" /><Input name="seoTitle" defaultValue={editing?.seoTitle} placeholder="SEO title" /><Textarea name="seoDescription" defaultValue={editing?.seoDescription} placeholder="SEO description" /><Input name="imageUrl" defaultValue={editing?.imageUrl} placeholder="Image URL (optional)" /><Input name="displayOrder" defaultValue={editing?.displayOrder ?? 0} type="number" min={0} /><Input name="expiresAt" defaultValue={editing?.expiresAt ?? ''} type="datetime-local" /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Active</label><Button disabled={submitting} type="submit">{submitting ? 'Saving...' : 'Save'}</Button></form></DialogContent></Dialog><ConfirmDeleteDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)} onConfirm={onDelete} title="Delete Partner Offer" description="Are you sure you want to delete this partner offer? This action cannot be undone." /></ContentListShell>;
 }
 
 export function TestimonialsManager({ initial }: { initial: Testimonial[] }) {
@@ -84,6 +106,7 @@ export function TestimonialsManager({ initial }: { initial: Testimonial[] }) {
   const [editing, setEditing] = useState<Testimonial | null>(null);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<string | null>(null);
   const { toast } = useToast();
 
   async function submit(formData: FormData) {
@@ -98,10 +121,26 @@ export function TestimonialsManager({ initial }: { initial: Testimonial[] }) {
     const saved = await saveTestimonial({ id: editing?.id, clientName, content, company: String(formData.get('company') || ''), role: String(formData.get('role') || ''), imageUrl: String(formData.get('imageUrl') || ''), displayOrder: Number(formData.get('displayOrder') ?? 0), active: formData.get('active') === 'on' });
     setSubmitting(false);
     if (!saved) { toast({ title: 'Save failed', variant: 'destructive' }); return; }
-    setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null); toast({ title: 'Saved' });
+    setItems((p) => [saved, ...p.filter((x) => x.id !== saved.id)]); setOpen(false); setEditing(null); setGeneratedContent(null); toast({ title: 'Saved' });
   }
 
-  return <ContentListShell title="Testimonials" onAdd={() => { setEditing(null); setOpen(true); }} isEmpty={items.length===0}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.clientName}</p><p className="text-sm text-muted-foreground line-clamp-2">{item.content}</p><p className="text-xs text-muted-foreground">{[item.role, item.company].filter(Boolean).join(', ') || '—'}</p><p className="text-xs text-muted-foreground">Created: {formatDate(item.createdAt)} • Updated: {formatDate(item.updatedAt)}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="outline" onClick={async () => { const saved = await saveTestimonial({ id: item.id, clientName: item.clientName, content: item.content, company: item.company, role: item.role, imageUrl: item.imageUrl, displayOrder: item.displayOrder ?? 0, active: !item.active }); if (saved) { setItems((p)=>[saved,...p.filter((x)=>x.id!==saved.id)]); toast({ title: saved.active ? 'Published' : 'Unpublished' }); } }}>Toggle</Button><Button size="sm" variant="destructive" onClick={async () => { if (!window.confirm('Delete this testimonial?')) return; await removeTestimonial(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); toast({ title: 'Deleted' }); }}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit testimonial' : 'Create testimonial'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="clientName" defaultValue={editing?.clientName} required /><Textarea name="content" defaultValue={editing?.content} required /><Input name="company" defaultValue={editing?.company} placeholder="Company" /><Input name="role" defaultValue={editing?.role} placeholder="Role" /><Input name="imageUrl" defaultValue={editing?.imageUrl} placeholder="Avatar/image URL (optional)" /><Input name="displayOrder" type="number" min={0} defaultValue={editing?.displayOrder ?? 0} /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Published</label><Button disabled={submitting} type="submit">{submitting ? 'Saving...' : 'Save'}</Button></form></DialogContent></Dialog></ContentListShell>;
+  async function onGenerate(formData: FormData) {
+    const clientName = String(formData.get('clientName') ?? '').trim();
+    const content = String(formData.get('content') ?? '').trim();
+    if (!clientName || !content) {
+      toast({ title: 'Missing fields', description: 'Client name and a brief description are required for AI generation.', variant: 'destructive' });
+      return;
+    }
+    const generated = await generateTestimonialContent(clientName, content);
+    if (generated) {
+      setGeneratedContent(generated);
+      toast({ title: 'Content generated', description: 'The testimonial content has been generated by AI.' });
+    } else {
+      toast({ title: 'Generation failed', description: 'Could not generate content based on the input.', variant: 'destructive' });
+    }
+  }
+
+  return <ContentListShell title="Testimonials" onAdd={() => { setEditing(null); setOpen(true); }} isEmpty={items.length===0}>{items.map((item) => <Card key={item.id}><CardContent className="p-4 flex items-start justify-between"><div><p className="font-semibold">{item.clientName}</p><p className="text-sm text-muted-foreground line-clamp-2">{item.content}</p><p className="text-xs text-muted-foreground">{[item.role, item.company].filter(Boolean).join(', ') || '—'}</p><p className="text-xs text-muted-foreground">Created: {formatDate(item.createdAt)} • Updated: {formatDate(item.updatedAt)}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setEditing(item); setOpen(true); }}>Edit</Button><Button size="sm" variant="outline" onClick={async () => { const saved = await saveTestimonial({ id: item.id, clientName: item.clientName, content: item.content, company: item.company, role: item.role, imageUrl: item.imageUrl, displayOrder: item.displayOrder ?? 0, active: !item.active }); if (saved) { setItems((p)=>[saved,...p.filter((x)=>x.id!==saved.id)]); toast({ title: saved.active ? 'Published' : 'Unpublished' }); } }}>Toggle</Button><Button size="sm" variant="destructive" onClick={async () => { if (!window.confirm('Delete this testimonial?')) return; await removeTestimonial(item.id); setItems((p)=>p.filter((x)=>x.id!==item.id)); toast({ title: 'Deleted' }); }}>Delete</Button></div></CardContent></Card>)}<Dialog open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) setGeneratedContent(null); }}><DialogContent><DialogHeader><DialogTitle>{editing ? 'Edit testimonial' : 'Create testimonial'}</DialogTitle></DialogHeader><form action={submit} className="space-y-3"><Input name="clientName" defaultValue={editing?.clientName} required /><Textarea name="content" defaultValue={generatedContent || editing?.content} required /><Input name="company" defaultValue={editing?.company} placeholder="Company" /><Input name="role" defaultValue={editing?.role} placeholder="Role" /><Input name="imageUrl" defaultValue={editing?.imageUrl} placeholder="Avatar/image URL (optional)" /><Input name="displayOrder" type="number" min={0} defaultValue={editing?.displayOrder ?? 0} /><label className="flex items-center gap-2"><input name="active" type="checkbox" defaultChecked={editing?.active ?? true} />Published</label><div className="flex justify-end gap-2"><Button disabled={submitting} type="submit">{submitting ? 'Saving...' : 'Save'}</Button>{featureFlags.enableAiGeneration && <Button disabled={submitting} type="button" variant="outline" formAction={onGenerate}>Generate with AI</Button>}</div></form></DialogContent></Dialog></ContentListShell>;
 }
 
 export function PastProjectsManager({ initial }: { initial: PastProject[] }) {

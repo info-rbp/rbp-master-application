@@ -1,0 +1,521 @@
+# Membership Website Page Content Directions
+
+This document outlines the structure, content requirements, and layout guidance for the membership-related pages of the website. These directions are intended to guide designers, developers, and content creators in building the membership section of the platform.
+
+# 1\. Membership Landing Page
+
+## Page Purpose
+
+The membership landing page introduces the overall membership offering and helps prospective members understand the value of the platform. Its primary goal is to convert visitors into members by guiding them toward selecting a plan.
+
+## Page Layout
+
+### 1\. Hero Section
+
+Purpose: Immediately communicate the core value of the membership.
+
+Content: - Headline explaining the platform value - Short supporting description - Call-to-action button (View Plans / Join Now) - Optional supporting visual or product screenshot
+
+Example elements: - Headline - Subheadline - Primary CTA - Secondary CTA (Explore Features)
+
+### 2\. Membership Overview
+
+Purpose: Introduce the platform pillars.
+
+Display the core components of the membership: - DocShare - Partner Marketplace - Knowledge Center - Advisory Services - Support
+
+Each component should include: - Icon or visual - Short description - Link to learn more
+
+### 3\. How the Membership Works
+
+Purpose: Explain the platform experience.
+
+Suggested format: Three-step visual explanation.
+
+Step 1 - Explore resources Step 2 - Implement systems Step 3 - Improve and scale the business
+
+### 4\. Key Platform Features
+
+Purpose: Highlight the strongest features.
+
+Examples: - AI Document Generator - Business Systems Library (DocShare) - Partner Marketplace - Business Advisory Access - Implementation Support
+
+Use feature cards or icons.
+
+### 5\. Membership Plan Comparison
+
+Purpose: Help users compare plans.
+
+Include a simplified pricing table showing: - Basic - Lifetime - Standard - Premium
+
+Show only key differences.
+
+Include CTA buttons under each plan.
+
+### 6\. Example Use Cases
+
+Purpose: Show how businesses use the platform.
+
+Example sections: - Improve operational processes - Implement documentation systems - Generate business policies - Access expert advisory
+
+### 7\. Testimonials or Social Proof
+
+Purpose: Increase trust.
+
+Examples: - member testimonials - client success stories - business outcomes
+
+### 8\. FAQ Section
+
+Purpose: Answer common questions.
+
+Pull questions from the FAQ document.
+
+### 9\. Final Call to Action
+
+Purpose: Encourage sign-up.
+
+Elements: - Headline - Summary of value - CTA button (Choose Your Plan)
+
+# 2\. Basic Membership Page
+
+## Page Purpose
+
+Explain the Basic membership offering and encourage free sign-ups.
+
+## Page Layout
+
+### 1\. Hero Section
+
+- Plan name
+- Price (Free)
+- Short value statement
+- Join Now button
+
+### 2\. Who This Plan Is For
+
+Describe the type of user who benefits from Basic.
+
+Example: - new members - business owners exploring resources
+
+### 3\. What's Included
+
+List inclusions such as: - Knowledge Center access - Partner Marketplace access - Template access - Discovery calls
+
+Use visual bullet points.
+
+### 4\. Platform Access Overview
+
+Explain what users can explore in the platform.
+
+Example modules: - DocShare - Knowledge Center - Partner Marketplace
+
+### 5\. Upgrade Benefits
+
+Show what members gain by upgrading to Standard.
+
+Example features: - AI document generation - documentation suites - operational playbooks
+
+### 6\. CTA Section
+
+Encourage free sign-up.
+
+CTA examples: - Join Free - Start Exploring
+
+# 3\. Standard Membership Page
+
+## Page Purpose
+
+Promote the Standard membership as the primary plan for implementing business systems.
+
+## Page Layout
+
+### 1\. Hero Section
+
+- Plan name
+- Monthly and annual pricing
+- Short description
+- CTA button
+
+### 2\. Plan Overview
+
+Explain the value of Standard.
+
+Example themes: - implement business systems - generate AI documents - access structured frameworks
+
+### 3\. Key Features
+
+Highlight the most important features:
+
+Examples: - AI Document Generation - Documentation Suites - Operational Playbooks - Partner Marketplace benefits
+
+Use feature cards.
+
+### 4\. What You Can Build
+
+Show practical outcomes:
+
+Examples: - onboarding systems - operational documentation - process frameworks
+
+### 5\. Comparison With Other Plans
+
+Include a simplified comparison vs:
+
+- Basic
+- Premium
+
+### 6\. Pricing Section
+
+Show:
+
+Monthly pricing Annual pricing Savings for annual
+
+### 7\. CTA Section
+
+Examples:
+
+Start Standard Membership Upgrade Now
+
+# 4\. Premium Membership Page
+
+## Page Purpose
+
+Position Premium as the strategic partnership tier.
+
+## Page Layout
+
+### 1\. Hero Section
+
+- Plan name
+- Pricing
+- Strategic value message
+- CTA button
+
+### 2\. Who Premium Is For
+
+Example audiences:
+
+- growing businesses
+- leadership teams
+- companies implementing systems
+
+### 3\. Premium Benefits
+
+Highlight key advantages:
+
+- unlimited AI documents
+- strategic check-ups
+- implementation support
+- partner bundles
+- cashback benefits
+
+### 4\. Strategic Advisory
+
+Explain advisory access including:
+
+- operational advisory
+- financial advisory
+- AI advisory
+
+### 5\. Platform Advantages
+
+Explain additional platform benefits such as:
+
+- priority support
+- partner ecosystem
+- business system implementation
+
+### 6\. ROI Section
+
+Explain how Premium improves business outcomes.
+
+Examples:
+
+- improved operations
+- better decision making
+- scalable processes
+
+### 7\. CTA Section
+
+Examples:
+
+Join Premium Start Strategic Membership
+
+# Development Notes
+
+Ensure each page includes:
+
+- clear navigation
+- internal linking between plans
+- strong CTAs
+- responsive design
+
+Plan comparison tables should be reusable components across pages.
+
+Analytics tracking should be implemented for:
+
+- plan views
+- upgrade clicks
+- signup conversions.
+
+# Remote Business Partner Membership Matrix
+
+## Pricing
+
+| Pricing       | Basic | Lifetime | Standard | Premium |
+| ------------- | ----- | -------- | -------- | ------- |
+| Monthly Cost  | \$0   | -        | \$99     | \$499   |
+| Annual Cost   | \$0   | -        | \$999    | \$4,999 |
+| Lifetime Cost | -     | \$50     | -        | -       |
+
+## DocShare
+
+| Inclusion              | Basic   | Lifetime | Standard | Premium   |
+| ---------------------- | ------- | -------- | -------- | --------- |
+| Template Access        | ✓       | ✓        | ✓        | ✓         |
+| Companion Guides       | ✓       | ✓        | ✓        | ✓         |
+| Documentation Suites   | ✗       | ✗        | ✓        | ✓         |
+| End-to-End Processes   | ✗       | ✗        | ✗        | ✓         |
+| Tools                  | Limited | Limited  | ✓        | ✓         |
+| AI Generated Documents | ✗       | 2/month  | 10/month | Unlimited |
+| Template Walkthroughs  | ✗       | ✗        | ✓        | ✓         |
+| Process Maps           | ✗       | ✗        | ✓        | ✓         |
+| Operational Playbooks  | ✗       | ✗        | ✓        | ✓         |
+| Framework Library      | ✗       | ✗        | ✓        | ✓         |
+| Example Libraries      | ✗       | ✗        | ✓        | ✓         |
+| Industry Packs         | ✗       | ✗        | ✗        | ✓         |
+
+## Manual Review Services
+
+| Inclusion                                  | Basic | Lifetime | Standard | Premium   |
+| ------------------------------------------ | ----- | -------- | -------- | --------- |
+| Document Review for AI Generated Documents | ✗     | 1/month  | 3/month  | Unlimited |
+| Template Customisation Review              | ✗     | ✗        | 1/month  | Unlimited |
+| Process Documentation Review               | ✗     | ✗        | Limited  | ✓         |
+| AI Output Quality Review                   | ✗     | ✗        | Limited  | ✓         |
+
+## Partner Marketplace
+
+| Inclusion                         | Basic | Lifetime | Standard | Premium |
+| --------------------------------- | ----- | -------- | -------- | ------- |
+| Access to Partner Offers          | ✓     | ✓        | ✓        | ✓       |
+| Top Partner Offers                | ✓     | ✓        | ✓        | ✓       |
+| Referral Partners                 | ✓     | ✓        | ✓        | ✓       |
+| Exclusive Partner Offers          | ✗     | ✗        | ✓        | ✓       |
+| Verified Partner Program          | ✗     | ✗        | ✓        | ✓       |
+| Member Discounts & Credits        | ✗     | ✗        | ✓        | ✓       |
+| Partner Implementation Offers     | ✗     | ✗        | ✓        | ✓       |
+| Partner Webinars / Demonstrations | ✗     | ✗        | ✓        | ✓       |
+| Partner Resource Packs            | ✗     | ✗        | ✓        | ✓       |
+| Partner Reviews & Ratings         | ✗     | ✗        | ✓        | ✓       |
+| Partner Deal Alerts               | ✗     | ✗        | ✓        | ✓       |
+| Partner Bundles                   | ✗     | ✗        | ✗        | ✓       |
+| Cash Back                         | ✗     | ✗        | ✗        | ✓       |
+
+## Knowledge Center
+
+| Inclusion                    | Basic | Lifetime | Standard | Premium |
+| ---------------------------- | ----- | -------- | -------- | ------- |
+| Articles                     | ✓     | ✓        | ✓        | ✓       |
+| Guides                       | ✓     | ✓        | ✓        | ✓       |
+| Tools                        | ✓     | ✓        | ✓        | ✓       |
+| Knowledge Base               | ✓     | ✓        | ✓        | ✓       |
+| Checklists                   | ✓     | ✓        | ✓        | ✓       |
+| Case Studies                 | ✗     | ✗        | ✓        | ✓       |
+| Framework Library            | ✗     | ✗        | ✓        | ✓       |
+| Playbooks                    | ✗     | ✗        | ✓        | ✓       |
+| Learning Paths               | ✗     | ✗        | ✓        | ✓       |
+| Business Assessments         | ✗     | ✗        | ✓        | ✓       |
+| Webinars / Recorded Sessions | ✗     | ✗        | ✓        | ✓       |
+| Strategy Briefings           | ✗     | ✗        | ✗        | ✓       |
+| Research Reports             | ✗     | ✗        | ✗        | ✓       |
+
+## Services
+
+| Inclusion                  | Basic                      | Lifetime                   | Standard       | Premium      |
+| -------------------------- | -------------------------- | -------------------------- | -------------- | ------------ |
+| Operations Advisory        | Available at standard rate | Available at standard rate | 12.5% discount | 20% discount |
+| Financial Advisory         | Available at standard rate | Available at standard rate | 12.5% discount | 20% discount |
+| Sales & Marketing Advisory | Available at standard rate | Available at standard rate | 12.5% discount | 20% discount |
+| Human Resources Advisory   | Available at standard rate | Available at standard rate | 12.5% discount | 20% discount |
+| Management Advisory        | Available at standard rate | Available at standard rate | 12.5% discount | 20% discount |
+| Change Management Advisory | Available at standard rate | Available at standard rate | 12.5% discount | 20% discount |
+| AI Advisory                | Available at standard rate | Available at standard rate | 12.5% discount | 20% discount |
+| Discovery Calls            | ✓                          | ✓                          | ✓              | ✓            |
+| Strategic Check-Ups        | ✗                          | ✗                          | ✗              | ✓            |
+| Priority Advisory Booking  | ✗                          | ✗                          | ✗              | ✓            |
+| Service Discount           | 5%                         | 5%                         | 12.5%          | 20%          |
+
+## Support
+
+| Inclusion               | Basic | Lifetime | Standard | Premium  |
+| ----------------------- | ----- | -------- | -------- | -------- |
+| Platform Help Desk      | ✓     | ✓        | ✓        | Priority |
+| Knowledge Base Support  | ✓     | ✓        | ✓        | ✓        |
+| Onboarding Support      | ✓     | ✓        | ✓        | Priority |
+| AI Document Assistance  | ✗     | Limited  | ✓        | Priority |
+| Resource Guidance       | ✗     | ✗        | ✓        | ✓        |
+| Implementation Roadmaps | ✗     | ✗        | ✓        | ✓        |
+| Community Support       | ✗     | ✗        | ✓        | ✓        |
+| Office Hours            | ✗     | ✗        | ✓        | Priority |
+| Implementation Support  | ✗     | ✗        | ✗        | ✓        |
+| Strategic Check-Ups     | ✗     | ✗        | ✗        | ✓        |
+
+# Membership Frequently Asked Questions (FAQ)
+
+## General Membership
+
+### What is the Remote Business Partner membership?
+
+The Remote Business Partner membership is a platform designed to help businesses improve operations, implement systems, and access expert advisory support. Members gain access to resources such as templates, guides, AI-generated documents, partner offers, business tools, and advisory services.
+
+### Who is the membership designed for?
+
+The membership is designed for business owners, leaders, and managers who want to improve how their business operates. It is particularly useful for small to medium-sized businesses looking to implement systems, processes, and better decision-making frameworks.
+
+### How do I join the membership?
+
+You can join by selecting a membership plan on the website and completing the sign-up process. Once registered, you will gain access to the member dashboard and available resources.
+
+### Can I upgrade my membership later?
+
+Yes. Members can upgrade their membership at any time. When upgrading, the new plan benefits will become available immediately.
+
+### Can I cancel my membership?
+
+Yes. Monthly and annual memberships can be cancelled at any time. Your membership benefits will remain active until the end of the billing period.
+
+## Membership Plans
+
+### What membership plans are available?
+
+The platform offers four membership options: - Basic (Free) - Lifetime (One-time payment) - Standard (Monthly or annual subscription) - Premium (Monthly or annual subscription)
+
+### What is the difference between the plans?
+
+Each membership tier unlocks additional features. Basic provides learning resources, Standard focuses on implementing systems, and Premium provides strategic support and additional benefits such as unlimited AI document generation and advisory advantages.
+
+### What is the Lifetime membership?
+
+The Lifetime membership is a one-time purchase that mirrors the Basic plan but includes limited AI document generation each month.
+
+### What happens if I exceed my AI document limit?
+
+If you exceed the monthly limit for AI-generated documents, you may generate additional documents for a small usage-based fee.
+
+## DocShare
+
+### What is DocShare?
+
+DocShare is the platform's library of templates, tools, documentation suites, and business process resources designed to help businesses implement systems and improve operations.
+
+### What types of resources are available in DocShare?
+
+Resources include templates, companion guides, documentation suites, operational playbooks, process maps, tools, and industry-specific resources.
+
+### What are documentation suites?
+
+Documentation suites are bundles of templates and supporting materials that together form a complete system for managing a business function such as hiring, operations, or financial reporting.
+
+### What are end-to-end processes?
+
+End-to-end processes provide complete frameworks that outline how to manage a business function from start to finish, including documentation, workflows, and reporting structures.
+
+### What are AI-generated documents?
+
+Members can generate customised documents using AI by selecting a template and providing information about their business. The system will generate a tailored document that can be edited or downloaded.
+
+## Manual Review Services
+
+### What are manual review services?
+
+Manual review services allow members to request expert review of documents generated through the platform or created using templates.
+
+### What types of reviews are available?
+
+Reviews can include AI-generated document review, template customisation review, process documentation review, and AI output quality review.
+
+### Who can access manual review services?
+
+Availability depends on the membership plan. Standard and Premium members receive greater access to these services.
+
+## Partner Marketplace
+
+### What is the Partner Marketplace?
+
+The Partner Marketplace provides access to tools, services, and resources from trusted partners that can help improve how your business operates.
+
+### What types of partner offers are available?
+
+The marketplace includes partner offers, top partner offers, referral partners, exclusive member deals, and verified partner programs.
+
+### What are exclusive partner offers?
+
+Exclusive partner offers provide discounts or special benefits that are only available to paid members.
+
+### What is the cashback benefit?
+
+Premium members may receive cashback rewards when purchasing selected partner products or services through the platform.
+
+## Knowledge Center
+
+### What is the Knowledge Center?
+
+The Knowledge Center contains educational resources designed to help members understand and improve different areas of their business.
+
+### What resources are included in the Knowledge Center?
+
+Resources include articles, guides, tools, checklists, playbooks, case studies, learning paths, business assessments, webinars, and research reports.
+
+### Are all knowledge resources available to every member?
+
+Some resources are available to all members, while others are reserved for Standard and Premium members.
+
+## Services
+
+### What advisory services are available?
+
+Members can access advisory services across several business areas including operations, finance, sales and marketing, human resources, management, change management, and artificial intelligence.
+
+### Do members receive discounts on services?
+
+Yes. Members receive discounts on advisory services depending on their membership tier.
+
+### What are discovery calls?
+
+Discovery calls are introductory sessions where members can discuss their business challenges and determine the best way to move forward.
+
+### What are strategic check-ups?
+
+Strategic check-ups are periodic advisory sessions available to Premium members that focus on reviewing business performance and identifying improvement opportunities.
+
+## Support
+
+### What support options are available?
+
+Support includes a help desk, onboarding support, knowledge base resources, AI document assistance, resource guidance, community discussions, office hours, and implementation support depending on the membership plan.
+
+### What is implementation support?
+
+Implementation support helps members apply the resources and systems provided in the platform to their own business operations.
+
+### Do Premium members receive priority support?
+
+Yes. Premium members receive priority responses from the support team and additional assistance with implementation.
+
+## Billing and Payments
+
+### What payment methods are accepted?
+
+Payment methods depend on the payment provider used by the platform but typically include major credit cards and online payment options.
+
+### Can I switch between monthly and annual plans?
+
+Yes. Members can change their billing preference depending on their needs.
+
+### Do annual memberships offer savings?
+
+Yes. Annual memberships are offered at a discounted rate compared to paying monthly.
+
+### Are refunds available?
+
+Refund policies depend on the specific terms outlined during signup and may vary based on the type of membership purchased.

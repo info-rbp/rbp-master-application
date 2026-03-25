@@ -1,54 +1,83 @@
 import type { PartnerOffer } from '@/lib/definitions';
 
-export const categories = {
-  top: { name: 'Top Offers', description: 'Most valuable currently active partner offers.' },
-  new: { name: 'New Offers', description: 'Recently added partner opportunities.' },
-  exclusive: { name: 'Exclusive Deals', description: 'Member-priority offers and negotiated discounts.' },
-  our: { name: 'Our Picks', description: 'Recommended offers selected by our team.' },
-  all: { name: 'All Partners', description: 'Browse every active partner marketplace offer.' },
-};
+export const offers: PartnerOffer[] = [
+    {
+        id: '1',
+        slug: 'course-discount',
+        title: 'Exclusive 20% Discount on All Courses',
+        description: 'Enhance your skills with our comprehensive range of courses. As a valued partner, you get an exclusive 20% discount on all our offerings.',
+        link: 'https://somepartner.com/courses',
+        active: true,
+        entitlement: {
+            accessTier: 'standard',
+            requiresLogin: true,
+            requiresMembership: true,
+            previewEnabled: false,
+            isLimitedAccess: false,
+            contentType: 'partner_offer_exclusive',
+        },
+        redemptionCode: 'PARTNER20',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+    },
+    {
+        id: '2',
+        slug: 'premium-analytics',
+        title: 'Free Month of Premium Analytics',
+        description: 'Get a free month of our premium analytics tool to gain deep insights into your business. No credit card required.',
+        link: 'https://anotherpartner.com/analytics',
+        active: true,
+        entitlement: {
+            accessTier: 'standard',
+            requiresLogin: true,
+            requiresMembership: true,
+            previewEnabled: false,
+            isLimitedAccess: false,
+            contentType: 'partner_offer_exclusive',
+        },
+        redemptionCode: 'ANALYTICS30',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+    },
+    {
+        id: '3',
+        slug: 'early-access',
+        title: 'Early Access to New Features',
+        description: 'Be the first to experience our new features before they are released to the public. Your feedback will help shape the future of our product.',
+        link: 'https://yet-another-partner.com/early-access',
+        active: true,
+        entitlement: {
+            accessTier: 'premium',
+            requiresLogin: true,
+            requiresMembership: true,
+            previewEnabled: false,
+            isLimitedAccess: false,
+            contentType: 'partner_offer_exclusive',
+        },
+        redemptionCode: 'EARLYBIRD',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+    },
+];
 
-export type OfferCategory = keyof typeof categories;
 
-export type Offer = {
-  id: string;
-  partner: string;
-  title: string;
-  summary: string;
-  href: string;
-  categories: OfferCategory[];
-  accessTier?: string;
-  category?: string;
-  expiresAt?: string | null;
-  imageUrl?: string;
-};
+export type OfferCategory = { id: string; label: string };
 
-export function getOfferCategories(index: number, total: number, explicit?: string[]): OfferCategory[] {
-  const fromDoc = Array.isArray(explicit)
-    ? explicit.filter((x): x is OfferCategory => x in categories)
-    : [];
+export const categories: OfferCategory[] = [
+  { id: 'all', label: 'All offers' },
+  { id: 'top', label: 'Top offers' },
+  { id: 'new', label: 'New offers' },
+  { id: 'exclusive', label: 'Exclusive offers' },
+  { id: 'our', label: 'Our picks' },
+];
 
-  const categoriesForOffer: OfferCategory[] = fromDoc.length > 0 ? [...fromDoc, 'all'] : ['all', 'our'];
-  if (fromDoc.length === 0) {
-    if (index < 3) categoriesForOffer.push('top');
-    if (index < 6) categoriesForOffer.push('new');
-    if (index % 2 === 0 || total <= 2) categoriesForOffer.push('exclusive');
-  }
-
-  return Array.from(new Set(categoriesForOffer));
+export function toOfferView(offer: PartnerOffer) {
+  return {
+    ...offer,
+    category: offer.entitlement?.accessTier === 'premium' ? 'exclusive' : 'all',
+  };
 }
 
-export function toOfferView(offer: PartnerOffer, index = 0, total = 1): Offer {
-  return {
-    id: offer.id,
-    partner: offer.partnerName ?? offer.title,
-    title: offer.title,
-    summary: offer.summary ?? offer.description,
-    href: `/partner-offers/${offer.slug ?? offer.id}`,
-    categories: getOfferCategories(index, total, offer.categories),
-    accessTier: offer.entitlement?.accessTier,
-    category: offer.categories?.[0],
-    expiresAt: offer.expiresAt,
-    imageUrl: offer.imageUrl,
-  };
+export function getOfferCategories() {
+  return categories;
 }

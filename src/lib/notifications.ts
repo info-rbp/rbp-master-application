@@ -1,4 +1,6 @@
+
 import { firestore } from '@/firebase/server';
+import { getServerAuthContext } from './server-auth';
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'error';
 
@@ -122,4 +124,37 @@ export async function markAllNotificationsReadForActor(input: { userId: string; 
   if (unreadIds.length > 0) {
     await batch.commit();
   }
+}
+
+export async function getUserNotificationPreferences() {
+  const auth = await getServerAuthContext();
+  if (!auth) {
+    return {
+      email: {
+        marketing: false,
+        updates: true,
+      },
+    };
+  }
+
+  const userDoc = await firestore.collection('users').doc(auth.userId).get();
+  const userData = userDoc.data();
+
+  return userData?.notificationPreferences ?? {
+    email: {
+      marketing: false,
+      updates: true,
+    },
+  };
+}
+
+export async function updateNotificationPreferences(preferences: any) {
+  const auth = await getServerAuthContext();
+  if (!auth) {
+    throw new Error("Unauthorized");
+  }
+
+  await firestore.collection('users').doc(auth.userId).update({
+    notificationPreferences: preferences,
+  });
 }

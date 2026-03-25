@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestAuthContext } from '@/lib/server-auth';
 import { createNotification } from '@/lib/notifications';
@@ -5,6 +6,10 @@ import { triggerAdminAlert } from '@/lib/alerts';
 import { ANALYTICS_EVENTS } from '@/lib/analytics-events';
 import { safeLogAnalyticsEvent } from '@/lib/analytics-server';
 import { sendTemplatedEmail } from '@/lib/email';
+import { createLifecycleEvent } from '@/lib/events';
+import { getPendingInvitationByEmail, acceptTeamInvitation } from '@/lib/team';
+import { getUserById } from '@/lib/users';
+import { recordConsent } from '@/lib/consent';
 
 export async function POST(request: NextRequest) {
   const auth = await getRequestAuthContext(request);
@@ -12,9 +17,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { marketingConsent } = await request.json();
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
   const tasks: Promise<unknown>[] = [
+    createLifecycleEvent('user.created', auth.userId, {}),
     createNotification({
       userId: auth.userId,
       audienceRole: 'member',
@@ -33,6 +41,10 @@ export async function POST(request: NextRequest) {
       actionUrl: '/admin/membership/members',
     }),
   ];
+
+  if (marketingConsent) {
+    tasks.push(recordConsent(auth.userId, 'marketing', true));
+  }
 
   if (auth.email) {
     tasks.push(
@@ -55,5 +67,16 @@ export async function POST(request: NextRequest) {
   }
 
   await Promise.all(tasks);
-  return NextResponse.json({ ok: true });
+
+  if (auth.email) {
+    const invitation = await getPendingInvitationByEmail(auth.email);
+    if (invitation) {
+      const user = await getUserById(auth.userId);
+      if(user){
+        await acceptTeamInvitation(invitation.id, user);
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, redirectUrl: '/welcome' });
 }

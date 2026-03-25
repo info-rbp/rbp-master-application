@@ -1,0 +1,654 @@
+Here is the implementation guide. Firebase Studio is your development environment, **Firebase App Hosting** is the production runtime for the master application, and **Cloudflare** is the runtime for the open-source tools. That split is the sane one. It keeps identity, memberships, and Google integrations on the Firebase side, and keeps the OSS products as satellite applications instead of turning your main repo into a landfill. Firebase documents that App Hosting is the recommended deployment path for full-stack Next.js apps, and that App Hosting runs builds through Cloud Build, serves the app from Cloud Run, and integrates with other Firebase services. Cloudflare documents that Workers can run on custom domains, that Node.js compatibility is available via nodejs\_compat, and that full server-style workloads can be run through Cloudflare Containers.
+
+Your current repository already matches that model. The repo is a **Next.js app created in Firebase Studio** according to README.md, firebase.json is configured for **Firebase App Hosting**, package.json includes next, firebase, and firebase-admin, src/firebase/server.ts initializes the Admin SDK with Application Default Credentials in production, and src/lib/data.ts plus src/lib/entitlements.ts already model users, membership plans, membership access grants, and tier-based entitlement logic. Your current middleware.ts only marks /admin/\* requests and does not yet enforce member-tool access flows, so tool launch authorization needs to be implemented server-side in new route handlers.
+
+1\. System model
+----------------
+
+Use a **control plane / workload plane** design.
+
+The **control plane** is rbp-master-application on Firebase App Hosting. It owns:
+
+*   authentication
+    
+*   membership plans and status
+    
+*   entitlement evaluation
+    
+*   Google account linking
+    
+*   tool registry
+    
+*   launch token issuance
+    
+*   provisioning orchestration
+    
+*   audit logging
+    
+
+The **workload plane** is the set of Cloudflare-hosted OSS tools. Each tool owns:
+
+*   its own UI and runtime
+    
+*   tool-specific business logic
+    
+*   tenant-scoped or workspace-scoped data
+    
+*   a local session created from a trusted launch event
+    
+*   optional calls back to the master app for Google operations or account provisioning
+    
+
+The master app should be the only source of truth for “who is this user, what plan do they have, what tool can they access, and which workspace belongs to them.” Your existing Firestore user and entitlement model already points in that direction. src/lib/data.ts maps user fields like membershipTier, membershipStatus, membershipPlanCode, billingCycle, accessExpiry, and Square references, while src/lib/entitlements.ts already computes effective tier and allowed access levels for tools and content.
+
+2\. Deployment topology
+-----------------------
+
+Use a domain layout like this:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   app.example.com              -> Firebase App Hosting (master app)api.app.example.com          -> optional internal API or broker surface on Firebaseplanner.example.com          -> Cloudflare-hosted OSS toolcrm.example.com              -> Cloudflare-hosted OSS toolautomation.example.com       -> Cloudflare-hosted OSS tool   `
+
+Cloudflare custom domains are the correct way to attach Worker-based tools to subdomains, and Cloudflare automatically handles DNS records and certificates for those custom domains.
+
+### 2.1 Which Cloudflare runtime to use
+
+Do not assume every open-source app can run as a plain Worker just because marketing departments discovered adjectives.
+
+Use this rule:
+
+*   Use **Workers/Pages** for tools that are already edge-friendly or can run in a serverless Node-compatible runtime.
+    
+*   Use **Cloudflare Containers** for apps that expect a traditional server process, a containerized runtime, or persistent local service behavior.
+    
+*   Reject or isolate tools that depend on unsupported Node APIs, unsupported binaries, or invasive runtime assumptions.
+    
+
+Cloudflare’s docs are explicit that Workers provide a **subset** of Node.js APIs, with some features available natively and others shimmed or partially supported, so package compatibility must be tested before committing to a tool. Cloudflare also documents nodejs\_compat as the way to enable Node.js compatibility, and Cloudflare Containers as the model for container-based workloads handled from Workers.
+
+A default Cloudflare Worker config for a tool should start like this:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {  "name": "planner-tool",  "main": "src/index.ts",  "compatibility_date": "2026-03-11",  "compatibility_flags": ["nodejs_compat"]}   `
+
+Store tool secrets in Cloudflare **Secrets**, not plaintext vars. Cloudflare’s docs explicitly warn against storing sensitive values in regular env vars or committing .env/.dev.vars files to git.
+
+3\. Firebase-side runtime assumptions
+-------------------------------------
+
+Firebase App Hosting is the production runtime for the master application. Official docs state that App Hosting builds the app through **Cloud Build**, runs it on **Cloud Run**, uses **Cloud CDN**, and integrates with **Cloud Secret Manager**. App Hosting also uses a backend service account, and Firebase documents that you can grant this service account additional roles if the app needs access to more Google services at runtime. That is exactly why the master app should act as the Google API broker rather than spraying Google credentials into every Cloudflare-hosted tool.
+
+Your repo already uses firebase-admin with applicationDefault() in production, which aligns with that model.
+
+4\. Authentication model
+------------------------
+
+### 4.1 Firebase owns human login
+
+All members sign in to the master app using Firebase Auth. Do **not** let members log directly into the Cloudflare-hosted OSS tools as independent systems.
+
+The recommended flow is:
+
+1.  member signs in to Firebase
+    
+2.  client gets Firebase ID token
+    
+3.  ID token is exchanged for a server-side session cookie
+    
+4.  all protected master-app routes verify the session cookie server-side
+    
+5.  only the master app may launch a tool session
+    
+
+Firebase officially supports this pattern. The Auth docs describe sending a client ID token to a session-login endpoint, creating an httpOnly server-side session cookie through the Admin SDK, and verifying that session cookie on protected routes. Firebase also documents server-side verification of ID tokens and session cookies with the Admin SDK.
+
+### 4.2 Required Firebase auth endpoints
+
+Implement these in rbp-master-application:
+
+*   POST /api/auth/session-login
+    
+*   POST /api/auth/session-logout
+    
+*   GET /api/auth/me
+    
+*   POST /api/tools/:toolKey/launch
+    
+
+A minimal session-login route in Next.js App Router looks like this:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   // src/app/api/auth/session-login/route.tsimport { NextRequest, NextResponse } from "next/server";import { getAuth } from "firebase-admin/auth";import { getAdminApp } from "@/firebase/server";export async function POST(req: NextRequest) {  const { idToken, csrfToken } = await req.json();  const csrfCookie = req.cookies.get("csrfToken")?.value;  if (!csrfCookie || csrfCookie !== csrfToken) {    return NextResponse.json({ error: "invalid_csrf" }, { status: 401 });  }  const auth = getAuth(getAdminApp());  const decoded = await auth.verifyIdToken(idToken);  const authAgeSeconds = Math.floor(Date.now() / 1000) - decoded.auth_time;  if (authAgeSeconds > 300) {    return NextResponse.json({ error: "recent_signin_required" }, { status: 401 });  }  const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days  const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });  const res = NextResponse.json({ ok: true });  res.cookies.set("rbp_session", sessionCookie, {    httpOnly: true,    secure: true,    sameSite: "lax",    path: "/",    maxAge: expiresIn / 1000,  });  return res;}   `
+
+That route follows Firebase’s documented session-cookie model, including CSRF protection and recent-sign-in checks.
+
+5\. Authorization and membership model
+--------------------------------------
+
+Your app already has the beginnings of the authorization layer. src/lib/entitlements.ts defines basic, standard, and premium tiers, a tier order, getEffectiveMembershipTier, and canAccessContent, along with existing feature keys such as docshare\_tools and docshare\_tools\_access\_level.
+
+Extend that file so tools become first-class citizens.
+
+### 5.1 Add tool-specific entitlement keys
+
+Create feature keys such as:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   export type EntitlementFeatureKey =  | "tool_planner"  | "tool_crm"  | "tool_automation"  | "tool_knowledge_assistant"  | "tool_reporting"  // keep existing keys too   `
+
+Then expand ENTITLEMENT\_MATRIX so each tier maps to booleans or access levels per tool.
+
+### 5.2 Add a dedicated tool access helper
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   export function canAccessTool(input: {  currentTier: MembershipTier;  requiredTier: MembershipTier;  isAuthenticated: boolean;  accountStatus?: "active" | "suspended";}) {  if (!input.isAuthenticated) return { allowed: false, reason: "requires_login" };  if (input.accountStatus === "suspended") return { allowed: false, reason: "suspended" };  if (compareMembershipTier(input.currentTier, input.requiredTier) < 0) {    return { allowed: false, reason: "insufficient_tier" };  }  return { allowed: true, reason: "ok" };}   `
+
+### 5.3 Extend Firestore
+
+Keep your existing collections:
+
+*   users
+    
+*   membership\_plans
+    
+*   membership\_access\_grants
+    
+
+Add:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   tools_catalog/{toolKey}tool_accounts/{userId_toolKey}tool_launch_audit/{launchId}tool_provisioning_jobs/{jobId}     // optionaltool_instance_assignments/{id}     // optional, only if per-customer instancesgoogle_connections/{userId}        // broker-side metadata only   `
+
+Suggested shapes:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   // tools_catalog/planner{  "toolKey": "planner",  "name": "Business Planner",  "enabled": true,  "baseUrl": "https://planner.example.com",  "requiredTier": "standard",  "launchMode": "jwt",  "hostingMode": "cloudflare_worker",  "supportsProvisioning": true,  "supportsTenanting": true,  "googleBrokerFeatures": ["drive.read", "sheets.read", "docs.write"]}   `
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   // tool_accounts/{uid}_planner{  "userId": "uid_123",  "toolKey": "planner",  "tenantId": "tenant_abc",  "externalUserId": "planner_user_987",  "externalWorkspaceId": "workspace_456",  "role": "member",  "status": "active",  "lastProvisionedAt": "2026-03-17T05:00:00.000Z"}   `
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   // tool_launch_audit/{launchId}{  "userId": "uid_123",  "toolKey": "planner",  "tenantId": "tenant_abc",  "result": "success",  "createdAt": "2026-03-17T05:00:00.000Z",  "ip": "203.0.113.10",  "userAgent": "Mozilla/5.0 ..."}   `
+
+6\. Launch-token contract
+-------------------------
+
+The master application should not forward Firebase tokens straight into tools and hope for the best. Firebase ID tokens are for identifying users to your backend and other Firebase-aware services; Firebase documents that server-side backends should verify them before trusting them. Use them only on the Firebase side. The tool should receive a **short-lived launch token** issued by the master application after the master application has already verified the user and membership.
+
+### 6.1 Browser redirect flow
+
+The browser redirect flow should be:
+
+1.  user clicks tool tile in master app
+    
+2.  browser hits POST /api/tools/:toolKey/launch
+    
+3.  master app verifies rbp\_session
+    
+4.  master app resolves membership tier, grants, and tool mapping
+    
+5.  master app provisions user/workspace if needed
+    
+6.  master app signs a one-time or very short-lived JWT
+    
+7.  browser is redirected to https://tool.example.com/auth/launch?token=...
+    
+8.  tool verifies JWT and creates a local session cookie
+    
+9.  tool redirects the user into their workspace
+    
+
+### 6.2 Launch token claims
+
+Use an asymmetric JWT signed by the master app. Suggested claims:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {  "iss": "https://app.example.com",  "aud": "tool:planner",  "sub": "uid_123",  "email": "member@example.com",  "toolKey": "planner",  "membershipTier": "standard",  "tenantId": "tenant_abc",  "workspaceId": "workspace_456",  "role": "member",  "googleBrokerAllowed": true,  "googleScopes": ["drive.read", "sheets.read"],  "jti": "launch_01HQ...",  "iat": 1710651000,  "exp": 1710651060}   `
+
+Keep exp to 60 seconds or less. Use jti for replay detection if the tool is high-risk.
+
+### 6.3 Key management
+
+Store the signing **private key** in Google-side secrets, not in git. App Hosting integrates with Cloud Secret Manager, and Cloudflare provides secrets bindings for the tool side. Publish the corresponding **public key** from the master app as a JWKS document at /.well-known/jwks.json so every tool can verify launch tokens without sharing the private key.
+
+7\. Firebase launch endpoint
+----------------------------
+
+Implement the launch endpoint as a server-side route handler in the App Router.
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML``   // src/app/api/tools/[toolKey]/launch/route.tsimport { NextRequest, NextResponse } from "next/server";import { cookies } from "next/headers";import { getAuth } from "firebase-admin/auth";import { SignJWT, importPKCS8 } from "jose";import { getAdminApp, firestore } from "@/firebase/server";import { getEffectiveMembershipTier, compareMembershipTier } from "@/lib/entitlements";import { getMembershipAccessGrantsForUser } from "@/lib/data";async function ensureToolAccount(userId: string, toolKey: string) {  const docId = `${userId}_${toolKey}`;  const ref = firestore.collection("tool_accounts").doc(docId);  const snap = await ref.get();  if (snap.exists) return snap.data();  // placeholder provisioning flow  const created = {    userId,    toolKey,    tenantId: `tenant_${userId}`,    externalUserId: `${toolKey}_user_${userId}`,    externalWorkspaceId: `${toolKey}_ws_${userId}`,    role: "member",    status: "active",    lastProvisionedAt: new Date().toISOString(),  };  await ref.set(created);  return created;}export async function POST(  _req: NextRequest,  { params }: { params: Promise<{ toolKey: string }> }) {  const { toolKey } = await params;  const sessionCookie = (await cookies()).get("rbp_session")?.value;  if (!sessionCookie) {    return NextResponse.json({ error: "not_authenticated" }, { status: 401 });  }  const auth = getAuth(getAdminApp());  const decoded = await auth.verifySessionCookie(sessionCookie, true);  const uid = decoded.uid;  const [userSnap, toolSnap, grants] = await Promise.all([    firestore.collection("users").doc(uid).get(),    firestore.collection("tools_catalog").doc(toolKey).get(),    getMembershipAccessGrantsForUser(uid),  ]);  if (!userSnap.exists || !toolSnap.exists) {    return NextResponse.json({ error: "not_found" }, { status: 404 });  }  const user = userSnap.data()!;  const tool = toolSnap.data()!;  const currentTier = getEffectiveMembershipTier({    membershipTier: user.membershipTier ?? null,    membershipStatus: user.membershipStatus ?? null,    planCode: user.membershipPlanCode ?? null,    grants,  });  if (user.accountStatus === "suspended") {    return NextResponse.json({ error: "account_suspended" }, { status: 403 });  }  if (compareMembershipTier(currentTier, tool.requiredTier) < 0) {    return NextResponse.json({ error: "insufficient_tier" }, { status: 403 });  }  const account = await ensureToolAccount(uid, toolKey);  const privateKeyPem = process.env.TOOL_LAUNCH_PRIVATE_KEY!;  const privateKey = await importPKCS8(privateKeyPem, "RS256");  const token = await new SignJWT({    email: user.email,    toolKey,    membershipTier: currentTier,    tenantId: account.tenantId,    workspaceId: account.externalWorkspaceId,    role: account.role,    googleBrokerAllowed: true,    googleScopes: tool.googleBrokerFeatures ?? [],  })    .setProtectedHeader({ alg: "RS256", kid: "launch-key-1" })    .setIssuer("https://app.example.com")    .setAudience(`tool:${toolKey}`)    .setSubject(uid)    .setJti(crypto.randomUUID())    .setIssuedAt()    .setExpirationTime("60s")    .sign(privateKey);  await firestore.collection("tool_launch_audit").add({    userId: uid,    toolKey,    tenantId: account.tenantId,    result: "success",    createdAt: new Date().toISOString(),  });  return NextResponse.json({    redirectUrl: `${tool.baseUrl}/auth/launch?token=${encodeURIComponent(token)}`  });}   ``
+
+This is where your current repo changes most. src/lib/data.ts and src/lib/entitlements.ts already provide the user, grant, and tier concepts the route needs.
+
+8\. Cloudflare-side tool changes
+--------------------------------
+
+Every OSS tool must be modified in the same five areas.
+
+### 8.1 Replace native login with trusted launch bootstrap
+
+Add an endpoint like /auth/launch that:
+
+*   accepts the master launch JWT
+    
+*   verifies it against the master JWKS
+    
+*   creates or looks up the local user
+    
+*   resolves the tenant/workspace
+    
+*   sets a local httpOnly cookie
+    
+*   redirects the member to the correct workspace home
+    
+
+Example using jose in a Worker-compatible tool:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML``   import { createRemoteJWKSet, jwtVerify } from "jose";const JWKS = createRemoteJWKSet(  new URL("https://app.example.com/.well-known/jwks.json"));export async function handleLaunch(request: Request): Promise {  const url = new URL(request.url);  const token = url.searchParams.get("token");  if (!token) {    return new Response("missing token", { status: 400 });  }  const { payload } = await jwtVerify(token, JWKS, {    issuer: "https://app.example.com",    audience: "tool:planner",  });  const userId = String(payload.sub);  const tenantId = String(payload.tenantId);  const workspaceId = String(payload.workspaceId);  const email = String(payload.email);  await ensureLocalUserAndWorkspace({ userId, email, tenantId, workspaceId });  const session = await createLocalToolSession({    userId,    tenantId,    workspaceId,    membershipTier: String(payload.membershipTier),  });  const res = Response.redirect(new URL(`/workspace/${workspaceId}`, url), 302);  res.headers.append(    "Set-Cookie",    `tool_session=${session}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=28800`  );  return res;}   ``
+
+### 8.2 Add tenant/workspace isolation
+
+This is the part that prevents data leakage.
+
+Every tool request must resolve:
+
+*   tenantId
+    
+*   workspaceId
+    
+*   userIdfrom the local tool session, never from browser-controlled query params.
+    
+
+Then every storage query must include the correct tenant scope.
+
+Bad:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   const record = await db.items.get(requestedId);   `
+
+Good:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   const record = await db.items.findFirst({  where: {    id: requestedId,    tenantId: session.tenantId,  },});   `
+
+If a candidate OSS tool has no concept of tenant, workspace, team, organization, or account boundary, treat that as a red flag. Either isolate it per customer or reject it.
+
+### 8.3 Add provisioning hooks
+
+Each tool needs a way to create or update users from the master app.
+
+Preferred internal interface:
+
+*   ensureLocalUserAndWorkspace()
+    
+*   suspendLocalUser()
+    
+*   activateLocalUser()
+    
+*   setLocalRole()
+    
+
+This can be implemented as local code in the tool or as a private API surface called by the master app.
+
+### 8.4 Externalize branding
+
+Every tool should load these from config or runtime bindings:
+
+*   product name
+    
+*   logo URL
+    
+*   primary/secondary colors
+    
+*   support email
+    
+*   footer links
+    
+*   legal links
+    
+*   telemetry identifier
+    
+
+Do not hardcode vendor branding in templates.
+
+### 8.5 Store secrets correctly
+
+Cloudflare secrets should hold:
+
+*   internal service token or HMAC secret for calls back to Firebase
+    
+*   any tool-local API keys
+    
+*   signing keys if the tool issues its own internal tokens
+    
+
+Cloudflare’s docs explicitly say sensitive values belong in Secrets, not plaintext vars.
+
+9\. Google API integration model
+--------------------------------
+
+Keep Google identity and Google tokens on the Firebase side. Do **not** let each tool invent its own Google OAuth flow unless you want the kind of support burden that makes people fantasize about farming.
+
+### 9.1 Why the master app should broker Google APIs
+
+Firebase App Hosting runs on Google infrastructure, supports Admin SDK auth through ADC, and the backend service account can be granted additional Google roles. That makes the master app the right place to centralize Google API connectivity.
+
+### 9.2 Google broker design
+
+The member links Google once, inside the master app. Then the master app stores:
+
+*   linked Google account metadata
+    
+*   granted scopes
+    
+*   encrypted refresh token or delegated credentials
+    
+*   mapping from user to approved Google resources
+    
+
+The Cloudflare tool never stores Google refresh tokens. Instead it calls a broker endpoint on the master app:
+
+*   POST /api/internal/google/drive/list
+    
+*   POST /api/internal/google/sheets/read
+    
+*   POST /api/internal/google/docs/create
+    
+
+Each request includes:
+
+*   tool service identity
+    
+*   end-user identity
+    
+*   tenant/workspace context
+    
+*   requested operation
+    
+*   correlation ID
+    
+
+The master app validates:
+
+*   the calling tool
+    
+*   the member’s current entitlement
+    
+*   whether the member linked a Google account
+    
+*   whether the requested Google scope is allowed for that tool
+    
+*   tenant ownership of the requested Google resource
+    
+
+Then the master app performs the Google API call and returns only the scoped result.
+
+### 9.3 Service-to-service auth for broker calls
+
+Do not use browser tokens for this.
+
+Use a tool service credential:
+
+*   one shared secret per tool, stored in Cloudflare Secrets and Google-side secrets
+    
+*   or a private key per tool if you want asymmetric service auth
+    
+
+The tool signs a short-lived service JWT like:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {  "iss": "tool:planner",  "aud": "https://app.example.com/api/internal",  "sub": "tool:planner",  "iat": 1710651000,  "exp": 1710651060}   `
+
+The master app verifies that JWT before accepting broker requests.
+
+10\. Firebase internal broker and provisioning surfaces
+-------------------------------------------------------
+
+Implement these private endpoints in the master app:
+
+*   POST /api/internal/tools/:toolKey/provision
+    
+*   POST /api/internal/tools/:toolKey/suspend
+    
+*   POST /api/internal/tools/:toolKey/reactivate
+    
+*   POST /api/internal/google/:provider/:operation
+    
+
+These endpoints should reject browser traffic and only accept tool-service tokens.
+
+11\. Route protection in the master application
+-----------------------------------------------
+
+Your current middleware.ts only touches /admin/\* and adds a header. That is not enough for member-tool launches.
+
+Do this instead:
+
+*   keep middleware lightweight
+    
+*   verify tool access server-side in route handlers
+    
+*   optionally extend middleware to redirect unauthenticated users away from /dashboard and /tools
+    
+*   never depend on hidden buttons as access control
+    
+
+The important authorization decisions happen in:
+
+*   /api/auth/\*
+    
+*   /api/tools/\*
+    
+*   /api/internal/\*
+    
+
+12\. Cloudflare application patterns
+------------------------------------
+
+### 12.1 Worker-native tool
+
+Use this when the tool:
+
+*   is mostly TypeScript/JavaScript
+    
+*   does not require a traditional server process
+    
+*   can work within Worker constraints
+    
+
+### 12.2 Container-backed tool
+
+Use Cloudflare Containers when the tool:
+
+*   is packaged as a container
+    
+*   expects a server process
+    
+*   needs local listening ports or persistent in-container behavior
+    
+
+Cloudflare’s Containers docs describe using a Container class to route requests into a container instance and forward traffic to its default port.
+
+### 12.3 Compatibility testing checklist
+
+Before you adopt a tool, verify:
+
+*   required Node modules
+    
+*   filesystem behavior
+    
+*   child process expectations
+    
+*   websocket expectations
+    
+*   native binary requirements
+    
+*   background job model
+    
+*   tenant model
+    
+*   branding flexibility
+    
+*   auth replaceability
+    
+
+Cloudflare’s own Node compatibility docs make it clear that some Node APIs are partial or shimmed, so you need this test up front.
+
+13\. Recommended implementation sequence
+----------------------------------------
+
+### Phase 1: harden the master app
+
+Implement:
+
+*   Firebase Auth session-cookie endpoints
+    
+*   tools\_catalog, tool\_accounts, tool\_launch\_audit
+    
+*   canAccessTool() and tool-specific entitlements
+    
+*   launch JWT signing
+    
+*   JWKS endpoint
+    
+*   internal Google broker stubs
+    
+*   internal provisioning stubs
+    
+
+### Phase 2: onboard one pilot tool
+
+Pick the easiest candidate:
+
+*   clean codebase
+    
+*   some tenancy concept
+    
+*   configurable login
+    
+*   low-risk data model
+    
+
+Then add:
+
+*   /auth/launch
+    
+*   tenant session handling
+    
+*   local cookie session
+    
+*   provisioning integration
+    
+*   broker client for Google operations
+    
+
+### Phase 3: standardize adapters
+
+In the master repo, create:
+
+*   src/lib/tool-adapters/base.ts
+    
+*   src/lib/tool-adapters/planner.ts
+    
+*   src/lib/tool-adapters/crm.ts
+    
+
+Every adapter implements:
+
+*   ensureAccount()
+    
+*   buildLaunchClaims()
+    
+*   getRequiredTier()
+    
+*   getBaseUrl()
+    
+*   allowedGoogleScopes()
+    
+
+### Phase 4: lifecycle events
+
+Add workflows for:
+
+*   signup
+    
+*   upgrade
+    
+*   downgrade
+    
+*   cancel
+    
+*   suspend
+    
+*   re-activate
+    
+*   global signout
+    
+
+When membership changes, update tool\_accounts and optionally call tool-side lifecycle endpoints.
+
+14\. Operational and security controls
+--------------------------------------
+
+Use these as non-negotiables:
+
+*   Launch JWT TTL: 60 seconds max
+    
+*   Local tool session TTL: 8 to 12 hours max
+    
+*   All cookies: HttpOnly, Secure, SameSite=Lax unless cross-site flows require None
+    
+*   Log every launch and broker call with correlation IDs
+    
+*   Never store master private keys in git
+    
+*   Never let browser specify tenantId
+    
+*   Never let tools store Google refresh tokens
+    
+*   Re-verify membership on every launch, not just on signup
+    
+*   Revoke tool access when account is suspended or membership lapses
+    
+
+Firebase documents revocation controls for sessions and ID tokens, so use them during account suspension and security events.
+
+15\. File-by-file changes for rbp-master-application
+----------------------------------------------------
+
+Add or modify these files:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   src/app/api/auth/session-login/route.tssrc/app/api/auth/session-logout/route.tssrc/app/api/tools/[toolKey]/launch/route.tssrc/app/api/internal/tools/[toolKey]/provision/route.tssrc/app/api/internal/google/[provider]/[operation]/route.tssrc/app/.well-known/jwks.json/route.tssrc/lib/tool-access.tssrc/lib/tool-launch.tssrc/lib/tool-adapters/base.tssrc/lib/tool-adapters/.tssrc/lib/google-broker.tssrc/lib/service-auth.tssrc/lib/entitlements.ts              // extend existing matrixsrc/lib/data.ts                      // add tool collection readers/writersmiddleware.ts                        // optional light redirects only   `
+
+Also add UI pages such as:
+
+*   src/app/(member)/dashboard/tools/page.tsx
+    
+*   src/components/member/tool-tile.tsx
+    
+
+That fits your current App Router layout and Next.js setup in the repo. package.json shows a standard Next.js build flow, and the README points developers at src/app/page.tsx, which confirms the project is already using the structure this guide extends.
+
+16\. What changes in each OSS repo
+----------------------------------
+
+For every Cloudflare-hosted tool, the minimum code changes are:
+
+1.  Add /auth/launch
+    
+2.  Add launch-JWT verification against the master JWKS
+    
+3.  Add local session creation
+    
+4.  Add tenant/workspace mapping
+    
+5.  Add scoped data access
+    
+6.  Add provisioning hooks
+    
+7.  Externalize branding
+    
+8.  Add service-authenticated broker client for Google operations
+    
+9.  Add suspend/deactivate behavior
+    
+10.  Add logout integration
+    
+
+That is the integration contract. Any candidate repo that cannot be bent into that shape without surgery is a bad candidate.
+
+17\. Final reference flow
+-------------------------
+
+The production request path should look like this:
+
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   Browser  -> Firebase master app login  -> Firebase issues ID token  -> Master app exchanges ID token for rbp_session cookie  -> User opens /dashboard/tools  -> User clicks "Open Planner"  -> POST /api/tools/planner/launch  -> Master app verifies rbp_session  -> Master app resolves membership tier + grants + tool account  -> Master app signs short-lived launch JWT  -> Browser redirects to https://planner.example.com/auth/launch?token=...  -> Planner verifies JWT against master JWKS  -> Planner creates local tool_session cookie  -> Planner routes user to /workspace/{workspaceId}  -> Planner calls master Google broker when it needs Drive/Sheets/Docs   `
+
+That is the end-state architecture. Clean separation, single source of truth, reusable integration pattern, and far less future swearing.
