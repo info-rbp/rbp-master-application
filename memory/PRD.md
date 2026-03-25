@@ -1,96 +1,53 @@
 # Remote Business Partner Platform - PRD
 
-## Original Problem Statement
-1. Pull the GitHub repository (https://github.com/info-rbp/rbp-master-application, master branch) into Emergent
-2. Pull the UX/UI Figma repository (https://github.com/info-rbp/RBP-UX) and incorporate it into the application
+## Milestone 2: Identity + Commercial Core
 
-## Architecture
-### Current Setup (Emergent Environment)
-- **Frontend**: Vite + React 18 with TypeScript, Tailwind CSS v4, Radix UI / shadcn/ui components (from Figma export)
-  - Running on port 3000 via supervisor
-  - Located at `/app/frontend/`
-- **Backend**: Minimal FastAPI server  
-  - Running on port 8001 via supervisor
-  - Located at `/app/backend/`
-- **Main Application Codebase**: Next.js (original repo) at `/app/src/`, `/app/docs/`, `/app/libs/` etc.
+### What Was Implemented
 
-### Original Application Stack
-- **Frontend**: Next.js with TypeScript, Tailwind CSS v3, Radix UI / shadcn/ui components
-- **Backend**: Firebase / Firestore, Authentik OIDC authentication
-- **Integrations**: Square (billing), Google APIs, Genkit AI, MCP SDK
-- **Auth**: Authentik OIDC with PKCE + local dev fallback
+#### A. Identity & Tenancy Persistence (Firestore-backed)
+- Firestore-backed repositories for principals, tenants, workspaces, role assignments, tenant memberships
+- Audit event persistence repository
+- Seed service to populate Firestore from bootstrap data
+- All collections use `platform_` prefix convention
 
-## User Personas
-1. **SMB Business Owners** - Seeking operational resources, templates, advisory services
-2. **Operations Managers** - Need process documentation, tools, workflow guides
-3. **Consultants / Team Leads** - Want partner offers, knowledge center, membership value
-4. **Platform Admins** - Manage content, CRM, users, analytics, membership
+#### B. Auth/Session Hardening
+- CSRF double-submit cookie protection for cookie-mutating POST endpoints
+- Comprehensive audit logging across all auth events (login, callback, logout, tenant-switch)
+- Fixed missing import in switch-tenant route
+- Preserved local auth fallback for development
 
-## Core Requirements
-### Public Pages
-- Home, DocuShare, Partner Offers, Knowledge Center, Services, Membership
-- Applications, Help Centre
-- Login/Signup flows (multi-step)
-- Advisory Booking
+#### C. Odoo Commercial Bridge
+- Platform-owned DTOs for customer summary/detail, invoice summary/detail, entitlement bridge
+- Commercial BFF service that normalizes Odoo data into clean contracts
+- BFF API routes: GET /api/commercial/customers, customers/:id, invoices, invoices/:id
+- No raw Odoo payloads leak into frontend contracts
 
-### Member Portal
-- Dashboard, Business Details, Membership (Inclusions/Upgrade/Invoices)
-- DocuShare, Applications (List/Tools), Offers (Available/Redeemed)
-- Services (Engagements/Book), Knowledge
-- Support (Dashboard/Current/Past/New)
-- Settings (Profile/Notifications/Security/Billing)
-- Loans, Documents, Tasks, Personal Finance, Engagement
+#### D. Tests
+- 27 tests across 5 suites, all passing
+- Identity persistence contracts, auth hardening, CSRF, Odoo DTO mappings, BFF contracts, collection naming
 
-### Admin Portal
-- Dashboard, Members (List/Pending), DocuShare Management
-- Support Tickets, Analytics, Offers, Services, Knowledge, Settings
-- Customer 360, Lending, Finance, Documents, Compliance, Tasks
-- Sales, Marketing, Commerce, Appointments, Engagement
-- Operations, HR, Logistics, Security, Intelligence
+### Architecture Preserved
+- `rbp-master-application` remains web app + BFF + control-plane
+- Authentik remains identity source of truth
+- Odoo remains ERP/commercial source of truth
+- Platform owns session projection, tenant/workspace context, orchestration
+- No raw Odoo payloads in frontend contracts
 
-## What's Been Implemented (Date: Jan 2026)
-- [x] Repository pulled from GitHub into Emergent workspace
-- [x] UX/UI Figma repository pulled and incorporated as frontend
-- [x] UX/UI Design Guidelines generated (/app/design_guidelines.json)
-- [x] Vite + React frontend serving Figma UX on port 3000
-- [x] Minimal FastAPI backend serving health endpoint on port 8001
-- [x] All public pages rendering: Home, DocuShare, Partner Offers, Services, Membership, Knowledge Center, Applications, Help Centre
-- [x] Member Portal fully rendered with sidebar navigation, dashboard, and all sub-pages
-- [x] Admin Portal fully rendered with sidebar navigation and all management pages
-- [x] Signup multi-step flow (5 steps) rendering
-- [x] Member Login page rendering
-- [x] Testing: 100% backend, 95% frontend pass rate
+### Firestore Collections
+- `platform_principals` - User identity projections
+- `platform_tenants` - Tenant records
+- `platform_workspaces` - Workspace records
+- `platform_roles` - Role definitions
+- `platform_role_assignments` - Role-to-principal assignments
+- `platform_tenant_memberships` - Principal-to-tenant memberships
+- `platform_audit_events` - Auth/session audit trail
 
-## Design Direction (from Figma)
-- **Brand Primary**: #4D2673 (deep indigo)
-- **Brand Secondary**: #2245BF (vibrant blue)
-- **Brand Accent**: #8B5CF6 (purple)
-- **Background**: #F9F5FC (soft lavender)
-- **Typography**: Inter (clean sans-serif)
-- **Shape Language**: Cards 20px, Buttons rounded, Pills 999px
+### Files Changed/Created
+See implementation summary for complete file list.
 
-## Prioritized Backlog
-### P0 - Critical
-- Connect frontend UX to actual backend APIs (Firebase/Firestore integration)
-- Implement authentication flow (member login/signup with real data)
-- Wire up DocuShare to real content data
-- Connect membership/pricing to Square billing
-
-### P1 - Important
-- Implement search functionality across content types
-- Wire up member portal to real member data
-- Admin CRUD operations for content management
-- Support ticket system backend
-- Partner offers management
-
-### P2 - Nice to Have
-- Merge Figma UX patterns back into the Next.js codebase for production deployment
-- Loading skeletons and empty states
-- SEO metadata optimization
-- Performance optimization
-- Analytics integration
-
-## Next Tasks
-- User to review the UX/UI in the preview and confirm the design direction
-- Begin wiring frontend pages to real backend services
-- Implement authentication and data persistence
+### Next Tasks (Later Milestones)
+- Wire session.ts to read from Firestore persistence (currently uses bootstrap with persistence as projection)
+- Provider-backed user provisioning sync from Authentik
+- Workspace-level restrictions and policy conditions
+- Integration of session core into remaining legacy Firebase-auth pages
+- Lending, Marble, Docspell, n8n integrations
