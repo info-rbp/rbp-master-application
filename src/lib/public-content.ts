@@ -67,6 +67,46 @@ export type ManagedFaq = {
   published: boolean;
 };
 
+function mapDocToManagedServicePage(doc: any): ManagedServicePage | null {
+  const data = doc.data();
+  if (!data) return null;
+
+  const slug = String(data.slug ?? doc.id);
+  const mapItems = (items: unknown): PublicContentItem[] =>
+    Array.isArray(items)
+      ? items.map((item: Record<string, unknown>, index: number) => ({
+          title: String(item.title ?? ''),
+          description: item.description ? String(item.description) : undefined,
+          href: item.href ? String(item.href) : undefined,
+          imageUrl: item.imageUrl ? String(item.imageUrl) : undefined,
+          order: typeof item.order === 'number' ? item.order : index,
+          entitlement: item.entitlement as EntitlementAccessFields | undefined,
+        }))
+      : [];
+
+  return {
+    id: doc.id,
+    slug,
+    title: String(data.title ?? ''),
+    shortDescription: String(data.shortDescription ?? ''),
+    heroImageUrl: data.heroImageUrl ? String(data.heroImageUrl) : undefined,
+    features: mapItems(data.features),
+    benefits: mapItems(data.benefits),
+    overview: data.overview ? String(data.overview) : undefined,
+    problemsSolved: Array.isArray(data.problemsSolved) ? data.problemsSolved.map((item: unknown) => String(item)) : [],
+    inclusionsSummary: data.inclusionsSummary ? String(data.inclusionsSummary) : undefined,
+    serviceInclusions: Array.isArray(data.serviceInclusions) ? data.serviceInclusions.map((item: unknown) => String(item)) : [],
+    membershipDiscountMessage: data.membershipDiscountMessage ? String(data.membershipDiscountMessage) : undefined,
+    discoveryCallBooking: data.discoveryCallBooking ? String(data.discoveryCallBooking) : undefined,
+    relatedContent: Array.isArray(data.relatedContent) ? data.relatedContent as Array<{ id: string; contentType: string; label?: string; path?: string }> : [],
+    ctaLabel: data.ctaLabel ? String(data.ctaLabel) : undefined,
+    ctaHref: data.ctaHref ? String(data.ctaHref) : undefined,
+    displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
+    published: Boolean(data.published),
+    entitlement: data.entitlement as EntitlementAccessFields | undefined,
+  };
+}
+
 async function getSitePage(slug: string): Promise<PublicPageContent | null> {
   const snap = await firestore.collection('site_pages').where('slug', '==', slug).where('published', '==', true).limit(1).get();
   if (snap.empty) return null;
@@ -134,46 +174,12 @@ export async function getKnowledgeLandingContent() {
 export async function getServicePageBySlug(slug: string): Promise<ManagedServicePage | null> {
   const snap = await firestore.collection('service_pages').where('slug', '==', slug).where('published', '==', true).limit(1).get();
   if (snap.empty) return null;
-  const doc = snap.docs[0];
-  const data = doc.data();
-  const mapItems = (items: unknown): PublicContentItem[] =>
-    Array.isArray(items)
-      ? items.map((item: Record<string, unknown>, index: number) => ({
-          title: String(item.title ?? ''),
-          description: item.description ? String(item.description) : undefined,
-          href: item.href ? String(item.href) : undefined,
-          imageUrl: item.imageUrl ? String(item.imageUrl) : undefined,
-          order: typeof item.order === 'number' ? item.order : index,
-          entitlement: item.entitlement as EntitlementAccessFields | undefined,
-        }))
-      : [];
-
-  return {
-    id: doc.id,
-    slug: String(data.slug ?? slug),
-    title: String(data.title ?? ''),
-    shortDescription: String(data.shortDescription ?? ''),
-    heroImageUrl: data.heroImageUrl ? String(data.heroImageUrl) : undefined,
-    features: mapItems(data.features),
-    benefits: mapItems(data.benefits),
-    overview: data.overview ? String(data.overview) : undefined,
-    problemsSolved: Array.isArray(data.problemsSolved) ? data.problemsSolved.map((item: unknown) => String(item)) : [],
-    inclusionsSummary: data.inclusionsSummary ? String(data.inclusionsSummary) : undefined,
-    serviceInclusions: Array.isArray(data.serviceInclusions) ? data.serviceInclusions.map((item: unknown) => String(item)) : [],
-    membershipDiscountMessage: data.membershipDiscountMessage ? String(data.membershipDiscountMessage) : undefined,
-    discoveryCallBooking: data.discoveryCallBooking ? String(data.discoveryCallBooking) : undefined,
-    relatedContent: Array.isArray(data.relatedContent) ? data.relatedContent as Array<{ id: string; contentType: string; label?: string; path?: string }> : [],
-    ctaLabel: data.ctaLabel ? String(data.ctaLabel) : undefined,
-    ctaHref: data.ctaHref ? String(data.ctaHref) : undefined,
-    displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
-    published: Boolean(data.published),
-    entitlement: data.entitlement as EntitlementAccessFields | undefined,
-  };
+  return mapDocToManagedServicePage(snap.docs[0]);
 }
 
 export async function getPublishedServicePages(): Promise<ManagedServicePage[]> {
   const snap = await firestore.collection('service_pages').where('published', '==', true).orderBy('displayOrder', 'asc').get();
-  const rows = await Promise.all(snap.docs.map((doc) => getServicePageBySlug(String(doc.data().slug ?? doc.id))));
+  const rows = snap.docs.map(mapDocToManagedServicePage);
   return rows.filter((x): x is ManagedServicePage => Boolean(x));
 }
 
