@@ -17,6 +17,11 @@ import { canPublishKnowledgeArticle, normalizeKnowledgeSlug, type KnowledgeConte
 import { getAccessMetadataForDocuShareSection, resolvePlanCodeToBillingCycle, resolvePlanCodeToTier } from './entitlements';
 import { filterAndSortUsers, validateAdminRole } from './user-admin';
 import { getPublicPartnerOffers, getPublicPastProjects, getPublicTestimonials } from './content-admin';
+import {
+    isFirestoreUnavailable,
+    getPublishedTestimonialsFallback,
+    getKnowledgeArticlesFallback
+} from './data-fallback';
 import { getDocuShareSectionContent as getDocuShareSectionContentFromCms, getFAQsByCategory as getFAQsByCategoryFromCms, getHomepageContent as getHomepageContentFromCms, getKnowledgeLandingContent as getKnowledgeLandingContentFromCms, getMembershipPageContent as getMembershipPageContentFromCms, getPageContentBySlug as getPageContentBySlugFromCms, getPublishedServicePages as getPublishedServicePagesFromCms, getServicePageBySlug as getServicePageBySlugFromCms, getServicesLandingContent as getServicesLandingContentFromCms } from './public-content';
 import { ensureUniqueSlug, getDocushareSegment, normalizeSlug } from './content-objects';
 
@@ -458,7 +463,15 @@ export async function deleteMembershipPlan(id: string, actorUserId: string): Pro
 }
 
 export async function getKnowledgeArticles(query: KnowledgeArticleQuery = {}): Promise<KnowledgeArticle[]> {
-  return getKnowledgeArticlesWithFilters(query);
+    if (isFirestoreUnavailable()) {
+        return getKnowledgeArticlesFallback();
+    }
+    try {
+        return await getKnowledgeArticlesWithFilters(query);
+    } catch (error) {
+        console.error('Firestore error fetching knowledge articles:', error);
+        return getKnowledgeArticlesFallback();
+    }
 }
 
 type KnowledgeArticleQuery = {
@@ -951,8 +964,16 @@ export async function getActivePartnerOffers(): Promise<PartnerOffer[]> {
 }
 
 export async function getPublishedTestimonials(): Promise<Testimonial[]> {
-  const testimonials = await getTestimonials();
-  return getPublicTestimonials(testimonials);
+    if (isFirestoreUnavailable()) {
+        return getPublishedTestimonialsFallback();
+    }
+    try {
+        const testimonials = await getTestimonials();
+        return getPublicTestimonials(testimonials);
+    } catch (error) {
+        console.error('Firestore error fetching testimonials:', error);
+        return getPublishedTestimonialsFallback();
+    }
 }
 
 export async function getPublishedPastProjects(): Promise<PastProject[]> {

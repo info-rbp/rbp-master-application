@@ -38,7 +38,7 @@ For new protected pages or APIs:
 2. enforce it in the route handler or page/section guard via `requireRoutePolicyAccess(...)` or `requireSessionForPath(...)`
 3. add a test proving unauthenticated/unauthorised access is blocked
 
-Nested route families such as `/admin/system`, `/admin/membership`, `/admin/knowledge-center`, `/portal/*`, and `/settings/*` should use section layouts where possible so direct URL access is checked against the specific route policy rather than only a broader parent route.
+Nested route families such as `/admin/system`, `/admin/membership`, `/admin/resources`, `/portal/*`, and `/settings/*` should use section layouts where possible so direct URL access is checked against the specific route policy rather than only a broader parent route.
 
 ## Action policy model
 
@@ -82,7 +82,7 @@ The central model now governs the major protected platform surfaces that current
 
 - protected page roots and significant page families for admin, settings, dashboard, and portal flows
 - application, loan, customer-360, search, task, workflow, and audit APIs
-- admin feature-controls, knowledge-center, and membership management APIs
+- admin feature-controls, resources, and membership management APIs
 - sensitive workflow review, task execution, support escalation, document upload, and admin control-plane actions
 - independently gated sub-features such as rollout preview, audit history, internal notes, and membership notes
 

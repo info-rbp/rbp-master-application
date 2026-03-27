@@ -1,44 +1,45 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-    ],
-  },
-  serverExternalPackages: ["firebase-admin", "jwks-rsa", "jose"],
-  async rewrites() {
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: '*.cdn-website.com',
+                port: '',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: '*.firebaseapp.com',
+                port: '',
+                pathname: '/**',
+            },
+        ],
+    },
+  async redirects() {
     return [
       {
-        source: '/services',
-        destination: '/services.html',
+        source: '/partner-offers',
+        destination: '/offers',
+        permanent: true,
+      },
+      {
+        source: '/knowledge-center',
+        destination: '/resources',
+        permanent: true,
+      },
+      {
+        source: '/contact-one',
+        destination: '/contact',
+        permanent: true,
+      },
+      {
+        source: '/membership',
+        destination: '/',
+        permanent: true,
       },
     ]
   },
-  allowedDevOrigins: [
-    "9000-firebase-studio-1773123432145.cluster-a6zx3cwnb5hnuwbgyxmofxpkfe.cloudworkstations.dev",
-    "6000-firebase-studio-1773123432145.cluster-a6zx3cwnb5hnuwbgyxmofxpkfe.cloudworkstations.dev",
-  ],
 };
 
 export default nextConfig;

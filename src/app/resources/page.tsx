@@ -1,31 +1,72 @@
+import { buildSeoMetadata } from '@/lib/seo';
+import {
+  ResourcesHero,
+  FeaturedResource,
+  CategoryNav,
+  ArticleCard
+} from '@/components/resources-hub';
 
-import { MarketingHeader } from "@/components/marketing-header";
-import { MarketingFooter } from "@/components/marketing-footer";
+export const metadata = buildSeoMetadata({
+  title: 'Resources',
+  description: 'Explore our collection of articles, guides, and tools to help you grow your business.',
+  path: '/resources'
+});
 
-const resources = [
-    { id: 1, name: "Template 1", url: "/template1.zip" },
-    { id: 2, name: "Companion Guide 1", url: "/guide1.pdf" },
-    { id: 3, name: "Documentation Suite 1", url: "/docs1.zip" },
+// Placeholder Data
+const featuredResource = {
+  id: 'res-001',
+  title: 'The Ultimate Guide to Strategic Business Planning',
+  summary: 'Learn how to create a robust business plan that aligns with your strategic goals and drives growth. This guide covers everything from market analysis to financial projections.',
+  slug: 'the-ultimate-guide-to-strategic-business-planning',
+  category: 'Strategy'
+};
+
+const categories = [
+  { id: 'cat-01', name: 'All', slug: '' },
+  { id: 'cat-02', name: 'Strategy', slug: 'strategy' },
+  { id: 'cat-03', name: 'Finance', slug: 'finance' },
+  { id: 'cat-04', name: 'Operations', slug: 'operations' },
+  { id: 'cat-05', name: 'Marketing', slug: 'marketing' }
 ];
 
-export default function ResourcesPage() {
+const articles = [
+  {
+    id: 'art-001',
+    title: '5 Common Financial Mistakes Small Businesses Make',
+    summary: 'Avoid these common pitfalls to ensure the financial health and stability of your business.',
+    slug: '5-common-financial-mistakes',
+    category: 'Finance'
+  },
+  {
+    id: 'art-002',
+    title: 'How to Build a High-Performing Operations Team',
+    summary: 'A step-by-step guide to recruiting, training, and managing an operations team that drives results.',
+    slug: 'how-to-build-a-high-performing-operations-team',
+    category: 'Operations'
+  },
+  {
+    id: 'art-003',
+    title: 'The Founder\'s Guide to Effective Marketing',
+    summary: 'Learn the fundamentals of marketing and how to create a strategy that resonates with your target audience.',
+    slug: 'the-founders-guide-to-effective-marketing',
+    category: 'Marketing'
+  }
+];
+
+export default function ResourcesHubPage() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <MarketingHeader />
-      <main className="flex-col container mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-center mb-8">Resources</h1>
-        <div className="max-w-md mx-auto">
-            <ul className="space-y-4">
-                {resources.map((resource) => (
-                    <li key={resource.id} className="border rounded-lg p-4 flex justify-between items-center">
-                        <span>{resource.name}</span>
-                        <a href={resource.url} download className="text-blue-500 hover:underline">Download</a>
-                    </li>
-                ))}
-            </ul>
+    <div>
+      <ResourcesHero />
+      <FeaturedResource resource={featuredResource} />
+      <CategoryNav categories={categories} />
+      <div className="container mx-auto px-4 md:px-6 py-16">
+        <h2 className="text-3xl font-bold tracking-tight text-center mb-12">Latest Articles</h2>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {articles.map(article => (
+            <ArticleCard key={article.id} article={article} />
+          ))}
         </div>
-      </main>
-      <MarketingFooter />
+      </div>
     </div>
   );
 }
