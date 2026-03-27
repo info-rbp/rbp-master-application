@@ -25,7 +25,7 @@ export const FeaturedResource = ({ resource }) => (
           <h3 className="text-2xl font-bold">{resource.title}</h3>
           <p className="text-muted-foreground mt-4">{resource.summary}</p>
           <Button asChild className="mt-6">
-            <Link href={`/resources/articles/${resource.slug}`}>Read More <ArrowRight className="ml-2 w-4 h-4" /></Link>
+            <Link href={`/resources/${resource.slug}`}>Read More <ArrowRight className="ml-2 w-4 h-4" /></Link>
           </Button>
         </div>
       </div>
@@ -39,7 +39,7 @@ export const CategoryNav = ({ categories }) => (
     <div className="flex justify-center gap-4 flex-wrap">
       {categories.map((cat) => (
         <Button key={cat.id} asChild variant="outline">
-          <Link href={`/resources/categories/${cat.slug}`}>{cat.name}</Link>
+          <Link href={cat.slug ? `/resources/category/${cat.slug}` : '/resources'}>{cat.name}</Link>
         </Button>
       ))}
     </div>
@@ -58,7 +58,7 @@ export const ArticleCard = ({ article }) => (
     </CardContent>
     <div className="p-6 pt-0">
       <Button asChild variant="secondary">
-        <Link href={`/resources/articles/${article.slug}`}>Read More</Link>
+        <Link href={`/resources/${article.slug}`}>Read More</Link>
       </Button>
     </div>
   </Card>
