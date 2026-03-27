@@ -66,20 +66,28 @@ export type RoleAssignment = {
 
 export type ModuleDefinition = {
   key:
+    | 'home'
+    | 'docushare'
+    | 'offers'
+    | 'services'
+    | 'applications'
+    | 'knowledge'
+    | 'membership'
+    | 'help'
     | 'dashboard'
     | 'customers'
-    | 'applications'
     | 'loans'
     | 'documents'
     | 'finance'
     | 'support'
     | 'analytics'
-    | 'knowledge'
     | 'settings'
-    | 'admin';
+    | 'admin'
+    | 'profile'
+    | 'billing';
   name: string;
   description: string;
-  category: 'core' | 'operations' | 'service' | 'intelligence' | 'system';
+  category: 'core' | 'operations' | 'service' | 'intelligence' | 'system' | 'public';
   route: string;
   icon?: string;
   requiredPermissions: Array<{ resource: string; action: string }>;
@@ -159,4 +167,28 @@ export type AuthenticatedPrincipal = {
   defaultTenantId?: string;
   mfaVerified: boolean;
   lastAuthenticatedAt: string;
+};
+
+
+export type NavigationGroupKey = 'public' | 'primary' | 'workspace' | 'user' | 'admin';
+
+export type RouteDefinition = {
+  id: string;
+  path: string;
+  moduleKey: ModuleDefinition['key'];
+  routeType: 'public' | 'authenticated' | 'tenant' | 'admin';
+  label: string;
+  icon?: string;
+  order: number;
+  navGroup: NavigationGroupKey;
+  isDefaultLanding?: boolean;
+  hideFromNav: boolean;
+  allowAnonymous: boolean;
+  isEnabled: boolean;
+  accessDeniedBehavior: 'redirect' | 'hide' | 'render_access_denied';
+  requiredPermissions: { resource: string; action: string }[];
+  requiredFeatureFlags: string[];
+  requiredTenantCapabilities: string[];
+  requiredModules: ModuleDefinition['key'][];
+  matchPrefixes?: string[];
 };

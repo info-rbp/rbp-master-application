@@ -5,12 +5,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
 import Logo from './logo';
-import { usePlatformSession } from '@/app/providers/platform-session-provider';
-import { createNavigationContextFromSession } from '@/lib/platform/navigation-context';
-import { buildPublicNavigation, buildUserMenuNavigation } from '@/lib/platform/navigation-builder';
 import { cn } from '@/lib/utils';
+
+const publicNavigation = [
+  { id: 'home', label: 'Home', route: '/' },
+  { id: 'about', label: 'About', route: '/about' },
+  { id: 'services', label: 'Services', route: '/services' },
+  { id: 'docushare', label: 'DocuShare', route: '/docushare' },
+  { id: 'offers', label: 'Offers', route: '/offers' },
+  { id: 'applications', label: 'Applications', route: '/applications' },
+  { id: 'resources', label: 'Resources', route: '/resources' },
+  { id: 'contact', label: 'Contact', route: '/contact' },
+];
 
 const NavLink = ({ href, children, active }: { href: string; children: React.ReactNode; active?: boolean }) => (
   <Link href={href} className={cn('text-base font-medium transition-colors hover:text-primary', active ? 'text-primary' : 'text-foreground')}>
@@ -20,7 +28,6 @@ const NavLink = ({ href, children, active }: { href: string; children: React.Rea
 
 export const MarketingHeader = () => {
   const pathname = usePathname();
-  const { session, loading } = usePlatformSession();
   const [isScrolled, setIsScrolled] = React.useState(false);
 
   React.useEffect(() => {
@@ -28,11 +35,6 @@ export const MarketingHeader = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const context = React.useMemo(() => createNavigationContextFromSession(session, pathname), [session, pathname]);
-  const publicNavigation = React.useMemo(() => buildPublicNavigation(context).filter((item) => !item.route.startsWith('/support')), [context]);
-  const userNavigation = React.useMemo(() => buildUserMenuNavigation(context), [context]);
-  const dashboardHref = session ? (userNavigation[0]?.route ?? '/dashboard') : '/login';
 
   return (
     <header className={cn('sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60', isScrolled ? 'h-16' : 'h-20')}>
@@ -42,9 +44,9 @@ export const MarketingHeader = () => {
             <Logo />
             <span className="hidden font-bold sm:inline-block">Remote Business Partner</span>
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
+          <nav className="flex items-center space-x-4 text-sm font-medium">
             {publicNavigation.map((item) => (
-              <NavLink key={item.id} href={item.route} active={pathname.startsWith(item.route) && item.route !== '/'}>
+              <NavLink key={item.id} href={item.route} active={pathname === item.route}>
                 {item.label}
               </NavLink>
             ))}
@@ -56,8 +58,11 @@ export const MarketingHeader = () => {
             <Button asChild variant="secondary" size="medium">
               <Link href="/advisory-booking">Book Discovery Call</Link>
             </Button>
-            <Button asChild variant="ghost" size="medium">
-              <Link href={dashboardHref}>{loading ? 'Loading…' : session ? 'Open Workspace' : 'Sign in'}</Link>
+            <Button asChild variant="ghost" size="icon">
+              <Link href="/login">
+                <User className="h-5 w-5" />
+                <span className="sr-only">Sign in</span>
+              </Link>
             </Button>
           </nav>
         </div>
@@ -78,7 +83,9 @@ export const MarketingHeader = () => {
                 {publicNavigation.map((item) => (
                   <NavLink key={item.id} href={item.route}>{item.label}</NavLink>
                 ))}
-                <NavLink href={dashboardHref}>{session ? 'Open Workspace' : 'Sign in'}</NavLink>
+                 <Button asChild variant="link" className="justify-start">
+                    <Link href="/login">Sign in</Link>
+                </Button>
               </div>
             </div>
           </SheetContent>
